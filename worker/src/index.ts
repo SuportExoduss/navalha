@@ -6,7 +6,7 @@
 //  POST /asaas/webhook         → reservado para a Fase 3 (pagamentos)
 import { verificarIdToken } from './auth';
 import { Firestore, tokenGoogle } from './firestore';
-import { chaveFoto, janelasLembrete, mensagemFcm, mensagemLembrete, TIPOS } from './util';
+import { chaveFoto, janelasLembrete, mensagemFcm, mensagemLembrete, tipoDaImagem, TIPOS } from './util';
 
 export interface Env {
   FOTOS: R2Bucket;
@@ -53,12 +53,12 @@ export default {
       const chave = chaveFoto(tipo, uid, refId, crypto.randomUUID());
       if (!chave) return json({ erro: `Tipo deve ser um de: ${TIPOS.join(', ')}; refId alfanumérico.` }, 400, h);
 
-      const tipoConteudo = req.headers.get('Content-Type') ?? '';
-      if (!/^image\/(webp|jpeg|png)$/.test(tipoConteudo)) return json({ erro: 'Envie uma imagem WebP, JPEG ou PNG.' }, 415, h);
       const tamanho = Number(req.headers.get('Content-Length') ?? 0);
       if (tamanho > MAX_BYTES) return json({ erro: 'Foto grande demais.' }, 413, h);
       const corpo = await req.arrayBuffer(); // ~150 KB: cabe com folga na memória
       if (corpo.byteLength === 0 || corpo.byteLength > MAX_BYTES) return json({ erro: 'Foto vazia ou grande demais.' }, 413, h);
+      const tipoConteudo = tipoDaImagem(new Uint8Array(corpo, 0, Math.min(16, corpo.byteLength)));
+      if (!tipoConteudo) return json({ erro: 'Envie uma imagem WebP, JPEG ou PNG.' }, 415, h);
 
       await env.FOTOS.put(chave, corpo, {
         httpMetadata: { contentType: tipoConteudo, cacheControl: 'public, max-age=31536000, immutable' },

@@ -35,3 +35,13 @@ export function mensagemFcm(m: { token: string; title: string; body: string; age
     },
   };
 }
+
+/** Tipo real da imagem pelos primeiros bytes (assinatura do arquivo). O Content-Type que o
+ *  cliente manda não vale: o Android troca o cabeçalho e um atacante poderia mentir (SEC-007). */
+export function tipoDaImagem(b: Uint8Array): 'image/webp' | 'image/jpeg' | 'image/png' | null {
+  const txt = (i: number, n: number) => String.fromCharCode(...b.subarray(i, i + n));
+  if (b.length >= 12 && txt(0, 4) === 'RIFF' && txt(8, 4) === 'WEBP') return 'image/webp';
+  if (b.length >= 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'image/jpeg';
+  if (b.length >= 8 && b[0] === 0x89 && txt(1, 3) === 'PNG') return 'image/png';
+  return null;
+}

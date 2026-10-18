@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { chaveFoto, janelasLembrete, mensagemFcm, mensagemLembrete } from './util';
+import { chaveFoto, janelasLembrete, mensagemFcm, mensagemLembrete, tipoDaImagem } from './util';
 import { validarClaims, decodificarParte, type Claims } from './auth';
 import { lerValor } from './firestore';
 
@@ -50,4 +50,13 @@ test('mensagem do FCM vai no canal de lembretes com o id do agendamento', () => 
   assert.deepEqual(m.notification, { title: 'T', body: 'B' });
   assert.equal(m.android.notification.channel_id, 'lembretes');
   assert.equal(m.data.agendamentoId, 'ag1');
+});
+test('tipo da foto vem dos bytes, não do cabeçalho', () => {
+  const bytes = (...x: (number | string)[]) => new Uint8Array(x.flatMap(v => typeof v === 'string' ? [...v].map(c => c.charCodeAt(0)) : [v]));
+  assert.equal(tipoDaImagem(bytes('RIFF', 0, 0, 0, 0, 'WEBP')), 'image/webp');
+  assert.equal(tipoDaImagem(bytes(0xff, 0xd8, 0xff, 0xe0)), 'image/jpeg');
+  assert.equal(tipoDaImagem(bytes(0x89, 'PNG', 0x0d, 0x0a, 0x1a, 0x0a)), 'image/png');
+  assert.equal(tipoDaImagem(bytes('<svg onload=alert(1)>')), null);
+  assert.equal(tipoDaImagem(bytes('RIFF', 0, 0, 0, 0, 'WAVE')), null);
+  assert.equal(tipoDaImagem(new Uint8Array()), null);
 });
