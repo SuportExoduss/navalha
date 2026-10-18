@@ -36,7 +36,7 @@ Firebase no plano gratuito Spark (sem cartão) cuida de login, banco e push; o C
 | App (Android, iOS e web) | [Expo / React Native](https://expo.dev/pricing.md) | Código aberto; nuvem com 15 builds Android + 15 iOS por mês | Mais builds: US$ 19/mês (ou compilar local, grátis) |
 | Login Google | Firebase Auth | Gratuito | — |
 | Banco de dados | [Cloud Firestore](https://cloud.google.com/firestore/quotas) | 1 GiB armazenado, 50 mil leituras/dia, 20 mil gravações/dia, 10 GiB de transferência/mês | Plano Blaze, pago por uso acima disso |
-| Notificações push | Expo Push + Firebase Cloud Messaging | Gratuito | — |
+| Notificações push | Firebase Cloud Messaging (direto, sem Expo Push) | Gratuito | — |
 | Fotos | [Cloudflare R2](https://filebase.com/blog/cloudflare-r2-pricing-costs-savings-and-alternatives-in-2026/) | 10 GB/mês armazenados, download sem custo | US$ 0,015 por GB/mês acima disso |
 | Servidor (upload de fotos, lembretes, webhooks de pagamento) | [Cloudflare Workers](https://developers.cloudflare.com/workers/platform/limits) | 100 mil requisições/dia, 5 tarefas agendadas (cron), 10 ms de CPU por requisição | Workers Paid, US$ 5/mês |
 | Busca por perto | Geohash no Firestore (biblioteca geofire-common) | Incluído | — |
@@ -54,7 +54,7 @@ Firebase no plano gratuito Spark (sem cartão) cuida de login, banco e push; o C
 2. O app lê e grava direto no Firestore, protegido por regras de segurança (cliente só vê os próprios agendamentos; barbeiro só edita o próprio cardápio).
 3. **Agendamento sem horário duplo:** cada horário ocupado vira um documento com ID fixo (`barbeiro_data_hora`), criado dentro de uma transação. Se o documento já existe, a gravação falha e o segundo cliente vê "horário acabou de ser ocupado".
 4. **Foto:** o app comprime para \~150 KB, pede ao Worker um link de envio assinado (o Worker confere o token do Firebase), envia direto ao R2 e grava o endereço da foto no Firestore.
-5. **Tarefas agendadas no Worker:** a cada hora, envia lembretes push de 24 h e 2 h pelo Expo Push (gratuito, entrega pelo FCM e pela Apple sem o Worker precisar assinar credenciais); uma vez por dia, a partir da Fase 3, atualiza a nota Google de cada barbearia.
+5. **Tarefas agendadas no Worker:** a cada hora, envia lembretes push de 24 h e 2 h pelo FCM HTTP v1 (gratuito; o Worker assina com a conta de serviço; iOS/APNs fica para a Fase 3); uma vez por dia, a partir da Fase 3, atualiza a nota Google de cada barbearia.
 6. **Fase 3:** o Worker recebe os avisos de pagamento do Asaas e marca o agendamento como pago no Firestore.
 
 **Truques para ficar no grátis**
@@ -106,7 +106,7 @@ Oito semanas em quatro sprints de duas semanas entregam o ciclo completo — cli
 | 1 · Base | 2 – 15/nov | Projeto Expo, Firebase, Worker de upload para o R2, login Google, escolha de papel, tema grafite + âmbar, navegação, emulador local do Firebase para testar sem gastar cota | Pessoa entra com Google e cai no modo certo |
 | 2 · Barbearia | 16 – 29/nov | Perfil da barbearia com localização pelo GPS do celular do dono (sem mapa pago) e botão de rota que abre Google Maps/Waze, convite de barbeiros, cardápio com preço, tempo e fotos | Dono monta a casa sozinho em menos de 10 min |
 | 3 · Agenda | 30/nov – 13/dez | Expediente, folgas, geração de horários, bloqueio anti-duplo, agendar, cancelar, agenda do barbeiro, encaixe manual | Dois celulares tentando o mesmo horário: só um consegue |
-| 4 · Cliente | 14 – 27/dez | Busca por perto (geohash), filtros, perfil do cliente com exclusão de conta, histórico, push de lembrete (cron no Worker + Expo Push), foto no "Concluído", painel simples do dono | Fluxo inteiro em 3 toques num celular real |
+| 4 · Cliente | 14 – 27/dez | Busca por perto (geohash), filtros, perfil do cliente com exclusão de conta, histórico, push de lembrete (cron no Worker + FCM), foto no "Concluído", painel simples do dono | Fluxo inteiro em 3 toques num celular real |
 
 **Fica de fora de propósito (entra depois):** pagamento no app, assinatura da barbearia, avaliações, nota do Google, iOS na App Store, WhatsApp.
 
@@ -135,7 +135,7 @@ Cinco semanas com 10 barbearias reais usando o app de graça, em troca de feedba
 - [ ] Ensinar clientes de iPhone a adicionar a versão web à tela de início (sem isso não chega lembrete)
 - [ ] Grupo de WhatsApp com os donos para suporte e ideias
 - [ ] Visita ou ligação semanal: o que travou, o que faltou
-- [ ] Corrigir bugs em ciclos de 2–3 dias usando atualização pelo ar (EAS Update, sem nova versão na loja)
+- [ ] Corrigir bugs em ciclos de 2–3 dias usando atualização pelo ar (nova versão no teste fechado do Google Play; sem EAS Update)
 - [ ] **Preparar a Fase 3 em paralelo:** abrir o CNPJ, criar a conta Asaas e testar Pix e cartão no ambiente de testes; criar a conta de faturamento do Google Cloud com alerta de orçamento (a Places API exige cartão mesmo dentro da franquia gratuita); se a Apple for em nome da empresa, pedir o número D-U-N-S
 - [ ] Na última semana, perguntar a cada dono: "Você pagaria R$ 29,90 / R$ 49,90 para continuar?"
 

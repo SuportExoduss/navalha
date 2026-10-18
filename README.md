@@ -53,7 +53,7 @@ npx wrangler dev         # http://127.0.0.1:8787/saude
 ## Ligar os serviços reais (todos gratuitos)
 
 1. **Firebase** (console.firebase.google.com): criar projeto no plano Spark → ativar Authentication › Google → criar Firestore → adicionar App da Web e copiar as chaves para `.env.local` (modelo em `.env.example`) → `npx firebase deploy --only firestore` publica regras e índices.
-2. **Login Google no Android/iOS**: no Google Cloud do mesmo projeto, copiar o *Web client ID* para `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`; para iOS, criar o cliente iOS e trocar `SUBSTITUA_PELO_IOS_CLIENT_ID` em `app.json`. O login nativo exige *development build* (`npx eas-cli@latest build --profile development`), não roda no Expo Go.
+2. **Login Google no Android/iOS**: no Google Cloud do mesmo projeto, copiar o *Web client ID* para `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`; para iOS, criar o cliente iOS e trocar `SUBSTITUA_PELO_IOS_CLIENT_ID` em `app.json`. O login nativo exige o app Android gerado localmente (ver "App Android sem conta Expo"), não roda no Expo Go.
 3. **Cloudflare**: `npx wrangler r2 bucket create navalha-fotos`; em `worker/wrangler.toml` trocar `FIREBASE_PROJECT_ID`; para os lembretes, criar uma conta de serviço no Google Cloud com papel *Cloud Datastore User* e guardar com `npx wrangler secret put GOOGLE_SA_EMAIL` e `GOOGLE_SA_PRIVATE_KEY`; `npm run deploy` dentro de `worker/`. Colocar a URL do Worker em `EXPO_PUBLIC_WORKER_URL`.
 
 ## Estrutura
@@ -74,6 +74,24 @@ worker/             Cloudflare Worker (R2 + lembretes)
 ## Próximo passo: ligar os serviços reais e testar no celular
 
 1. Seguir "Ligar os serviços reais" acima (Firebase, Google Login, R2 e Worker).
-2. `npx eas-cli@latest init` (gera o projectId usado pelo push) e `npx eas-cli@latest build --profile development --platform android`.
+2. Gerar o APK localmente (seção "App Android sem conta Expo" abaixo) e instalar no celular.
 3. No celular: login, reserva, cancelamento, push de lembrete e foto no "Concluído".
 4. Portão da Fase 2: 3 barbearias amigas usando por 1 semana sem erro grave e sem horário duplicado.
+
+## App Android sem conta Expo
+
+Decisão do dono (18/out/2026): nada de EAS/conta Expo. O app é gerado no computador e o push vai direto pelo
+Firebase Cloud Messaging (o app guarda o token do FCM; o Worker manda pelo FCM HTTP v1 com a conta de serviço).
+
+- `android/` é **gerada** (`npx expo prebuild --platform android`) e fica fora do git. Mudanças nativas vão em
+  `app.json`/plugins; depois de mudar, rode o prebuild de novo (`--clean` recria do zero).
+- `google-services.json` (raiz) liga o app ao Firebase `navalha-1a8f5`; o prebuild copia para `android/app/`.
+- **Android Studio:** File › Open › pasta `android/`. Para o JS embutido, gere o release; para desenvolver com
+  recarga ao vivo, rode `npx expo start` e o build debug.
+- **APK pela linha de comando:** `cd android && .\gradlew.bat assembleRelease` →
+  `android/app/build/outputs/apk/release/app-release.apk` (instalar com `adb install -r` ou copiar para o celular).
+- **Assinatura:** por enquanto o release usa a chave de debug do template (SHA-1 `5E:8F:16:...:F6:25`, já
+  cadastrado no Firebase para o login Google). Para o Google Play (Fase 2), gere a chave de upload no Android Studio
+  (Build › Generate Signed App Bundle) e cadastre o SHA-1 dela e o do Play App Signing no Firebase
+  (`firebase apps:android:sha:create <appId> <SHA> --project prod`), senão o login Google falha na versão da loja.
+- Variáveis `EXPO_PUBLIC_*` do `.env.local` entram no bundle na hora do build: mudou o `.env.local`, gere de novo.

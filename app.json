@@ -19,6 +19,7 @@
     },
     "android": {
       "package": "br.com.navalha.app",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#0E0F11",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -51,7 +52,7 @@
           "photosPermission": "Usamos a galeria para escolher fotos de perfil e de cortes."
         }
       ],
-      "expo-notifications",
+      ["expo-notifications", { "defaultChannel": "lembretes" }],
       [
         "@react-native-google-signin/google-signin",
         {

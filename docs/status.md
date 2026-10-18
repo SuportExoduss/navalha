@@ -49,7 +49,7 @@ Código no computador: `C:\Users\andre\Documents\MeusProjetos\navalha`.
 - [x] Busca por perto com filtros: distância (1/3/5/10 km), preço, tipo de corte, aberta agora, atende ainda hoje; atalhos no Início
 - [x] Perfil do cliente: foto, apelido, WhatsApp e exclusão de conta dentro do app (cancela horários futuros, tira o nome do histórico, apaga perfil e login)
 - [x] Histórico do cliente com as fotos do corte
-- [x] Push de lembrete: o app registra o token do Expo Push no login; o Worker (cron de hora em hora) manda 24 h e 2 h antes
+- [x] Push de lembrete: o app registra o token do FCM no login (sem Expo Push desde 18/out); o Worker (cron de hora em hora) manda 24 h e 2 h antes
 - [x] Foto no "Concluído": o barbeiro tira a foto (ou conclui sem foto) e ela vai para o histórico do cliente
 - [x] Painel simples do dono: clientes e previsto de hoje, faturado, faltas e corte mais pedido em 7 dias
 - [x] Já pronto para a Fase 3: campo do código do Google (Place ID) no painel, eventos de uso (viu barbearia, agendou, cancelou, faltou, concluiu)
@@ -57,7 +57,7 @@ Código no computador: `C:\Users\andre\Documents\MeusProjetos\navalha`.
 - [x] Testes: 26 de lógica, 22 de regras, 5 do Worker, typecheck e 2 roteiros no navegador (tests/e2e)
 - [x] Portão "fluxo inteiro em 3 toques": na página da barbearia, corte → horário → confirmar = 3 toques (medido no navegador)
 - [ ] O mesmo fluxo num celular Android real (precisa do Firebase real e de um development build)
-- [ ] Push real: precisa do `eas init` (gera o projectId) e de um development build no celular
+- [ ] Push real: testar no celular com o APK local (o envio pelo FCM já está publicado no Worker)
 
 ## Fase 1 — o que falta para o portão da Fase 2
 O código do MVP está completo. O portão é "3 barbearias amigas usando por 1 semana sem erro grave e nenhum horário duplicado".
@@ -70,4 +70,4 @@ Para isso, nesta ordem:
 5. Colocar 3 barbearias amigas para usar de 28/dez a 3/jan.
 
 ## Próximo no roadmap: Fase 2 — Piloto fechado (4/jan – 7/fev 2027)
-Conta Google Play (US$ 25), teste fechado com 12+ testadores, onboarding presencial de 10 barbearias, correções por EAS Update, e preparar a Fase 3 (CNPJ, Asaas, faturamento Google Cloud).
+Conta Google Play (US$ 25), teste fechado com 12+ testadores, onboarding presencial de 10 barbearias, correções por nova versão no Play (sem EAS Update), e preparar a Fase 3 (CNPJ, Asaas, faturamento Google Cloud).

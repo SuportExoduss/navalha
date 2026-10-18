@@ -23,3 +23,15 @@ export function mensagemLembrete(a: { servicoNome: string; inicio: number; barbe
   const hora = new Date(a.inicio - 3 * H).toISOString().slice(11, 16);
   return { title: 'Lembrete de horário', body: `Seu ${a.servicoNome} é ${quando}, às ${hora}${a.barbeariaNome ? ` na ${a.barbeariaNome}` : ''}.` };
 }
+
+/** Corpo do FCM HTTP v1: `notification` aparece sozinho com o app fechado; o canal é o que o app cria. */
+export function mensagemFcm(m: { token: string; title: string; body: string; agendamentoId: string }) {
+  return {
+    message: {
+      token: m.token,
+      notification: { title: m.title, body: m.body },
+      data: { agendamentoId: m.agendamentoId },
+      android: { priority: 'HIGH', notification: { channel_id: 'lembretes' } },
+    },
+  };
+}

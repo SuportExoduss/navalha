@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { chaveFoto, janelasLembrete, mensagemLembrete } from './util';
+import { chaveFoto, janelasLembrete, mensagemFcm, mensagemLembrete } from './util';
 import { validarClaims, decodificarParte, type Claims } from './auth';
 import { lerValor } from './firestore';
 
@@ -42,4 +42,12 @@ test('lembretes: janelas de 24 h e 2 h e texto no horário de Brasília', () => 
   const inicio = Date.UTC(2026, 11, 15, 13, 30); // 10:30 em Brasília
   assert.equal(mensagemLembrete({ servicoNome: 'Degradê', inicio, barbeariaNome: 'Navalha de Ouro' }, 'amanhã').body,
     'Seu Degradê é amanhã, às 10:30 na Navalha de Ouro.');
+});
+
+test('mensagem do FCM vai no canal de lembretes com o id do agendamento', () => {
+  const m = mensagemFcm({ token: 'tk', title: 'T', body: 'B', agendamentoId: 'ag1' }).message;
+  assert.equal(m.token, 'tk');
+  assert.deepEqual(m.notification, { title: 'T', body: 'B' });
+  assert.equal(m.android.notification.channel_id, 'lembretes');
+  assert.equal(m.data.agendamentoId, 'ag1');
 });

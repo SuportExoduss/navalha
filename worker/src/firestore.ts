@@ -17,7 +17,7 @@ export async function tokenGoogle(email: string, chavePem: string): Promise<stri
   const chave = await crypto.subtle.importKey('pkcs8', der, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']);
   const agora = Math.floor(Date.now() / 1000);
   const corpo = `${b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))}.${b64url(JSON.stringify({
-    iss: email, scope: 'https://www.googleapis.com/auth/datastore',
+    iss: email, scope: 'https://www.googleapis.com/auth/datastore https://www.googleapis.com/auth/firebase.messaging',
     aud: 'https://oauth2.googleapis.com/token', iat: agora, exp: agora + 3600,
   }))}`;
   const assinatura = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', chave, new TextEncoder().encode(corpo));

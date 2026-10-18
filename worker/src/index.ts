@@ -2,11 +2,11 @@
 //  PUT  /fotos?tipo=…&refId=…  → recebe a foto já comprimida e grava no R2
 //  GET  /fotos/<chave>         → serve a foto (fallback; em produção use o domínio público do bucket)
 //  GET  /saude                 → verificação simples
-//  cron a cada hora            → lembretes push de 24 h e 2 h pelo Expo Push
+//  cron a cada hora            → lembretes push de 24 h e 2 h pelo FCM (Firebase), sem conta Expo
 //  POST /asaas/webhook         → reservado para a Fase 3 (pagamentos)
 import { verificarIdToken } from './auth';
 import { Firestore, tokenGoogle } from './firestore';
-import { chaveFoto, janelasLembrete, mensagemLembrete, TIPOS } from './util';
+import { chaveFoto, janelasLembrete, mensagemFcm, mensagemLembrete, TIPOS } from './util';
 
 export interface Env {
   FOTOS: R2Bucket;
@@ -88,7 +88,8 @@ export default {
 /** Lembretes de 24 h e 2 h. Roda a cada hora (cron "5 * * * *"). */
 export async function enviarLembretes(env: Env, agora = Date.now()) {
   if (!env.GOOGLE_SA_EMAIL || !env.GOOGLE_SA_PRIVATE_KEY) return;
-  const db = new Firestore(env.FIREBASE_PROJECT_ID, await tokenGoogle(env.GOOGLE_SA_EMAIL, env.GOOGLE_SA_PRIVATE_KEY));
+  const tokenSA = await tokenGoogle(env.GOOGLE_SA_EMAIL, env.GOOGLE_SA_PRIVATE_KEY);
+  const db = new Firestore(env.FIREBASE_PROJECT_ID, tokenSA);
   for (const j of janelasLembrete(agora)) {
     const ags = await db.query({
       from: [{ collectionId: 'agendamentos' }],
@@ -99,7 +100,7 @@ export async function enviarLembretes(env: Env, agora = Date.now()) {
       ] } },
       limit: 200,
     });
-    const mensagens: { to: string; title: string; body: string; channelId: string; data: Record<string, string> }[] = [];
+    const mensagens: { token: string; title: string; body: string; agendamentoId: string }[] = [];
     const marcar: string[] = [];
     for (const { id, dados } of ags) {
       const lembretes = (dados.lembretes ?? {}) as Record<string, number>;
@@ -110,14 +111,17 @@ export async function enviarLembretes(env: Env, agora = Date.now()) {
       const push = user?.pushToken as string | undefined;
       if (push) {
         const m = mensagemLembrete(dados as { servicoNome: string; inicio: number; barbeariaNome?: string }, j.quando);
-        mensagens.push({ to: push, ...m, channelId: 'lembretes', data: { agendamentoId: id } });
+        mensagens.push({ token: push, ...m, agendamentoId: id });
       }
       marcar.push(id);
     }
-    if (mensagens.length) {
-      await fetch('https://exp.host/--/api/v2/push/send', {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify(mensagens),
+    // FCM v1 manda uma mensagem por chamada; o bloco `notification` faz o Android mostrar
+    // o aviso sozinho com o app fechado, no canal "lembretes" criado pelo app.
+    // ponytail: token inválido (app desinstalado) só falha calado; limpar o pushToken se o volume crescer.
+    for (const m of mensagens) {
+      await fetch(`https://fcm.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/messages:send`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenSA}` },
+        body: JSON.stringify(mensagemFcm(m)),
       });
     }
     for (const id of marcar) await db.marcarNumero(`agendamentos/${id}`, `lembretes.${j.chave}`, agora);

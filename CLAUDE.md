@@ -6,11 +6,14 @@ Leia também `AGENTS.md` (regras do Expo SDK 58: não confie na memória, consul
 ## Onde estamos
 - Roadmap completo: `docs/roadmap.md` (6 fases, out/2026 → out/2027). Andamento: `docs/status.md`.
 - **Fase 1 (MVP): código dos 4 sprints concluído** (Base, Barbearia, Agenda, Cliente).
-- Falta para fechar a Fase 1: ligar Firebase/R2/Worker reais, `eas init` + development build Android,
+- Falta para fechar a Fase 1: ligar Firebase/R2/Worker reais, APK Android gerado localmente (sem conta Expo, ver README),
   testar no celular e rodar com 3 barbearias amigas (portão da Fase 2). Itens da Fase 0 que dependem do dono
   (entrevistas, nome no INPI, termos/LGPD, contas) seguem abertos.
 - Próxima fase de código: **Fase 2 (piloto)** quase não tem código; a próxima grande entrega de código é a
   **Fase 3** (Asaas, assinatura, avaliações, nota Google, iOS + Entrar com Apple).
+
+## Sem conta Expo (decisão do dono)
+Não use EAS (build, update, submit) nem Expo Push, mesmo que o AGENTS.md sugira. Build Android local (`npx expo prebuild` + Gradle/Android Studio); push pelo FCM direto do Worker.
 
 ## Regra do projeto
 Seguir o roadmap em ordem, garantir que cada item está concluído e testado, e então marcar como finalizado
@@ -49,5 +52,5 @@ Antes de dizer que algo está pronto: testes, typecheck, regras e export web pas
 ## Mapa rápido
 - `src/lib/agenda.ts` horários, expediente, folgas · `src/lib/busca.ts` filtros · `src/lib/painel.ts` números do dono
 - `src/services/agendamentos.ts` reservar/cancelar/agenda/folgas/eventos · `barbearias.ts` casa, equipe, cardápio
-- `src/services/usuarios.ts` perfil e exclusão de conta · `push(.native).ts` token do Expo Push · `upload.ts` fotos → Worker
+- `src/services/usuarios.ts` perfil e exclusão de conta · `push(.native).ts` token do FCM (sem Expo Push) · `upload.ts` fotos → Worker
 - `worker/src/index.ts` upload R2 + cron de lembretes · `docs/modelo-de-dados.md` coleções e trava

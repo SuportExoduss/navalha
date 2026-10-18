@@ -30,7 +30,7 @@ Atualizado em 18/out/2026.
 ### Agora (fecha a Fase 1, depende de você + Claude Code)
 1. **Criar o projeto Firebase real** (plano Spark, sem cartão), ativar o login Google e o Firestore e copiar as chaves para `.env.local`. O passo a passo está no README, em "Ligar os serviços reais".
 2. **Cloudflare:** criar o bucket R2 `navalha-fotos` e publicar o Worker com a conta de serviço do Google.
-3. **Celular:** rodar `npx eas-cli@latest init` e depois `npx eas-cli@latest build --profile development --platform android`. Instalar no seu Android e testar login, reserva, cancelamento, lembrete push e foto.
+3. **Celular:** gerar o APK localmente (`cd android && .\gradlew.bat assembleRelease`, ou pelo Android Studio). Instalar no seu Android e testar login, reserva, cancelamento, lembrete push e foto.
 4. **Versão web** publicada na Cloudflare, para clientes de iPhone.
 5. **Portão da Fase 2:** 3 barbearias amigas usando de 28/dez a 3/jan sem erro grave e sem horário duplicado.
 
@@ -41,7 +41,7 @@ Atualizado em 18/out/2026.
 - Conversar com um contador sobre o CNPJ (necessário na Fase 3).
 
 ### Depois: Fase 2 (piloto) e Fase 3 (lançamento)
-- **Fase 2:** conta Google Play (US$ 25), teste fechado com 12 ou mais testadores, onboarding presencial e correções por EAS Update.
+- **Fase 2:** conta Google Play (US$ 25), teste fechado com 12 ou mais testadores, onboarding presencial e correções por nova versão no Google Play (sem EAS Update).
 - **Fase 3:** integrar o Asaas (Pix e cartão), vender a assinatura no painel web, avaliações dupla-cega, nota do Google, App Store com "Entrar com Apple". O banco de dados já está pronto para isso.
 
 ## Como pedir ao Claude Code para continuar
