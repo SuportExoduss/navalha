@@ -2,7 +2,7 @@
 
 Atualizado em 18/out/2026 (Sprint 4 concluído; Firebase, R2, Worker e web ligados nos serviços reais).
 
-Código no computador: `C:\Users\andre\Documents\MeusProjetos\navalha`.
+Código no computador: `C:\dev\navalha` (caminho curto: o build Android no Windows falha com caminhos longos).
 
 ## Fase 0 — Fundação
 - [x] Desenhar o modelo de dados completo (inclui pagamentos, avaliações e assinaturas) — `docs/modelo-de-dados.md` no código

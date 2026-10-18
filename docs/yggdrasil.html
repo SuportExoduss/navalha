@@ -1,0 +1,308 @@
+<title>Yggdrasil do Navalha</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a árvore cresce de baixo para cima — raízes (infra), tronco (MVP), galhos (fases), copa (meta).
+   Clique num nó para ver o que ele é, o estado e com o que se liga. Abaixo: reanálise e auditorias. */
+:root {
+  --bg: #0E0F11; --surface: #17181B; --raised: #1F2024; --line: #2A2B30;
+  --fg: #F4F2EE; --muted: #A3A19C; --accent: #C8A24A; --on-accent: #141210;
+  --ok: #5FBF7F; --warn: #E0A23A; --bad: #E5675B; --todo: #7D7B76; --owner: #6FA8DC;
+  --edge: rgba(200,162,74,.28); --edge-hot: #C8A24A;
+  --f-display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  --bg: #F5F3EE; --surface: #FFFFFF; --raised: #EFECE5; --line: #DDD8CD;
+  --fg: #1B1A17; --muted: #5E5A52; --accent: #8E6B17; --on-accent: #FFFFFF;
+  --ok: #2E7D4F; --warn: #9A5B00; --bad: #B23A2E; --todo: #8A857B; --owner: #2F6EA8;
+  --edge: rgba(142,107,23,.30); --edge-hot: #8E6B17; color-scheme: light; } }
+:root[data-theme="light"] {
+  --bg: #F5F3EE; --surface: #FFFFFF; --raised: #EFECE5; --line: #DDD8CD;
+  --fg: #1B1A17; --muted: #5E5A52; --accent: #8E6B17; --on-accent: #FFFFFF;
+  --ok: #2E7D4F; --warn: #9A5B00; --bad: #B23A2E; --todo: #8A857B; --owner: #2F6EA8;
+  --edge: rgba(142,107,23,.30); --edge-hot: #8E6B17; color-scheme: light; }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.55 var(--f-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 64px; }
+.wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 40px; }
+h1, h2, h3 { font-family: var(--f-display); font-weight: 700; letter-spacing: .01em; text-wrap: balance; margin: 0; line-height: 1.05; }
+h1 { font-size: clamp(38px, 7vw, 64px); text-transform: uppercase; }
+h1 em { font-style: normal; color: var(--accent); }
+h2 { font-size: 30px; text-transform: uppercase; }
+h3 { font-size: 20px; }
+p { margin: 0; }
+.lead { color: var(--muted); max-width: 68ch; margin-top: 10px; }
+.eyebrow { font: 600 12px/1 var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+code, .mono { font-family: var(--f-mono); font-size: .86em; }
+
+/* Resumo */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 22px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 2px; }
+.stat b { font: 700 30px/1 var(--f-display); font-variant-numeric: tabular-nums; }
+.stat span { color: var(--muted); font-size: 13px; }
+
+/* Legenda e filtro */
+.legend { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 14px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--fg); font: 500 13px var(--f-body); cursor: pointer; }
+.chip[aria-pressed="false"] { opacity: .45; }
+.chip:focus-visible, .node:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.s-ok { --c: var(--ok); } .s-warn { --c: var(--warn); } .s-bad { --c: var(--bad); } .s-todo { --c: var(--todo); } .s-owner { --c: var(--owner); }
+.dot { background: var(--c); }
+
+/* Árvore */
+.tree-shell { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
+.tree { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 18px 14px 22px;
+  background-image: radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 60%); }
+.tree svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.tree path { fill: none; stroke: var(--edge); stroke-width: 1.6; transition: stroke .2s, stroke-width .2s, opacity .2s; }
+.tree path.hot { stroke: var(--edge-hot); stroke-width: 2.6; }
+.tree.focus path:not(.hot) { opacity: .25; }
+.realm { position: relative; display: grid; gap: 10px; padding: 14px 0; }
+.realm + .realm { border-top: 1px dashed var(--line); }
+.realm-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.realm-head h3 { text-transform: uppercase; font-size: 18px; color: var(--accent); }
+.realm-head span { color: var(--muted); font-size: 13px; }
+.row { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.node { position: relative; z-index: 1; width: 168px; min-height: 64px; text-align: left; cursor: pointer;
+  background: var(--raised); color: var(--fg); border: 1px solid var(--line); border-left: 4px solid var(--c);
+  border-radius: 10px; padding: 9px 11px; display: grid; gap: 3px; font: inherit; transition: transform .15s, border-color .15s; }
+.node:hover { transform: translateY(-2px); }
+.node[aria-pressed="true"] { border-color: var(--accent); border-left-color: var(--c); box-shadow: 0 0 0 1px var(--accent); }
+.node .t { font: 600 14px/1.2 var(--f-body); }
+.node .k { font: 500 11px/1 var(--f-mono); color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
+.node.dim { opacity: .22; }
+.crown .node { width: 260px; }
+
+/* Painel de detalhe */
+.detail { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); background: var(--surface); border: 1px solid var(--line);
+  border-radius: 20px; padding: 18px; display: grid; gap: 12px; min-width: 0; }
+.detail h3 { font-size: 24px; }
+.badge { display: inline-flex; align-items: center; gap: 6px; font: 600 12px var(--f-mono); text-transform: uppercase; letter-spacing: .08em; color: var(--c); }
+.detail ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.detail .links { display: flex; flex-wrap: wrap; gap: 6px; }
+.detail .links button { font: 500 12px var(--f-body); border: 1px solid var(--line); background: var(--raised); color: var(--fg); border-radius: 999px; padding: 5px 10px; cursor: pointer; }
+.detail .lbl { font: 600 11px var(--f-mono); color: var(--muted); letter-spacing: .1em; text-transform: uppercase; }
+
+/* Reanálise */
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; display: grid; gap: 8px; min-width: 0; }
+.card .tag { justify-self: start; }
+.card p { color: var(--muted); }
+.card p strong { color: var(--fg); font-weight: 600; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; }
+table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 14px; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 11px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); background: var(--raised); }
+tr:last-child td { border-bottom: 0; }
+td .badge { white-space: nowrap; }
+.steps { display: grid; gap: 10px; counter-reset: passo; }
+.step { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 12px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+.step::before { counter-increment: passo; content: counter(passo); font: 700 22px/36px var(--f-display); text-align: center; border-radius: 10px; background: var(--accent); color: var(--on-accent); }
+.step p { color: var(--muted); }
+.step b { color: var(--fg); }
+footer { color: var(--muted); font-size: 13px; }
+
+@media (max-width: 900px) {
+  .tree-shell { grid-template-columns: minmax(0, 1fr); }
+  .detail { position: static; }
+}
+@media (max-width: 480px) { .node { width: calc(50% - 5px); } .crown .node { width: 100%; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Navalha · mapa do projeto · 18/out/2026</div>
+    <h1>Yggdrasil do <em>Navalha</em></h1>
+    <p class="lead">A árvore inteira do projeto: das raízes (infraestrutura e fundação) ao tronco (o MVP), aos galhos (as fases de negócio) e à copa (a meta de 12 meses). Cada nó mostra o estado real conferido no código e nos serviços hoje. Toque num nó para ver com o que ele se liga.</p>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <section style="display:grid;gap:14px" aria-labelledby="h-arvore">
+    <h2 id="h-arvore">A árvore</h2>
+    <div class="legend" id="legend" role="group" aria-label="Filtrar por estado"></div>
+    <div class="tree-shell">
+      <div class="tree" id="tree"><svg id="edges" aria-hidden="true"></svg></div>
+      <aside class="detail" id="detail" aria-live="polite"></aside>
+    </div>
+  </section>
+
+  <section style="display:grid;gap:14px" aria-labelledby="h-reanalise">
+    <h2 id="h-reanalise">Reanálise do roadmap</h2>
+    <p class="lead" style="margin:0">O roadmap foi comparado, item por item, com o código, os serviços publicados e as decisões desta semana. O que não bate:</p>
+    <div class="cols">
+      <div class="card"><span class="badge s-bad tag"><span class="dot"></span>Portão pulado</span><h3>A Fase 1 foi feita antes de a Fase 0 fechar</h3><p>A regra de ouro diz que cada fase só começa com o portão da anterior. O código do MVP está pronto, mas <strong>ainda não houve as entrevistas nem as 10 barbearias confirmadas</strong>. O risco é ter construído algo que o barbeiro não usa. Como a Fase 1 adiantou umas 6 semanas, dá tempo de fazer a Fase 0 agora, antes do piloto.</p></div>
+      <div class="card"><span class="badge s-bad tag"><span class="dot"></span>Promessa sem código</span><h3>iPhone não recebe lembrete</h3><p>O roadmap diz que o lembrete chega no iPhone pela versão web na tela de início. <strong>O push na web não foi implementado</strong> (<code>push.ts</code> responde "indisponível"). Opções: Web Push pelo FCM (grátis, funciona no iOS 16.4+ com a página na tela de início) ou aceitar no piloto que o cliente de iPhone confere a agenda no app.</p></div>
+      <div class="card"><span class="badge s-warn tag"><span class="dot"></span>Mudou com "sem Expo"</span><h3>Monitoramento de erros sem dono</h3><p>O roadmap usa o EAS Observe, que exige conta Expo. <strong>Troca sugerida: Firebase Crashlytics</strong>, grátis no plano Spark e no mesmo projeto. Também saíram do plano as linhas de builds na nuvem (US$ 19/mês) e o "criar conta Expo" dos próximos 7 dias.</p></div>
+      <div class="card"><span class="badge s-warn tag"><span class="dot"></span>Doc desatualizado</span><h3>O caminho da foto é outro</h3><p>O roadmap descreve "link assinado direto para o R2". <strong>No código, a foto passa pelo Worker</strong>, que confere o login e grava no R2. Funciona e é mais simples; basta ajustar o texto. Fica de olho no limite de 100 mil requisições/dia do Worker quando as fotos crescerem.</p></div>
+      <div class="card"><span class="badge s-warn tag"><span class="dot"></span>Pré-requisito novo</span><h3>Chave própria de assinatura antes de distribuir</h3><p>O APK de teste sai com a chave pública do modelo do React Native. <strong>Antes de mandar o APK para qualquer barbearia</strong> e antes do Google Play, é preciso a chave de upload própria, com o SHA-1 cadastrado no Firebase.</p></div>
+      <div class="card"><span class="badge s-ok tag"><span class="dot"></span>Bate com o código</span><h3>O que está como o roadmap pediu</h3><p>Trava contra horário duplo provada, coleções da Fase 3 já modeladas e protegidas, campo do Place ID, todos os estados de agendamento, eventos de uso desde o dia 1, painel do dono na web e custo zero de infraestrutura.</p></div>
+    </div>
+  </section>
+
+  <section style="display:grid;gap:14px" aria-labelledby="h-aud">
+    <h2 id="h-aud">Auditorias rodadas</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>ID</th><th>Achado</th><th>Peso</th><th>Onde</th><th>O que fazer</th></tr></thead>
+      <tbody id="audit"></tbody>
+    </table></div>
+  </section>
+
+  <section style="display:grid;gap:14px" aria-labelledby="h-prox">
+    <h2 id="h-prox">Próximos passos, em ordem</h2>
+    <div class="steps">
+      <div class="step"><div><b>Destravar o APK (com você, 10 min).</b><p>Ativar caminhos longos no Windows (PowerShell como administrador) e instalar o CMake mais novo no Android Studio (SDK Manager › SDK Tools › CMake). Depois eu gero o APK.</p></div></div>
+      <div class="step"><div><b>Corrigir a segurança das regras (eu).</b><p>SEC-001, SEC-004 e SEC-003 com testes, e republicar as regras. É o que protege a agenda no piloto.</p></div></div>
+      <div class="step"><div><b>Chave de assinatura própria (com você).</b><p>Gerar a chave de upload no Android Studio; eu cadastro o SHA-1 no Firebase e removo o de debug.</p></div></div>
+      <div class="step"><div><b>Testar no seu celular.</b><p>Login Google, reserva, cancelamento, lembrete push e foto no "Concluído". Isso fecha os itens abertos dos Sprints 1 a 4.</p></div></div>
+      <div class="step"><div><b>Fase 0 em paralelo (você).</b><p>Entrevistas com 10 donos e 15 clientes, 10 barbearias para o piloto, nome no INPI, termos e privacidade (LGPD), contador.</p></div></div>
+      <div class="step"><div><b>Portão da Fase 2.</b><p>3 barbearias amigas usando por 1 semana sem erro grave e sem horário duplicado.</p></div></div>
+    </div>
+  </section>
+
+  <footer>Gerado a partir do código em <code>C:\dev\navalha</code> (commit f42d130), dos serviços publicados e do <code>docs/roadmap.md</code>. Estados conferidos em 18/out/2026.</footer>
+</div>
+
+<script>
+const S = { ok: ['s-ok','Feito'], warn: ['s-warn','Atenção'], bad: ['s-bad','Bloqueado'], todo: ['s-todo','A fazer'], owner: ['s-owner','Com o dono'] };
+
+// Nós: id, reino, título, rótulo curto, estado, detalhes, liga-se a (alimenta) [ids]
+const N = [
+  // COPA
+  { id:'meta', r:'copa', t:'200 barbearias pagantes em 3 cidades', k:'Meta · out/2027', s:'todo', d:['Fim dos 12 meses do roadmap.','Base para decidir entre crescer com caixa próprio ou buscar investimento.'], to:[] },
+  // GALHOS
+  { id:'f5', r:'galhos', t:'Fase 5 · Escala', k:'ago–out 2027', s:'todo', d:['Mais 2 cidades com embaixador local.','Multiunidades, nota fiscal, loja de produtos, plano Casa cheia.','Sugestão de corte com IA (estudar custo).'], to:['meta'] },
+  { id:'f4', r:'galhos', t:'Fase 4 · Crescimento', k:'mai–jul 2027', s:'todo', d:['Clube de assinatura do cliente, lista de espera, fidelidade.','Relatórios do dono e indicação.','Primeira infra paga provável (Blaze, Workers Paid).','Achado SEC-005: regra da coleção clubes precisa de correção antes de usar.'], to:['f5'] },
+  { id:'f3', r:'galhos', t:'Fase 3 · Lançamento', k:'fev–abr 2027', s:'todo', d:['Asaas: Pix, cartão, split, assinatura da barbearia.','Avaliações dupla-cega, nota Google (Places API).','iOS + Entrar com Apple, App Store e Play aberto.','Achados SEC-003 e SEC-013 viram obrigatórios aqui.'], to:['f4'] },
+  { id:'f2', r:'galhos', t:'Fase 2 · Piloto fechado', k:'4/jan–7/fev 2027', s:'todo', d:['10 barbearias reais de graça, 5 semanas.','Google Play (US$ 25) no teste fechado com 12+ testadores.','Correções por nova versão no Play (sem EAS Update).','Preparar CNPJ, Asaas e faturamento Google Cloud.'], to:['f3'] },
+  // TRONCO
+  { id:'portao', r:'tronco', t:'Portão: 3 barbearias por 1 semana', k:'28/dez–3/jan', s:'todo', d:['Sem erro grave e sem nenhum horário duplicado.','Depende do APK no celular, da chave própria e das correções de segurança.'], to:['f2'] },
+  { id:'apk', r:'tronco', t:'APK Android local', k:'Sem conta Expo', s:'bad', d:['Pasta android/ gerada, app no Firebase, SHA-1 cadastrado.','Bloqueado: o compilador C++ (ninja) não aceita caminhos acima de 260 caracteres no Windows.','Destravar: caminhos longos no Windows + CMake novo no Android Studio.'], to:['portao','celular'] },
+  { id:'chave', r:'tronco', t:'Chave de assinatura própria', k:'SEC-002', s:'warn', d:['Hoje o release usa a chave pública de debug do React Native.','Gerar no Android Studio e cadastrar o SHA-1 no Firebase antes de distribuir.'], to:['portao','f2'] },
+  { id:'celular', r:'tronco', t:'Teste no celular real', k:'Sprints 1–4', s:'todo', d:['Login Google nativo, reserva, cancelamento, push e foto.','Fluxo inteiro em 3 toques num celular real (portão do Sprint 4).'], to:['portao'] },
+  { id:'web', r:'tronco', t:'Versão web publicada', k:'iPhone · PWA', s:'warn', d:['No ar em navalha-web.navalha-worker.workers.dev, domínio autorizado no login.','Falta: você entrar com Google uma vez.','Lacuna: sem push na web, cliente de iPhone não recebe lembrete.'], to:['portao'] },
+  { id:'s4', r:'tronco', t:'Sprint 4 · Cliente', k:'Código pronto', s:'ok', d:['Busca por perto com filtros, perfil e exclusão de conta, histórico com fotos.','Lembrete push 24 h e 2 h (agora pelo FCM), foto no Concluído, painel do dono.','26 testes de lógica, 22 de regras, 6 do Worker.'], to:['celular','f2'] },
+  { id:'s3', r:'tronco', t:'Sprint 3 · Agenda', k:'Código pronto', s:'ok', d:['Expediente, folgas, horários livres, reservar, cancelar, encaixe.','Trava contra horário duplo provada no emulador e no navegador.','Achados SEC-001 e SEC-004 mexem justamente na trava: corrigir antes do piloto.'], to:['s4','celular'] },
+  { id:'s2', r:'tronco', t:'Sprint 2 · Barbearia', k:'Código pronto', s:'ok', d:['Cadastro com GPS, capa, convites de barbeiro, cardápio com fotos.','Falta cronometrar um dono real montando a casa em menos de 10 min.'], to:['s3'] },
+  { id:'s1', r:'tronco', t:'Sprint 1 · Base', k:'Código pronto', s:'ok', d:['Expo Router, tema grafite + âmbar, login Google, escolha de papel.','Emulador local do Firebase para testes.'], to:['s2'] },
+  // RAÍZES
+  { id:'regras', r:'raizes', t:'Regras de segurança', k:'firestore.rules', s:'warn', d:['Publicadas no projeto real.','Achados: SEC-001 (alto), SEC-003, SEC-004, SEC-005 (médios).','Toda mudança precisa de teste em tests/regras.test.ts.'], to:['s3','s4','portao'] },
+  { id:'firebase', r:'raizes', t:'Firebase navalha-1a8f5', k:'Plano Spark', s:'ok', d:['Login Google ativo, Firestore em produção, índices publicados.','App web e app Android registrados.'], to:['s1','regras','web','apk'] },
+  { id:'worker', r:'raizes', t:'Worker + R2 navalha-fotos', k:'Cloudflare', s:'ok', d:['Upload de fotos com login conferido, cron de lembretes de hora em hora.','Conta de serviço com acesso mínimo (Firestore + FCM).','Achados SEC-006 e SEC-007: limite de uso e conferência do arquivo.'], to:['s2','s4'] },
+  { id:'fcm', r:'raizes', t:'Push direto pelo FCM', k:'Sem Expo Push', s:'ok', d:['App guarda o token nativo do FCM; Worker envia pelo FCM HTTP v1.','Publicado. Falta o teste real no celular.'], to:['s4','celular'] },
+  { id:'modelo', r:'raizes', t:'Modelo de dados completo', k:'docs/modelo-de-dados.md', s:'ok', d:['Já inclui pagamentos, avaliações e clubes, para a Fase 3 não exigir migração.'], to:['s3','f3'] },
+  { id:'fase0', r:'raizes', t:'Fase 0 · Validação', k:'Com o dono', s:'owner', d:['Entrevistas: 10 donos e 15 clientes.','10 barbearias confirmadas para o piloto, nome no INPI, termos e LGPD, contador.','O portão da Fase 0 ainda não foi cumprido.'], to:['portao','f2'] },
+];
+
+const REINOS = [
+  { id:'copa', t:'Copa', s:'onde a árvore quer chegar' },
+  { id:'galhos', t:'Galhos', s:'as fases de negócio' },
+  { id:'tronco', t:'Tronco', s:'o MVP e o caminho até o piloto' },
+  { id:'raizes', t:'Raízes', s:'infraestrutura e fundação' },
+];
+
+const AUD = [
+  ['SEC-001','barbeiroId usado como regex: dá para bloquear a agenda de qualquer barbeiro sem a casa ver','bad','firestore.rules:109','Prefixo literal + barbeiro existir na casa'],
+  ['SEC-002','APK assinado com a chave pública de debug','bad','android/app/build.gradle','Chave própria + SHA-1 no Firebase'],
+  ['SEC-003','Preço e serviço da reserva vêm do cliente','warn','firestore.rules:98','Conferir preço e duração com o cardápio'],
+  ['SEC-004','Cliente apaga a própria falta; casa reativa reserva cancelada','warn','firestore.rules:118','Checar o status anterior'],
+  ['SEC-005','Dono sobrescreve o clube de outra casa','warn','firestore.rules:160','Checar o documento atual'],
+  ['SEC-006','Sem limite de reservas, eventos e uploads','warn','regras + Worker','Limite por cliente + App Check'],
+  ['SEC-007…016','Itens baixos e informativos (upload, backup, CORS, App Check…)','todo','vários','Endurecimento'],
+  ['PONY','3 dependências sem uso (expo-auth-session, expo-crypto, expo-web-browser) e expo-device dispensável','todo','package.json','Remover: menos 4 dependências'],
+  ['DESIGN','Chip abaixo de 44 px, desabilitado igual a pressionado, rótulos sem acessibilidade, sem fonte própria','todo','src/components/ui.tsx','7 ajustes de UI'],
+];
+
+const byId = Object.fromEntries(N.map(n => [n.id, n]));
+const from = id => N.filter(n => n.to.includes(id)).map(n => n.id);
+const tree = document.getElementById('tree'), svg = document.getElementById('edges'), detail = document.getElementById('detail');
+const ativos = new Set(Object.keys(S));
+let sel = null;
+
+// Resumo
+const conta = st => N.filter(n => n.s === st).length;
+document.getElementById('stats').innerHTML = [
+  [conta('ok'), 'nós feitos'], [conta('warn'), 'pedem atenção'], [conta('bad'), 'bloqueados'], [conta('todo'), 'a fazer'], [conta('owner'), 'com o dono'],
+].map(([n, t]) => `<div class="stat"><b>${n}</b><span>${t}</span></div>`).join('');
+
+// Legenda
+const leg = document.getElementById('legend');
+leg.innerHTML = Object.entries(S).map(([k, [c, t]]) => `<button class="chip ${c}" aria-pressed="true" data-s="${k}"><span class="dot"></span>${t}</button>`).join('');
+leg.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const k = b.dataset.s; ativos.has(k) ? ativos.delete(k) : ativos.add(k);
+  b.setAttribute('aria-pressed', ativos.has(k)); pintar();
+});
+
+// Árvore
+for (const r of REINOS) {
+  const el = document.createElement('div');
+  el.className = 'realm ' + (r.id === 'copa' ? 'crown' : '');
+  el.innerHTML = `<div class="realm-head"><h3>${r.t}</h3><span>${r.s}</span></div><div class="row"></div>`;
+  const row = el.querySelector('.row');
+  for (const n of N.filter(n => n.r === r.id)) {
+    const b = document.createElement('button');
+    b.className = `node ${S[n.s][0]}`; b.id = 'n-' + n.id; b.dataset.id = n.id; b.setAttribute('aria-pressed', 'false');
+    b.innerHTML = `<span class="k">${n.k}</span><span class="t">${n.t}</span>`;
+    b.addEventListener('click', () => escolher(n.id));
+    row.append(b);
+  }
+  tree.append(el);
+}
+
+function escolher(id) { sel = sel === id ? null : id; pintar(); mostrar(sel || 'portao'); }
+
+function mostrar(id) {
+  const n = byId[id], [c, t] = S[n.s];
+  const lig = (ids, rot) => ids.length ? `<div class="lbl">${rot}</div><div class="links">${ids.map(i => `<button data-go="${i}">${byId[i].t}</button>`).join('')}</div>` : '';
+  detail.innerHTML = `<span class="badge ${c}"><span class="dot"></span>${t}</span><h3>${n.t}</h3><div class="lbl">${n.k}</div>
+    <ul>${n.d.map(x => `<li>${x}</li>`).join('')}</ul>${lig(from(id), 'Recebe de')}${lig(n.to, 'Alimenta')}
+    ${sel ? '' : '<p class="lbl" style="text-transform:none;letter-spacing:0">Toque em qualquer nó da árvore.</p>'}`;
+}
+detail.addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) { sel = null; escolher(b.dataset.go); document.getElementById('n-' + b.dataset.go).focus({ preventScroll: true }); } });
+
+function pintar() {
+  const viz = new Set(sel ? [sel, ...byId[sel].to, ...from(sel)] : N.map(n => n.id));
+  for (const n of N) {
+    const b = document.getElementById('n-' + n.id);
+    b.setAttribute('aria-pressed', n.id === sel);
+    b.classList.toggle('dim', !ativos.has(n.s) || !viz.has(n.id));
+  }
+  tree.classList.toggle('focus', !!sel);
+  ligar();
+}
+
+function ligar() {
+  const base = tree.getBoundingClientRect();
+  svg.setAttribute('viewBox', `0 0 ${base.width} ${base.height}`);
+  const ponto = (id, topo) => { const r = document.getElementById('n-' + id).getBoundingClientRect();
+    return [r.left - base.left + r.width / 2, (topo ? r.top : r.bottom) - base.top]; };
+  let d = '';
+  const paths = [];
+  for (const n of N) for (const alvo of n.to) {
+    if (!ativos.has(n.s) || !ativos.has(byId[alvo].s)) continue;
+    // A seiva sobe: sai do topo de quem alimenta e chega na base de quem recebe.
+    const [x1, y1] = ponto(n.id, true), [x2, y2] = ponto(alvo, false);
+    const meio = (y1 + y2) / 2;
+    const hot = sel && (n.id === sel || alvo === sel);
+    paths.push(`<path class="${hot ? 'hot' : ''}" d="M${x1},${y1} C${x1},${meio} ${x2},${meio} ${x2},${y2}"/>`);
+  }
+  svg.innerHTML = paths.join('');
+}
+
+// Tabela de auditoria
+document.getElementById('audit').innerHTML = AUD.map(([id, a, s, onde, fx]) =>
+  `<tr><td class="mono">${id}</td><td>${a}</td><td><span class="badge ${S[s][0]}"><span class="dot"></span>${s === 'bad' ? 'Alto' : s === 'warn' ? 'Médio' : 'Baixo'}</span></td><td class="mono">${onde}</td><td>${fx}</td></tr>`).join('');
+
+mostrar('portao'); pintar();
+new ResizeObserver(ligar).observe(tree);
+document.fonts && document.fonts.ready.then(ligar);
+</script>
