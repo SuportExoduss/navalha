@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Tela, Titulo } from '../components/ui';
 import { useAuth } from '../auth/AuthProvider';
 import { db } from '../services/firebase';
+import { registrarPush } from '../services/push';
 import { escolherPapel } from '../services/usuarios';
 import { colors, radius, space, type } from '../theme';
 import type { Role } from '../types/models';
@@ -25,6 +26,9 @@ export default function Papel() {
   async function escolher(papel: Role) {
     if (!perfil) return;
     setSalvando(papel);
+    // No 1º login o pedido feito no AuthProvider dispara com a tela do Google ainda por cima e o
+    // Android nega sem mostrar o diálogo. Aqui o app está em primeiro plano, por um toque da pessoa.
+    if (!perfil.pushToken) registrarPush(perfil.uid).catch(() => undefined);
     await escolherPapel(db, perfil, papel);
     router.replace(papel === 'cliente' ? '/inicio' : '/agenda');
   }

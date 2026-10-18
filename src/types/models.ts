@@ -26,7 +26,7 @@ export interface UserProfile {
   barbearias: string[];
   favoritos: { barbearias: string[]; barbeiros: string[] };
   privacidade: { fotosNoPortfolio: boolean };
-  /** Token do Expo Push para lembretes. */
+  /** Token do FCM (Firebase Cloud Messaging) para lembretes. */
   pushToken?: string;
   /** Média das avaliações recebidas como cliente (Fase 3). */
   notaCliente?: { media: number; total: number; faltas90d: number };
