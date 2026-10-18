@@ -1,0 +1,173 @@
+rules_version = '2';
+
+// Regras de segurança do Navalha.
+// - Cliente só vê os próprios agendamentos; barbeiro só edita o próprio cardápio.
+// - Pagamentos, avaliações reveladas e assinatura são gravados só pelo Worker
+//   (conta de serviço, que ignora estas regras).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function logado() { return request.auth != null; }
+    function eu() { return request.auth.uid; }
+    function barbearia(bid) { return get(/databases/$(database)/documents/barbearias/$(bid)).data; }
+    function ehDono(bid) { return logado() && barbearia(bid).donoUid == eu(); }
+    function ehBarbeiro(bid) {
+      return logado() && exists(/databases/$(database)/documents/barbearias/$(bid)/barbeiros/$(eu()));
+    }
+    function ehDaCasa(bid) { return ehDono(bid) || ehBarbeiro(bid); }
+    function mudou(campos) { return request.resource.data.diff(resource.data).affectedKeys().hasAny(campos); }
+
+    // ---------- Usuários ----------
+    match /users/{uid} {
+      allow read: if logado() && eu() == uid;
+      allow create: if logado() && eu() == uid
+        && request.resource.data.uid == uid
+        && !('notaCliente' in request.resource.data);
+      // A nota como cliente é calculada pelo servidor.
+      allow update: if logado() && eu() == uid && !mudou(['uid', 'notaCliente', 'criadoEm']);
+      allow delete: if logado() && eu() == uid;
+    }
+
+    // ---------- Barbearias ----------
+    match /barbearias/{bid} {
+      allow read: if resource.data.publicada == true || ehDaCasa(bid);
+      allow create: if logado()
+        && request.resource.data.donoUid == eu()
+        && request.resource.data.assinatura.status in ['rascunho', 'teste'];
+      // O dono edita tudo, menos a assinatura (controlada pelo pagamento) e as notas Google.
+      allow update: if (ehDono(bid) && !mudou(['donoUid', 'assinatura', 'criadoEm'])
+        && request.resource.data.resumo.get('notaGoogle', null) == resource.data.resumo.get('notaGoogle', null))
+        // O barbeiro, ao salvar o próprio cardápio, só atualiza a parte do resumo que vem do cardápio.
+        || (ehBarbeiro(bid)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['resumo'])
+          && request.resource.data.resumo.diff(resource.data.resumo).affectedKeys().hasOnly(['fotosDestaque', 'precoMin', 'precoMax', 'categorias']));
+      allow delete: if false;
+
+      match /barbeiros/{uid} {
+        allow read: if true;
+        // Dono cadastra (inclusive a si mesmo, no mesmo lote que cria a casa);
+        // barbeiro entra aceitando um convite válido desta casa.
+        allow create: if logado() && (
+          ehDono(bid)
+          || getAfter(/databases/$(database)/documents/barbearias/$(bid)).data.donoUid == eu()
+          || (eu() == uid
+              && getAfter(/databases/$(database)/documents/convites/$(request.resource.data.conviteCodigo)).data.usadoPor == uid
+              && getAfter(/databases/$(database)/documents/convites/$(request.resource.data.conviteCodigo)).data.barbeariaId == bid)
+        );
+        allow update: if ehDono(bid) || (logado() && eu() == uid && !mudou(['ativo', 'nota', 'comissaoPercent', 'barbeariaId', 'conviteCodigo']));
+        allow delete: if ehDono(bid);
+      }
+
+      match /servicos/{sid} {
+        allow read: if true;
+        allow create, update: if ehDono(bid)
+          || (ehBarbeiro(bid) && request.resource.data.barbeiroId == eu());
+        allow delete: if ehDono(bid) || (ehBarbeiro(bid) && resource.data.barbeiroId == eu());
+      }
+
+      // Folgas e pausas pontuais: o barbeiro cuida das próprias; o dono, de todas.
+      match /bloqueios/{id} {
+        allow read: if logado();
+        allow create, update: if (ehDono(bid) || (ehBarbeiro(bid) && request.resource.data.barbeiroId == eu()))
+          && request.resource.data.fim > request.resource.data.inicio;
+        allow delete: if ehDono(bid) || (ehBarbeiro(bid) && resource.data.barbeiroId == eu());
+      }
+    }
+
+    // ---------- Convites (código curto, coleção raiz para o barbeiro achar a casa) ----------
+    match /convites/{codigo} {
+      allow get: if logado();
+      allow list: if false;
+      allow create: if ehDono(request.resource.data.barbeariaId)
+        && request.resource.data.criadoPor == eu()
+        && request.resource.data.codigo == codigo;
+      // Aceite: só preenche usadoPor, uma única vez, antes de expirar.
+      allow update: if logado()
+        && resource.data.get('usadoPor', null) == null
+        && request.resource.data.usadoPor == eu()
+        && request.time.toMillis() < resource.data.expiraEm
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['usadoPor']);
+      allow delete: if ehDono(resource.data.barbeariaId);
+    }
+
+    // ---------- Agendamentos ----------
+    match /agendamentos/{aid} {
+      function ag() { return resource.data; }
+      allow read: if logado() && (ag().clienteUid == eu() || ehDaCasa(ag().barbeariaId));
+
+      allow create: if logado()
+        && request.resource.data.id == aid
+        && request.resource.data.slots.size() >= 1 && request.resource.data.slots.size() <= 24
+        && request.resource.data.inicio > request.time.toMillis() - 3600000
+        && (
+          (request.resource.data.origem == 'app' && request.resource.data.clienteUid == eu()
+             && request.resource.data.status == 'reservado')
+          || (request.resource.data.origem == 'balcao' && ehDaCasa(request.resource.data.barbeariaId)
+             && request.resource.data.clienteUid == null && request.resource.data.status == 'confirmado')
+        )
+        // Os blocos travados são do próprio barbeiro do agendamento (ninguém trava a agenda com chaves falsas).
+        && request.resource.data.slots[0].matches(request.resource.data.barbeiroId + '_.*')
+        && request.resource.data.slots[request.resource.data.slots.size() - 1].matches(request.resource.data.barbeiroId + '_.*')
+        // A trava: os blocos de ocupação precisam nascer junto, na mesma transação.
+        && getAfter(/databases/$(database)/documents/ocupacao/$(request.resource.data.slots[0])).data.agendamentoId == aid
+        && getAfter(/databases/$(database)/documents/ocupacao/$(request.resource.data.slots[request.resource.data.slots.size() - 1])).data.agendamentoId == aid;
+
+      // Cliente só cancela; a casa confirma, conclui, marca falta e anexa fotos.
+      allow update: if logado() && !mudou(['id', 'barbeariaId', 'barbeiroId', 'clienteUid', 'inicio', 'fim', 'slots', 'precoCentavos', 'pagamentoId'])
+        && (
+          (ag().clienteUid == eu() && request.resource.data.status == 'cancelado'
+             && request.resource.data.diff(ag()).affectedKeys().hasOnly(['status', 'atualizadoEm', 'fotosAprovadas']))
+          || (ag().clienteUid == eu() && request.resource.data.diff(ag()).affectedKeys().hasOnly(['fotosAprovadas', 'atualizadoEm']))
+          // Exclusão de conta (LGPD): o cliente apaga o próprio nome do histórico da barbearia.
+          || (ag().clienteUid == eu() && request.resource.data.clienteNome == 'Cliente removido'
+             && request.resource.data.diff(ag()).affectedKeys().hasOnly(['clienteNome', 'atualizadoEm']))
+          || (ehDaCasa(ag().barbeariaId) && request.resource.data.status in ['confirmado', 'concluido', 'faltou', 'cancelado'])
+        );
+      allow delete: if false;
+    }
+
+    // Um documento por bloco de horário. ID fixo = barbeiro_data_HHMM.
+    match /ocupacao/{chave} {
+      allow read: if logado();
+      allow create: if logado()
+        && chave.matches(request.resource.data.barbeiroId + '_.*')
+        && getAfter(/databases/$(database)/documents/agendamentos/$(request.resource.data.agendamentoId)).data.slots.hasAny([chave])
+        && getAfter(/databases/$(database)/documents/agendamentos/$(request.resource.data.agendamentoId)).data.barbeiroId == request.resource.data.barbeiroId;
+      allow update: if false;
+      allow delete: if logado()
+        && getAfter(/databases/$(database)/documents/agendamentos/$(resource.data.agendamentoId)).data.status == 'cancelado';
+    }
+
+    // ---------- Fases 3 a 5: escritos pelo servidor ----------
+    match /pagamentos/{id} {
+      allow read: if logado() && (resource.data.clienteUid == eu() || ehDono(resource.data.barbeariaId));
+      allow write: if false;
+    }
+    match /avaliacoes/{id} {
+      allow read: if resource.data.visivel == true
+        && resource.data.direcao == 'cliente_para_barbeiro';
+      // A avaliação é criada oculta; o Worker revela quando os dois lados avaliam (dupla-cega).
+      allow create: if logado() && request.resource.data.visivel == false
+        && request.resource.data.estrelas in [1, 2, 3, 4, 5]
+        && (
+          (request.resource.data.direcao == 'cliente_para_barbeiro' && request.resource.data.clienteUid == eu())
+          || (request.resource.data.direcao == 'barbeiro_para_cliente' && request.resource.data.barbeiroId == eu())
+        );
+      allow update, delete: if false;
+    }
+    match /clubes/{id} {
+      allow read: if true;
+      allow write: if logado() && ehDono(request.resource.data.barbeariaId);
+    }
+    match /assinaturasClube/{id} {
+      allow read: if logado() && resource.data.clienteUid == eu();
+      allow write: if false;
+    }
+
+    // Métricas do piloto: o app só grava.
+    match /eventos/{id} {
+      allow create: if logado() && request.resource.data.uid == eu();
+      allow read, update, delete: if false;
+    }
+  }
+}

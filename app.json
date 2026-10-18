@@ -1,25 +1,66 @@
 {
   "expo": {
-    "name": "navalha",
+    "name": "Navalha",
     "slug": "navalha",
-    "version": "1.0.0",
+    "scheme": "navalha",
+    "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0E0F11",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "br.com.navalha.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Usamos sua localização para mostrar as barbearias mais perto de você.",
+        "NSCameraUsageDescription": "Usamos a câmera para fotografar os cortes realizados.",
+        "NSPhotoLibraryUsageDescription": "Usamos a galeria para escolher fotos de perfil e de cortes."
+      }
     },
     "android": {
+      "package": "br.com.navalha.app",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0E0F11",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION", "CAMERA"],
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "output": "single",
+      "name": "Navalha",
+      "shortName": "Navalha",
+      "themeColor": "#0E0F11",
+      "backgroundColor": "#0E0F11"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Usamos sua localização para mostrar as barbearias mais perto de você."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Usamos a câmera para fotografar os cortes realizados.",
+          "photosPermission": "Usamos a galeria para escolher fotos de perfil e de cortes."
+        }
+      ],
+      "expo-notifications",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.SUBSTITUA_PELO_IOS_CLIENT_ID"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
     }
   }
 }

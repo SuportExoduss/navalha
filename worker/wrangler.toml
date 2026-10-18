@@ -1,0 +1,22 @@
+name = "navalha-worker"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+
+[vars]
+FIREBASE_PROJECT_ID = "navalha-1a8f5"
+# Depois de liberar o acesso público do bucket (r2.dev ou domínio próprio), cole a URL aqui
+# para as fotos não consumirem requisições do Worker:
+FOTOS_URL_PUBLICA = ""
+ORIGENS_PERMITIDAS = "*"
+
+[[r2_buckets]]
+binding = "FOTOS"
+bucket_name = "navalha-fotos"
+
+# Lembretes: 1 das 5 tarefas agendadas gratuitas. Minuto 5 de cada hora.
+[triggers]
+crons = ["5 * * * *"]
+
+# Segredos (não versionar):
+#   npx wrangler secret put GOOGLE_SA_EMAIL
+#   npx wrangler secret put GOOGLE_SA_PRIVATE_KEY

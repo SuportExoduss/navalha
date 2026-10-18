@@ -1,0 +1,65 @@
+import {
+  collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, query, setDoc, updateDoc, where,
+  type Firestore, type Unsubscribe,
+} from 'firebase/firestore';
+import { deleteUser, type User } from 'firebase/auth';
+import { cancelar } from './agendamentos';
+import type { Agendamento, Role, UserProfile } from '../types/models';
+
+/** Cria o perfil no primeiro login, com nome e foto vindos do Google. */
+export async function garantirPerfil(db: Firestore, user: User): Promise<UserProfile> {
+  const ref = doc(db, 'users', user.uid);
+  const snap = await getDoc(ref);
+  if (snap.exists()) return snap.data() as UserProfile;
+  const perfil: UserProfile = {
+    uid: user.uid,
+    nome: user.displayName ?? 'Sem nome',
+    email: user.email ?? '',
+    ...(user.photoURL ? { fotoUrl: user.photoURL } : {}),
+    papeis: [],
+    papelAtivo: 'cliente',
+    barbearias: [],
+    favoritos: { barbearias: [], barbeiros: [] },
+    privacidade: { fotosNoPortfolio: true },
+    provedores: ['google'],
+    criadoEm: Date.now(),
+  };
+  await setDoc(ref, perfil);
+  return perfil;
+}
+
+export function ouvirPerfil(db: Firestore, uid: string, cb: (p: UserProfile | null) => void): Unsubscribe {
+  return onSnapshot(doc(db, 'users', uid), s => cb(s.exists() ? (s.data() as UserProfile) : null));
+}
+
+/** Ativa um papel (primeira escolha) ou troca o modo ativo. */
+export async function escolherPapel(db: Firestore, perfil: UserProfile, papel: Role) {
+  const papeis = perfil.papeis.includes(papel) ? perfil.papeis : [...perfil.papeis, papel];
+  await updateDoc(doc(db, 'users', perfil.uid), { papeis, papelAtivo: papel });
+}
+
+export async function atualizarPerfil(
+  db: Firestore, uid: string, dados: Partial<Pick<UserProfile, 'nome' | 'apelido' | 'fotoUrl' | 'telefone' | 'privacidade' | 'pushToken'>>,
+) {
+  await updateDoc(doc(db, 'users', uid), dados);
+}
+
+export const NOME_REMOVIDO = 'Cliente removido';
+
+/**
+ * Exclusão de conta (LGPD e exigência das lojas): cancela os horários futuros,
+ * tira o nome do histórico das barbearias, apaga o perfil e por fim a conta de login.
+ * Quem é dono continua dono da barbearia até transferi-la (o documento da casa não é apagado).
+ */
+export async function excluirConta(db: Firestore, user: User, agora = Date.now()) {
+  const meus = (await getDocs(query(collection(db, 'agendamentos'), where('clienteUid', '==', user.uid))))
+    .docs.map(d => d.data() as Agendamento);
+  for (const a of meus) {
+    if (['reservado', 'confirmado', 'pago'].includes(a.status) && a.fim > agora) await cancelar(db, a);
+    if (a.clienteNome !== NOME_REMOVIDO) {
+      await updateDoc(doc(db, 'agendamentos', a.id), { clienteNome: NOME_REMOVIDO, atualizadoEm: agora });
+    }
+  }
+  await deleteDoc(doc(db, 'users', user.uid));
+  await deleteUser(user);
+}

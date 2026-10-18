@@ -1,0 +1,6 @@
+{
+  "projects": {
+    "default": "demo-navalha",
+    "prod": "navalha-1a8f5"
+  }
+}
