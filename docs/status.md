@@ -59,6 +59,13 @@ Código no computador: `C:\dev\navalha` (caminho curto: o build Android no Windo
 - [ ] O mesmo fluxo num celular Android real (precisa do Firebase real e de um development build)
 - [ ] Push real: testar no celular com o APK local (o envio pelo FCM já está publicado no Worker)
 
+## Segurança (auditoria /codesec de 18/out/2026)
+- [x] SEC-001 corrigido: chave de ocupação comparada pelo prefixo literal (nada de regex com dado do usuário) e barbeiro precisa ser da casa
+- [x] SEC-003 corrigido: preço, duração e barbeiro da reserva conferidos com o cardápio
+- [x] SEC-004 corrigido: cliente só cancela reserva de pé e futura; reserva cancelada não volta a valer
+- [x] 3 testes novos em tests/regras.test.ts (falhavam antes, passam depois); regras publicadas em produção
+- [ ] SEC-002: chave de assinatura própria (dono) · SEC-005/006 e endurecimento: pendentes
+
 ## Fase 1 — o que falta para o portão da Fase 2
 O código do MVP está completo. O portão é "3 barbearias amigas usando por 1 semana sem erro grave e nenhum horário duplicado".
 Para isso, nesta ordem:

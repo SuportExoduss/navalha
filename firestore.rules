@@ -93,6 +93,14 @@ service cloud.firestore {
     // ---------- Agendamentos ----------
     match /agendamentos/{aid} {
       function ag() { return resource.data; }
+      // Preço, duração e barbeiro vêm do cardápio, não do que o app manda (SEC-003).
+      function bateComCardapio(n) {
+        let s = get(/databases/$(database)/documents/barbearias/$(n.barbeariaId)/servicos/$(n.servicoId)).data;
+        return s.barbeiroId == n.barbeiroId && s.precoCentavos == n.precoCentavos && s.duracaoMin == n.duracaoMin;
+      }
+      // Bloco é do barbeiro quando o prefixo da chave é literalmente o id dele. Nada de regex com
+      // dado do usuário: barbeiroId ".*" casaria com a agenda de qualquer um (SEC-001).
+      function blocoDoBarbeiro(chave, barbeiroId) { return chave.split('_')[0] == barbeiroId; }
       allow read: if logado() && (ag().clienteUid == eu() || ehDaCasa(ag().barbeariaId));
 
       allow create: if logado()
@@ -105,23 +113,30 @@ service cloud.firestore {
           || (request.resource.data.origem == 'balcao' && ehDaCasa(request.resource.data.barbeariaId)
              && request.resource.data.clienteUid == null && request.resource.data.status == 'confirmado')
         )
-        // Os blocos travados são do próprio barbeiro do agendamento (ninguém trava a agenda com chaves falsas).
-        && request.resource.data.slots[0].matches(request.resource.data.barbeiroId + '_.*')
-        && request.resource.data.slots[request.resource.data.slots.size() - 1].matches(request.resource.data.barbeiroId + '_.*')
+        // O barbeiro é da casa, e os blocos travados são dele (ninguém trava a agenda com chaves falsas).
+        && exists(/databases/$(database)/documents/barbearias/$(request.resource.data.barbeariaId)/barbeiros/$(request.resource.data.barbeiroId))
+        && blocoDoBarbeiro(request.resource.data.slots[0], request.resource.data.barbeiroId)
+        && blocoDoBarbeiro(request.resource.data.slots[request.resource.data.slots.size() - 1], request.resource.data.barbeiroId)
+        && bateComCardapio(request.resource.data)
         // A trava: os blocos de ocupação precisam nascer junto, na mesma transação.
         && getAfter(/databases/$(database)/documents/ocupacao/$(request.resource.data.slots[0])).data.agendamentoId == aid
         && getAfter(/databases/$(database)/documents/ocupacao/$(request.resource.data.slots[request.resource.data.slots.size() - 1])).data.agendamentoId == aid;
 
       // Cliente só cancela; a casa confirma, conclui, marca falta e anexa fotos.
+      // Status anterior conta (SEC-004): o cliente só cancela o que ainda está de pé e não começou
+      // (falta e atendimento concluído não se apagam), e reserva cancelada não volta a valer,
+      // porque os blocos dela já foram liberados para outra pessoa.
       allow update: if logado() && !mudou(['id', 'barbeariaId', 'barbeiroId', 'clienteUid', 'inicio', 'fim', 'slots', 'precoCentavos', 'pagamentoId'])
         && (
           (ag().clienteUid == eu() && request.resource.data.status == 'cancelado'
+             && ag().status in ['reservado', 'confirmado'] && ag().inicio > request.time.toMillis()
              && request.resource.data.diff(ag()).affectedKeys().hasOnly(['status', 'atualizadoEm', 'fotosAprovadas']))
           || (ag().clienteUid == eu() && request.resource.data.diff(ag()).affectedKeys().hasOnly(['fotosAprovadas', 'atualizadoEm']))
           // Exclusão de conta (LGPD): o cliente apaga o próprio nome do histórico da barbearia.
           || (ag().clienteUid == eu() && request.resource.data.clienteNome == 'Cliente removido'
              && request.resource.data.diff(ag()).affectedKeys().hasOnly(['clienteNome', 'atualizadoEm']))
-          || (ehDaCasa(ag().barbeariaId) && request.resource.data.status in ['confirmado', 'concluido', 'faltou', 'cancelado'])
+          || (ehDaCasa(ag().barbeariaId) && ag().status != 'cancelado'
+             && request.resource.data.status in ['confirmado', 'concluido', 'faltou', 'cancelado'])
         );
       allow delete: if false;
     }
@@ -130,7 +145,7 @@ service cloud.firestore {
     match /ocupacao/{chave} {
       allow read: if logado();
       allow create: if logado()
-        && chave.matches(request.resource.data.barbeiroId + '_.*')
+        && chave.split('_')[0] == request.resource.data.barbeiroId
         && getAfter(/databases/$(database)/documents/agendamentos/$(request.resource.data.agendamentoId)).data.slots.hasAny([chave])
         && getAfter(/databases/$(database)/documents/agendamentos/$(request.resource.data.agendamentoId)).data.barbeiroId == request.resource.data.barbeiroId;
       allow update: if false;

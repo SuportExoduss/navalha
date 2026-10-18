@@ -34,6 +34,9 @@ beforeEach(async () => {
     const db = ctx.firestore();
     await setDoc(doc(db, 'barbearias/b1'), { id: 'b1', donoUid: 'dono', publicada: true, assinatura: { status: 'teste' }, resumo: {} });
     await setDoc(doc(db, 'barbearias/b1/barbeiros/lucas'), { uid: 'lucas', ativo: true });
+    // Cardápio: a reserva precisa bater preço, duração e barbeiro com estes serviços (SEC-003).
+    await setDoc(doc(db, 'barbearias/b1/servicos/s'), { id: 's', barbeiroId: 'lucas', precoCentavos: 4500, duracaoMin: 30, ativo: true });
+    await setDoc(doc(db, 'barbearias/b1/servicos/s1'), { id: 's1', barbeiroId: 'lucas', precoCentavos: 4500, duracaoMin: 45, ativo: true });
   });
 });
 
@@ -155,7 +158,7 @@ test('portão do Sprint 3: dois celulares no mesmo horário, só um consegue', a
 
 test('horário que só se sobrepõe em parte também é barrado', async () => {
   await assertSucceeds(reservar(dbDe('ana'), novaReserva('ana', inicio))); // 10:00–10:45
-  await assert.rejects(reservar(dbDe('beto'), novaReserva('beto', inicio + 30 * 60_000, { servico: { ...corte, duracaoMin: 30 } })));
+  await assert.rejects(reservar(dbDe('beto'), novaReserva('beto', inicio + 30 * 60_000, { servico: { ...corte, id: 's', duracaoMin: 30 } })));
   await assertSucceeds(reservar(dbDe('beto'), novaReserva('beto', inicio + 45 * 60_000))); // 10:45 está livre
 });
 
@@ -268,4 +271,51 @@ test('barbeiro conclui com foto; painel do dono lê a semana', async () => {
   const l = await assertSucceeds(agendamentosDaSemana(dbDe('dono'), 'b1', '2030-01-12'));
   assert.equal(l.length, 1);
   await assertFails(agendamentosDaSemana(dbDe('beto'), 'b1', '2030-01-12'));
+});
+
+// ---------- Correções de segurança (auditoria 18/out/2026) ----------
+
+/** Reserva "na mão", com campos à escolha do atacante, criando a ocupação na mesma transação. */
+function reservaCrua(uid: string, id: string, campos: Record<string, unknown>, slots: string[]) {
+  const db = dbDe(uid);
+  const barbeiroId = (campos.barbeiroId ?? 'lucas') as string;
+  return runTransaction(db, async tx => {
+    tx.set(doc(db, 'agendamentos', id), {
+      id, barbeariaId: 'b1', barbeiroId, clienteUid: uid, clienteNome: uid, servicoId: 's1', servicoNome: 'Degradê',
+      precoCentavos: 4500, duracaoMin: 45, data: '2030-01-10', inicio, fim: inicio + 45 * 60_000, slots,
+      status: 'reservado', origem: 'app', lembretes: {}, fotos: [], criadoEm: 0, atualizadoEm: 0, ...campos,
+    });
+    for (const k of slots) tx.set(doc(db, 'ocupacao', k), { barbeariaId: 'b1', barbeiroId, agendamentoId: id, inicio });
+  });
+}
+
+test('SEC-001: barbeiroId com caracteres de regex não trava a agenda de outro barbeiro', async () => {
+  const slotsDoLucas = chavesOcupacao('lucas', inicio, 45, 15);
+  await assertFails(reservaCrua('ana', 'x1', { barbeiroId: '.*' }, slotsDoLucas));
+  // Barbeiro que não é da casa também não serve de chave.
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'barbearias/b1/servicos/sr'), { id: 'sr', barbeiroId: 'rafael', precoCentavos: 4500, duracaoMin: 45 }));
+  await assertFails(reservaCrua('ana', 'x2', { barbeiroId: 'rafael', servicoId: 'sr' }, chavesOcupacao('rafael', inicio, 45, 15)));
+  // A reserva honesta continua passando.
+  await assertSucceeds(reservaCrua('ana', 'x3', {}, slotsDoLucas));
+});
+
+test('SEC-003: preço, duração e barbeiro precisam bater com o cardápio', async () => {
+  const slots = chavesOcupacao('lucas', inicio, 45, 15);
+  await assertFails(reservaCrua('ana', 'p1', { precoCentavos: 100 }, slots));
+  await assertFails(reservaCrua('ana', 'p2', { duracaoMin: 15 }, slots));
+  await assertFails(reservaCrua('ana', 'p3', { servicoId: 'nao-existe' }, slots));
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'barbearias/b1/servicos/sx'), { id: 'sx', barbeiroId: 'outro', precoCentavos: 4500, duracaoMin: 45 }));
+  await assertFails(reservaCrua('ana', 'p4', { servicoId: 'sx' }, slots));
+  await assertSucceeds(reservaCrua('ana', 'p5', {}, slots));
+});
+
+test('SEC-004: cliente não apaga a própria falta; a casa não reativa reserva cancelada', async () => {
+  const id = await reservar(dbDe('ana'), novaReserva('ana', inicio));
+  await assertSucceeds(definirStatus(dbDe('lucas'), id, 'faltou'));
+  await assertFails(updateDoc(doc(dbDe('ana'), 'agendamentos', id), { status: 'cancelado', atualizadoEm: 1 }));
+
+  const id2 = await reservar(dbDe('beto'), novaReserva('beto', inicio + 3_600_000));
+  const ag = (await getDoc(doc(dbDe('beto'), 'agendamentos', id2))).data()!;
+  await assertSucceeds(cancelar(dbDe('beto'), { id: id2, slots: ag.slots }));
+  await assertFails(definirStatus(dbDe('lucas'), id2, 'confirmado'));
 });
