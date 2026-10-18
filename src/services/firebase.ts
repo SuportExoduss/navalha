@@ -46,6 +46,9 @@ export const db: Firestore = initializeFirestore(app, {
   localCache: Platform.OS === 'web'
     ? persistentLocalCache({ tabManager: persistentMultipleTabManager() })
     : memoryLocalCache(),
+  // No React Native o WebChannel (streaming) não recebe as respostas: a gravação chega ao servidor,
+  // mas a confirmação e os ouvintes em tempo real nunca voltam. Long polling funciona no Android.
+  ...(Platform.OS === 'web' ? {} : { experimentalForceLongPolling: true }),
 });
 
 const host = process.env.EXPO_PUBLIC_EMULATOR_HOST ?? (Platform.OS === 'android' ? '10.0.2.2' : '127.0.0.1');
