@@ -88,6 +88,7 @@ Firebase Cloud Messaging (o app guarda o token do FCM; o Worker manda pelo FCM H
 - `google-services.json` (raiz) liga o app ao Firebase `navalha-1a8f5`; o prebuild copia para `android/app/`.
 - **Android Studio:** File › Open › pasta `android/`. Para o JS embutido, gere o release; para desenvolver com
   recarga ao vivo, rode `npx expo start` e o build debug.
+- **Windows (obrigatório):** caminhos longos ligados (`LongPathsEnabled=1`, PowerShell como administrador) e CMake 4.x do SDK Manager, com `cmake.dir=...\\cmake\\4.1.2` em `android/local.properties`. O CMake 3.22 traz um ninja que não aceita caminhos acima de 260 caracteres. O projeto fica em `C:\dev\navalha` pelo mesmo motivo.
 - **APK pela linha de comando:** `cd android && .\gradlew.bat assembleRelease` →
   `android/app/build/outputs/apk/release/app-release.apk` (instalar com `adb install -r` ou copiar para o celular).
 - **Assinatura:** por enquanto o release usa a chave de debug do template (SHA-1 `5E:8F:16:...:F6:25`, já

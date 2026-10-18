@@ -71,7 +71,8 @@ O código do MVP está completo. O portão é "3 barbearias amigas usando por 1 
 Para isso, nesta ordem:
 1. [x] Projeto Firebase real `navalha-1a8f5` (Spark): Google Login ativo, regras e índices publicados (`npx firebase deploy --only firestore --project prod`). Chaves em `.env.local` (fora do git). O `default` do `.firebaserc` segue `demo-navalha` para os testes nunca tocarem o real.
 2. [x] Bucket R2 `navalha-fotos` + Worker publicado em https://navalha-worker.navalha-worker.workers.dev (cron de lembretes de hora em hora). Conta de serviço `navalha-worker@navalha-1a8f5.iam.gserviceaccount.com` (papel Cloud Datastore User) guardada como segredo do Worker; acesso ao Firestore conferido.
-3. [ ] `npx eas-cli@latest login` (dono) → `eas init` e `eas build --profile development` para Android; registrar o SHA-1 do build no Firebase para o login Google nativo; testar login, reserva, push e foto no celular.
+3. [x] APK Android gerado localmente, sem conta Expo (18/out): `android/app/build/outputs/apk/release/app-release.apk` (28,8 MB, arm64), apontando para o Firebase e o Worker reais; SHA-1 da chave cadastrado no Firebase. **Só para o celular do dono:** assinado com a chave pública de debug (SEC-002).
+   - [ ] Testar no celular: login Google, reserva, cancelamento, lembrete push e foto no "Concluído".
 4. [x] Versão web publicada em https://navalha-web.navalha-worker.workers.dev (`npx expo export --platform web && npx wrangler deploy -c web.wrangler.toml`); domínio autorizado no login do Firebase. Falta o dono entrar com Google uma vez para conferir.
    - Corrigido: `src/services/firebase.ts` lia `env.EXPO_PUBLIC_*` por um apelido de `process.env`, que o Expo não embute no build; o app real cairia no emulador.
 5. Colocar 3 barbearias amigas para usar de 28/dez a 3/jan.
