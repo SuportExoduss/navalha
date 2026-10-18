@@ -119,10 +119,12 @@ export async function enviarLembretes(env: Env, agora = Date.now()) {
     // o aviso sozinho com o app fechado, no canal "lembretes" criado pelo app.
     // ponytail: token inválido (app desinstalado) só falha calado; limpar o pushToken se o volume crescer.
     for (const m of mensagens) {
-      await fetch(`https://fcm.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/messages:send`, {
+      const r = await fetch(`https://fcm.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/messages:send`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenSA}` },
         body: JSON.stringify(mensagemFcm(m)),
       });
+      // Sem isto a falha some: o lembrete fica marcado como enviado e ninguém sabe por quê.
+      if (!r.ok) console.error('FCM falhou', m.agendamentoId, r.status, await r.text());
     }
     for (const id of marcar) await db.marcarNumero(`agendamentos/${id}`, `lembretes.${j.chave}`, agora);
   }
