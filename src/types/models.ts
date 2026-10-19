@@ -98,7 +98,7 @@ export interface Barbeiro {
   expediente: Expediente;
   ativo: boolean;
   nota: { media: number; total: number };
-  comissaoPercent?: number;
+  // Comissão não fica aqui: este documento é público (leitura aberta). Na Fase 4 vai para um doc só do dono.
 }
 
 /** barbearias/{id}/convites/{codigo} */

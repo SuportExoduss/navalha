@@ -6,6 +6,7 @@ import { router, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SystemUI from 'expo-system-ui';
+import { BarlowCondensed_600SemiBold, BarlowCondensed_700Bold, useFonts } from '@expo-google-fonts/barlow-condensed';
 import { aplicarPaleta, paletas, type NomePaleta, type PreferenciaTema } from '../theme';
 
 const CHAVE = 'navalha.tema';
@@ -18,6 +19,8 @@ export function TemaProvider({ children }: { children: ReactNode }) {
   const caminho = usePathname();
   const [preferencia, setPreferencia] = useState<PreferenciaTema | null>(null);
   const voltarPara = useRef<string | null>(null);
+  // Fonte dos títulos (identidade): se falhar, o app segue com a fonte do sistema.
+  const [fontesOk, erroFontes] = useFonts({ BarlowCondensed_600SemiBold, BarlowCondensed_700Bold });
 
   useEffect(() => {
     AsyncStorage.getItem(CHAVE)
@@ -42,7 +45,8 @@ export function TemaProvider({ children }: { children: ReactNode }) {
     AsyncStorage.setItem(CHAVE, p).catch(() => undefined);
   }
 
-  if (preferencia === null) return null; // milissegundos, por baixo da tela de abertura: evita piscar o tema errado
+  // Milissegundos, por baixo da tela de abertura: evita piscar o tema errado ou a fonte trocando.
+  if (preferencia === null || (!fontesOk && !erroFontes)) return null;
   return (
     <Ctx.Provider value={{ preferencia, ativo, escolher }}>
       <StatusBar style={ativo === 'escuro' ? 'light' : 'dark'} />

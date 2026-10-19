@@ -23,7 +23,7 @@ export const firebaseConfig = {
 export const usandoEmulador =
   process.env.EXPO_PUBLIC_USE_EMULATORS === '1' || firebaseConfig.projectId.startsWith('demo-');
 
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+export const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
 function criarAuth(): FirebaseAuth.Auth {
   if (Platform.OS === 'web') return FirebaseAuth.getAuth(app);

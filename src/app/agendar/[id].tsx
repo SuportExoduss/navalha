@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Image, Pressable, Text, View } from 'react-native';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { Aviso, Botao, Carregando, Cartao, Secao, Tela, Titulo } from '../../components/ui';
 import { SeletorDia } from '../../components/agenda/SeletorDia';
 import { GradeHorarios } from '../../components/agenda/GradeHorarios';
@@ -90,11 +91,16 @@ export default function Agendar() {
         inicio: escolhido, passoMin: b.passoMin, origem: 'app',
       });
       registrarEvento(db, { tipo: 'agendou', uid: perfil.uid, barbeariaId: b.id, duracaoMs: Date.now() - abriuEm.current, em: Date.now() });
+      // Vibração curta de sucesso: o momento de valor do app (na web não faz nada).
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       setFeito(escolhido);
     } catch (e) {
       if (e instanceof HorarioOcupadoError) {
         setErro(e.message);
         setRecarregar(n => n + 1);
+      } else if ((e as { code?: string })?.code === 'permission-denied') {
+        // Regra de limite de uso: 20 s entre reservas da mesma conta.
+        setErro('Você acabou de reservar. Espere alguns segundos e tente de novo.');
       } else {
         setErro('Não foi possível reservar. Verifique a conexão e tente de novo.');
       }

@@ -59,8 +59,9 @@ export const space = (n: number) => n * 4;
 
 // Getters: a cor do texto acompanha o tema ativo no momento em que o estilo é usado.
 export const type = {
-  title: { fontSize: 28, fontWeight: '700' as const, letterSpacing: -0.3, get color() { return colors.text; } },
-  heading: { fontSize: 18, fontWeight: '600' as const, get color() { return colors.text; } },
+  // Títulos em Barlow Condensed (letreiro de barbearia); o corpo fica na fonte do sistema, mais legível.
+  title: { fontSize: 32, fontFamily: 'BarlowCondensed_700Bold', letterSpacing: 0.2, get color() { return colors.text; } },
+  heading: { fontSize: 20, fontFamily: 'BarlowCondensed_600SemiBold', letterSpacing: 0.2, get color() { return colors.text; } },
   body: { fontSize: 15, fontWeight: '400' as const, get color() { return colors.text; } },
   caption: { fontSize: 13, fontWeight: '400' as const, get color() { return colors.textMuted; } },
   // Números tabulares em preços e horários para alinhar colunas.

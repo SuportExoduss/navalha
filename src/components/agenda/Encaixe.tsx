@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { BackHandler, Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { Aviso, Botao, Campo, Carregando, Cartao, Chip, Secao, Tela, Titulo } from '../ui';
 import { GradeHorarios } from './GradeHorarios';
 import { db } from '../../services/firebase';
@@ -55,6 +56,7 @@ export function Encaixe({ barbearia, barbeiro, dia, aoSair }: { barbearia: Barbe
         barbeiroNome: barbeiro.apelido || barbeiro.nome.split(' ')[0],
         servico, cliente: { uid: null, nome: nome.trim() }, inicio, passoMin: barbearia.passoMin, origem: 'balcao',
       });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       aoSair();
     } catch (e) {
       setErro(e instanceof HorarioOcupadoError ? e.message : 'Não foi possível salvar. Tente de novo.');

@@ -66,7 +66,12 @@ Código no computador: `C:\Users\andre\AndroidStudioProjects\navalha` (no Androi
 - [x] 3 testes novos em tests/regras.test.ts (falhavam antes, passam depois); regras publicadas em produção
 - [x] SEC-005 (clubes só da própria casa, + teste), SEC-007 (tipo da foto pelos bytes), SEC-010 (allowBackup desligado), SEC-014 (convite com sorteio criptográfico) — 19/out
 - [x] Varredura geral (19/out): expo-font que faltava instalado, SDK 58 alinhado (expo-doctor 20/20), teclado com modo imersivo, deps sem uso removidas, acessibilidade (avisos anunciados, botão desabilitado distinto, fotos descritas)
-- [ ] SEC-002: chave de assinatura própria (dono) · SEC-006 (limite de uso) e endurecimento restante: pendentes
+- [x] SEC-006 limite de uso (regras: 20 s entre reservas por conta; Worker: 20 fotos/min por conta, 429), SEC-008/009 (fotos da casa e do perfil só de URLs do nosso R2), SEC-016 (CORS do Worker só para navalha.web.app e localhost) — 19/out, com testes (regras 32, Worker 7)
+- [x] Monitoramento de erros: falhas do app vão para a coleção `erros` (só gravação, 10 por sessão, só logado) + tela "Algo deu errado"
+- [x] Lembrete na web/iPhone: PWA (manifesto + service worker do FCM); no iPhone exige o Navalha na Tela de Início e o toque em Perfil › Lembretes
+- [x] Identidade: títulos em Barlow Condensed; vibração curta ao confirmar reserva/encaixe
+- [ ] SEC-002: chave de assinatura própria (dono) · App Check: API ligada, **não** ativar a obrigatoriedade antes de integrar no app (depende da SEC-002)
+- [ ] `npm audit`: avisos restantes vêm de dependências do Expo; resolver na próxima atualização do SDK
 
 ## Fase 1 — o que falta para o portão da Fase 2
 O código do MVP está completo. O portão é "3 barbearias amigas usando por 1 semana sem erro grave e nenhum horário duplicado".

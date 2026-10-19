@@ -67,7 +67,9 @@ O resultado completo da rodada pelo adb está no fim deste arquivo; o que falta 
 - [ ] Abrir https://navalha.web.app → entrar com Google
 - [ ] Reservar e cancelar pelo navegador
 - [ ] No iPhone: Compartilhar → "Adicionar à Tela de Início" → abre como app
-- [ ] Sabido: na web não chega lembrete (push na web ainda não existe)
+- [ ] Aberto pela Tela de Início: Perfil › Lembretes › "Ativar lembretes" → permitir → o cartão diz "Ativos"
+- [ ] Reservar para daqui a ~2 h → o lembrete chega no iPhone (Safari normal não recebe; só pela Tela de Início, iOS 16.4+)
+- [ ] Tocar no lembrete abre "Meus agendamentos"
 
 ## Como anotar um problema
 Tela + o que fez + o que esperava + o que aconteceu + horário. Se for no Android, deixe o celular conectado

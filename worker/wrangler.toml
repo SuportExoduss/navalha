@@ -7,7 +7,8 @@ FIREBASE_PROJECT_ID = "navalha-1a8f5"
 # Depois de liberar o acesso público do bucket (r2.dev ou domínio próprio), cole a URL aqui
 # para as fotos não consumirem requisições do Worker:
 FOTOS_URL_PUBLICA = ""
-ORIGENS_PERMITIDAS = "*"
+# Só a versão web do app (o app Android não manda Origin e não passa por CORS). SEC-016.
+ORIGENS_PERMITIDAS = "https://navalha.web.app,http://localhost:8081"
 
 [[r2_buckets]]
 binding = "FOTOS"
@@ -20,3 +21,12 @@ crons = ["5 * * * *"]
 # Segredos (não versionar):
 #   npx wrangler secret put GOOGLE_SA_EMAIL
 #   npx wrangler secret put GOOGLE_SA_PRIVATE_KEY
+
+# SEC-006: no máximo 20 fotos por minuto por conta (limitador nativo do Workers, gratuito).
+[[ratelimits]]
+name = "LIMITE_FOTOS"
+namespace_id = "2001"
+
+  [ratelimits.simple]
+  limit = 20
+  period = 60

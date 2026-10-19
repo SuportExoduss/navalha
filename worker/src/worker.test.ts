@@ -50,6 +50,7 @@ test('mensagem do FCM vai no canal de lembretes com o id do agendamento', () => 
   assert.deepEqual(m.notification, { title: 'T', body: 'B' });
   assert.equal(m.android.notification.channel_id, 'lembretes');
   assert.equal(m.data.agendamentoId, 'ag1');
+  assert.equal(m.webpush.fcm_options.link, 'https://navalha.web.app/agendamentos');
 });
 test('tipo da foto vem dos bytes, não do cabeçalho', () => {
   const bytes = (...x: (number | string)[]) => new Uint8Array(x.flatMap(v => typeof v === 'string' ? [...v].map(c => c.charCodeAt(0)) : [v]));

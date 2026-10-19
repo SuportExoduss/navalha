@@ -28,3 +28,8 @@ export async function registrarPush(uid: string, tokenAtual?: string): Promise<R
   if (data !== tokenAtual) await atualizarPerfil(db, uid, { pushToken: data });
   return 'ativo';
 }
+
+// Na web o pedido de permissão precisa de um toque (Perfil); no Android ele acontece no login e na escolha de papel.
+export type EstadoLembretesWeb = 'ativo' | 'pedir' | 'negado' | 'instalar' | 'indisponivel';
+export async function ativarLembretesWeb(uid: string): Promise<ResultadoPush> { return registrarPush(uid); }
+export async function estadoLembretesWeb(): Promise<EstadoLembretesWeb> { return 'indisponivel'; }

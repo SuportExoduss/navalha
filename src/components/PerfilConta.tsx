@@ -1,7 +1,7 @@
 // Perfil compartilhado por cliente e barbearia: foto, nome, apelido, telefone,
 // modo ativo, aparência (tema), trocar conta Google e excluir a conta.
 import { useEffect, useState } from 'react';
-import { Image, Pressable, Text, TextInput, View } from 'react-native';
+import { Image, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Aviso, Botao, Cartao, Chip, Tela, Titulo } from './ui';
@@ -12,6 +12,7 @@ import { reautenticarGoogle, sairDoGoogle } from '../services/googleSignIn';
 import { escolherEEnviar } from '../services/fotos';
 import { colors, radius, space, type, type PreferenciaTema } from '../theme';
 import { useTema } from './TemaProvider';
+import { ativarLembretesWeb, estadoLembretesWeb, type EstadoLembretesWeb } from '../services/push';
 import type { Role } from '../types/models';
 
 const NOMES: Record<Role, string> = { cliente: 'Cliente', barbeiro: 'Barbeiro', dono: 'Dono' };
@@ -101,6 +102,7 @@ export function PerfilConta() {
       </Cartao>
 
       <SeletorTema />
+      {Platform.OS === 'web' ? <LembretesWeb uid={perfil.uid} /> : null}
 
       <Botao titulo="Trocar conta Google" variante="secundario" onPress={sair} />
       <ExcluirConta />
@@ -183,6 +185,37 @@ function SeletorTema() {
           );
         })}
       </View>
+    </Cartao>
+  );
+}
+
+const TEXTO_LEMBRETES: Record<EstadoLembretesWeb, string> = {
+  ativo: 'Ativos neste aparelho: você recebe um aviso 24 h e 2 h antes do horário.',
+  pedir: 'Receba um aviso 24 h e 2 h antes do seu horário.',
+  negado: 'As notificações estão bloqueadas neste navegador. Libere nas configurações do site para receber os avisos.',
+  instalar: 'No iPhone, os avisos só chegam com o Navalha na Tela de Início: toque em Compartilhar › Adicionar à Tela de Início e abra por lá.',
+  indisponivel: 'Este navegador não recebe notificações. No celular, use o app ou adicione o Navalha à Tela de Início.',
+};
+
+/** Só na web: o pedido de permissão precisa de um toque (exigência do iPhone). */
+function LembretesWeb({ uid }: { uid: string }) {
+  const [estado, setEstado] = useState<EstadoLembretesWeb | null>(null);
+  const [ativando, setAtivando] = useState(false);
+  useEffect(() => { estadoLembretesWeb().then(setEstado).catch(() => setEstado('indisponivel')); }, []);
+  if (!estado) return null;
+
+  async function ativar() {
+    setAtivando(true);
+    try { const r = await ativarLembretesWeb(uid); setEstado(r === 'ativo' ? 'ativo' : r === 'negado' ? 'negado' : 'indisponivel'); }
+    catch { setEstado('indisponivel'); }
+    finally { setAtivando(false); }
+  }
+
+  return (
+    <Cartao style={{ gap: space(3) }}>
+      <Text style={type.heading}>Lembretes</Text>
+      <Aviso texto={TEXTO_LEMBRETES[estado]} tom={estado === 'ativo' ? 'ok' : 'neutro'} />
+      {estado === 'pedir' ? <Botao titulo="Ativar lembretes" carregando={ativando} onPress={ativar} /> : null}
     </Cartao>
   );
 }

@@ -32,6 +32,8 @@ export function mensagemFcm(m: { token: string; title: string; body: string; age
       notification: { title: m.title, body: m.body },
       data: { agendamentoId: m.agendamentoId },
       android: { priority: 'HIGH', notification: { channel_id: 'lembretes' } },
+      // Na web (e no iPhone pela Tela de Início) o toque abre os agendamentos.
+      webpush: { fcm_options: { link: 'https://navalha.web.app/agendamentos' } },
     },
   };
 }

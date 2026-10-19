@@ -8,7 +8,7 @@ import {
   initializeTestEnvironment, assertFails, assertSucceeds, type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
 import {
-  collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, setDoc, updateDoc, runTransaction, where, writeBatch,
+  collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc, runTransaction, where, writeBatch,
   type Firestore,
 } from 'firebase/firestore';
 import { chavesOcupacao, paraMillis } from '../src/lib/agenda';
@@ -54,6 +54,7 @@ function reservaDe(uid: string, id: string) {
       lembretes: {}, fotos: [], criadoEm: Date.now(), atualizadoEm: Date.now(),
     });
     for (const k of slots) tx.set(doc(db, 'ocupacao', k), { barbeariaId: 'b1', barbeiroId: 'lucas', agendamentoId: id, inicio });
+    tx.set(doc(db, 'users', uid), { uid, ultimaReserva: serverTimestamp() }, { merge: true });
   });
 }
 
@@ -286,6 +287,7 @@ function reservaCrua(uid: string, id: string, campos: Record<string, unknown>, s
       status: 'reservado', origem: 'app', lembretes: {}, fotos: [], criadoEm: 0, atualizadoEm: 0, ...campos,
     });
     for (const k of slots) tx.set(doc(db, 'ocupacao', k), { barbeariaId: 'b1', barbeiroId, agendamentoId: id, inicio });
+    tx.set(doc(db, 'users', uid), { uid, ultimaReserva: serverTimestamp() }, { merge: true });
   });
 }
 
@@ -341,9 +343,9 @@ test('cancelamento com motivo: cada lado assina o seu, e o motivo só vale junto
   await assertFails(cancelar(dbDe('lucas'), { id: id2, slots: ag2.slots }, { por: 'cliente', motivo: 'Desisti' }));
   await assertSucceeds(cancelar(dbDe('lucas'), { id: id2, slots: ag2.slots }, { por: 'casa', motivo: 'Barbeiro indisponível' }));
   // Cancelar sem motivo continua valendo (versões antigas do app).
-  const id3 = await reservar(dbDe('ana'), novaReserva('ana', inicio + 7_200_000));
-  const ag3 = (await getDoc(doc(dbDe('ana'), 'agendamentos', id3))).data()!;
-  await assertSucceeds(cancelar(dbDe('ana'), { id: id3, slots: ag3.slots }));
+  const id3 = await reservar(dbDe('carla'), novaReserva('carla', inicio + 7_200_000));
+  const ag3 = (await getDoc(doc(dbDe('carla'), 'agendamentos', id3))).data()!;
+  await assertSucceeds(cancelar(dbDe('carla'), { id: id3, slots: ag3.slots }));
 });
 
 test('SEC-005: dono só mexe no clube da própria casa', async () => {
@@ -356,4 +358,59 @@ test('SEC-005: dono só mexe no clube da própria casa', async () => {
   await assertSucceeds(updateDoc(doc(dbDe('dono'), 'clubes/c1'), { nome: 'Clube 3 cortes' }));
   await assertFails(updateDoc(doc(dbDe('dono'), 'clubes/c1'), { barbeariaId: 'b2' }));
   await assertSucceeds(deleteDoc(doc(dbDe('dono'), 'clubes/c1')));
+});
+
+test('SEC-006: a mesma conta espera 20 s entre reservas, e a marca é sempre do servidor', async () => {
+  await assertSucceeds(reservar(dbDe('ana'), novaReserva('ana', inicio)));
+  // Logo em seguida, outro horário livre: barrado pelo intervalo.
+  await assertFails(reservar(dbDe('ana'), novaReserva('ana', inicio + 3_600_000)));
+  // Outra pessoa não é afetada.
+  await assertSucceeds(reservar(dbDe('beto'), novaReserva('beto', inicio + 3_600_000)));
+  // Ninguém "volta o relógio" gravando uma data antiga na marca.
+  await assertFails(updateDoc(doc(dbDe('ana'), 'users/ana'), { ultimaReserva: new Date(0) }));
+  // Reserva "na mão" sem a marca também não passa.
+  const db = dbDe('carla');
+  const slots = chavesOcupacao('lucas', inicio + 7_200_000, 45, 15);
+  await assertFails(runTransaction(db, async tx => {
+    tx.set(doc(db, 'agendamentos', 'sem-marca'), {
+      id: 'sem-marca', barbeariaId: 'b1', barbeiroId: 'lucas', clienteUid: 'carla', clienteNome: 'carla', servicoId: 's1', servicoNome: 'Degradê',
+      precoCentavos: 4500, duracaoMin: 45, data: '2030-01-10', inicio: inicio + 7_200_000, fim: inicio + 7_200_000 + 45 * 60_000, slots,
+      status: 'reservado', origem: 'app', lembretes: {}, fotos: [], criadoEm: 0, atualizadoEm: 0,
+    });
+    for (const k of slots) tx.set(doc(db, 'ocupacao', k), { barbeariaId: 'b1', barbeiroId: 'lucas', agendamentoId: 'sem-marca', inicio: inicio + 7_200_000 });
+  }));
+});
+
+test('SEC-006: eventos só com campos e tipos conhecidos', async () => {
+  const db = dbDe('ana');
+  await assertSucceeds(setDoc(doc(db, 'eventos/e1'), { tipo: 'agendou', uid: 'ana', barbeariaId: 'b1', em: 1 }));
+  await assertFails(setDoc(doc(db, 'eventos/e2'), { tipo: 'agendou', uid: 'ana', em: 1, lixo: 'x'.repeat(1000) }));
+  await assertFails(setDoc(doc(db, 'eventos/e3'), { tipo: 'qualquer', uid: 'ana', em: 1 }));
+});
+test('SEC-008: comissão não entra no perfil público do barbeiro', async () => {
+  await assertFails(updateDoc(doc(dbDe('dono'), 'barbearias/b1/barbeiros/lucas'), { comissaoPercent: 40 }));
+  await assertSucceeds(updateDoc(doc(dbDe('dono'), 'barbearias/b1/barbeiros/lucas'), { ativo: true }));
+});
+
+test('SEC-009: foto só do nosso Worker ou da conta Google', async () => {
+  const dono = dbDe('dono');
+  await assertSucceeds(updateDoc(doc(dono, 'barbearias/b1'), { capaUrl: 'https://navalha-worker.navalha-worker.workers.dev/fotos/barbearia/b1/x.webp' }));
+  await assertFails(updateDoc(doc(dono, 'barbearias/b1'), { capaUrl: 'https://rastreio.exemplo.com/pixel.gif' }));
+  await assertFails(updateDoc(doc(dono, 'barbearias/b1'), { capaUrl: 'https://navalha-worker.navalha-worker.workers.dev.malicioso.com/fotos/x.webp' }));
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'users/ana'), { uid: 'ana' }));
+  await assertSucceeds(updateDoc(doc(dbDe('ana'), 'users/ana'), { fotoUrl: 'https://lh3.googleusercontent.com/a/abc=s96-c' }));
+  await assertFails(updateDoc(doc(dbDe('ana'), 'users/ana'), { fotoUrl: 'javascript:alert(1)' }));
+  // Cardápio: no máximo 6 fotos por corte.
+  const sete = Array.from({ length: 7 }, (_, i) => `https://navalha-worker.navalha-worker.workers.dev/fotos/servico/s/${i}.webp`);
+  await assertFails(updateDoc(doc(dbDe('lucas'), 'barbearias/b1/servicos/s1'), { fotos: sete }));
+  await assertSucceeds(updateDoc(doc(dbDe('lucas'), 'barbearias/b1/servicos/s1'), { fotos: sete.slice(0, 6) }));
+});
+
+test('erros: o app só grava, com campos e tamanhos fixos', async () => {
+  const ok = { uid: 'ana', onde: 'tela', mensagem: 'x', pilha: 'y', plataforma: 'android', versao: '0.1.0', em: 1 };
+  await assertSucceeds(setDoc(doc(dbDe('ana'), 'erros/e1'), ok));
+  await assertFails(setDoc(doc(dbDe('ana'), 'erros/e2'), { ...ok, uid: 'beto' }));
+  await assertFails(setDoc(doc(dbDe('ana'), 'erros/e3'), { ...ok, pilha: 'y'.repeat(2001) }));
+  await assertFails(setDoc(doc(env.unauthenticatedContext().firestore(), 'erros/e4'), ok));
+  await assertFails(getDoc(doc(dbDe('ana'), 'erros/e1')));
 });

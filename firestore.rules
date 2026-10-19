@@ -16,52 +16,66 @@ service cloud.firestore {
     }
     function ehDaCasa(bid) { return ehDono(bid) || ehBarbeiro(bid); }
     function mudou(campos) { return request.resource.data.diff(resource.data).affectedKeys().hasAny(campos); }
+    // Fotos só do nosso Worker (R2) ou a foto da conta Google: nada de imagem externa ou pixel de rastreio (SEC-009).
+    // O endereço local é o do emulador nos testes; em produção ele simplesmente não carrega.
+    function urlFotoOk(u) {
+      return u is string && u.size() <= 400 && (u.matches('https://navalha-worker[.]navalha-worker[.]workers[.]dev/fotos/.*')
+        || u.matches('https://lh[0-9][.]googleusercontent[.]com/.*') || u.matches('http://(127[.]0[.]0[.]1|10[.]0[.]2[.]2):8787/fotos/.*'));
+    }
+    function fotoOk(d, campo) { return !(campo in d) || urlFotoOk(d[campo]); }
 
     // ---------- Usuários ----------
     match /users/{uid} {
       allow read: if logado() && eu() == uid;
       allow create: if logado() && eu() == uid
         && request.resource.data.uid == uid
-        && !('notaCliente' in request.resource.data);
+        && !('notaCliente' in request.resource.data) && fotoOk(request.resource.data, 'fotoUrl');
       // A nota como cliente é calculada pelo servidor.
-      allow update: if logado() && eu() == uid && !mudou(['uid', 'notaCliente', 'criadoEm']);
+      allow update: if logado() && eu() == uid && !mudou(['uid', 'notaCliente', 'criadoEm'])
+        // Marca da última reserva: só o horário do servidor (serverTimestamp), nunca uma data escolhida pelo app.
+        && (!mudou(['ultimaReserva']) || request.resource.data.ultimaReserva == request.time)
+        && fotoOk(request.resource.data, 'fotoUrl');
       allow delete: if logado() && eu() == uid;
     }
 
     // ---------- Barbearias ----------
     match /barbearias/{bid} {
+      function fotosDaCasaOk(d) { return fotoOk(d, 'capaUrl') && fotoOk(d, 'logoUrl') && (!('fotos' in d) || d.fotos.size() <= 12); }
+      // Comissão é dado comercial: não vai no perfil público do barbeiro (leitura aberta). Fica para um doc privado (SEC-008).
+      function perfilBarbeiroOk(d) { return fotoOk(d, 'fotoUrl') && !('comissaoPercent' in d); }
       allow read: if resource.data.publicada == true || ehDaCasa(bid);
       allow create: if logado()
         && request.resource.data.donoUid == eu()
-        && request.resource.data.assinatura.status in ['rascunho', 'teste'];
+        && request.resource.data.assinatura.status in ['rascunho', 'teste'] && fotosDaCasaOk(request.resource.data);
       // O dono edita tudo, menos a assinatura (controlada pelo pagamento) e as notas Google.
-      allow update: if (ehDono(bid) && !mudou(['donoUid', 'assinatura', 'criadoEm'])
+      allow update: if fotosDaCasaOk(request.resource.data) && ((ehDono(bid) && !mudou(['donoUid', 'assinatura', 'criadoEm'])
         && request.resource.data.resumo.get('notaGoogle', null) == resource.data.resumo.get('notaGoogle', null))
         // O barbeiro, ao salvar o próprio cardápio, só atualiza a parte do resumo que vem do cardápio.
         || (ehBarbeiro(bid)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['resumo'])
-          && request.resource.data.resumo.diff(resource.data.resumo).affectedKeys().hasOnly(['fotosDestaque', 'precoMin', 'precoMax', 'categorias']));
+          && request.resource.data.resumo.diff(resource.data.resumo).affectedKeys().hasOnly(['fotosDestaque', 'precoMin', 'precoMax', 'categorias'])));
       allow delete: if false;
 
       match /barbeiros/{uid} {
         allow read: if true;
         // Dono cadastra (inclusive a si mesmo, no mesmo lote que cria a casa);
         // barbeiro entra aceitando um convite válido desta casa.
-        allow create: if logado() && (
+        allow create: if logado() && perfilBarbeiroOk(request.resource.data) && (
           ehDono(bid)
           || getAfter(/databases/$(database)/documents/barbearias/$(bid)).data.donoUid == eu()
           || (eu() == uid
               && getAfter(/databases/$(database)/documents/convites/$(request.resource.data.conviteCodigo)).data.usadoPor == uid
               && getAfter(/databases/$(database)/documents/convites/$(request.resource.data.conviteCodigo)).data.barbeariaId == bid)
         );
-        allow update: if ehDono(bid) || (logado() && eu() == uid && !mudou(['ativo', 'nota', 'comissaoPercent', 'barbeariaId', 'conviteCodigo']));
+        allow update: if perfilBarbeiroOk(request.resource.data)
+          && (ehDono(bid) || (logado() && eu() == uid && !mudou(['ativo', 'nota', 'barbeariaId', 'conviteCodigo'])));
         allow delete: if ehDono(bid);
       }
 
       match /servicos/{sid} {
         allow read: if true;
-        allow create, update: if ehDono(bid)
-          || (ehBarbeiro(bid) && request.resource.data.barbeiroId == eu());
+        allow create, update: if (!('fotos' in request.resource.data) || request.resource.data.fotos.size() <= 6)
+          && (ehDono(bid) || (ehBarbeiro(bid) && request.resource.data.barbeiroId == eu()));
         allow delete: if ehDono(bid) || (ehBarbeiro(bid) && resource.data.barbeiroId == eu());
       }
 
@@ -108,6 +122,14 @@ service cloud.firestore {
           && c.keys().hasOnly(['por', 'motivo', 'em']) && c.por == por
           && c.motivo is string && c.motivo.size() >= 1 && c.motivo.size() <= 200 && c.em is int);
       }
+      // Limite de uso (SEC-006): a reserva pelo app grava a marca da última reserva na mesma transação, e entre
+      // duas reservas da mesma conta precisa haver 20 s. Gente de verdade não sente; robô de reservas falsas trava.
+      function intervaloEntreReservasOk() {
+        let perfil = /databases/$(database)/documents/users/$(eu());
+        let antes = exists(perfil) ? get(perfil).data.get('ultimaReserva', null) : null;
+        return getAfter(perfil).data.get('ultimaReserva', null) == request.time
+          && (antes == null || request.time > antes + duration.value(20, 's'));
+      }
       allow read: if logado() && (ag().clienteUid == eu() || ehDaCasa(ag().barbeariaId));
 
       allow create: if logado()
@@ -116,7 +138,7 @@ service cloud.firestore {
         && request.resource.data.inicio > request.time.toMillis() - 3600000
         && (
           (request.resource.data.origem == 'app' && request.resource.data.clienteUid == eu()
-             && request.resource.data.status == 'reservado')
+             && request.resource.data.status == 'reservado' && intervaloEntreReservasOk())
           || (request.resource.data.origem == 'balcao' && ehDaCasa(request.resource.data.barbeariaId)
              && request.resource.data.clienteUid == null && request.resource.data.status == 'confirmado')
         )
@@ -191,9 +213,22 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Monitoramento de erros: o app só grava, com campos e tamanhos fixos; o dono lê no console.
+    match /erros/{id} {
+      allow create: if logado() && request.resource.data.uid == eu()
+        && request.resource.data.keys().hasOnly(['uid', 'onde', 'mensagem', 'pilha', 'plataforma', 'versao', 'em'])
+        && request.resource.data.mensagem is string && request.resource.data.mensagem.size() <= 500
+        && request.resource.data.pilha is string && request.resource.data.pilha.size() <= 2000
+        && request.resource.data.onde is string && request.resource.data.onde.size() <= 100;
+      allow read, update, delete: if false;
+    }
+
     // Métricas do piloto: o app só grava.
     match /eventos/{id} {
-      allow create: if logado() && request.resource.data.uid == eu();
+      // Só os campos e tipos conhecidos: ninguém usa a coleção de métricas para gravar lixo (SEC-006).
+      allow create: if logado() && request.resource.data.uid == eu()
+        && request.resource.data.keys().hasOnly(['tipo', 'uid', 'barbeariaId', 'duracaoMs', 'em'])
+        && request.resource.data.tipo in ['abriu_app', 'viu_barbearia', 'iniciou_agendamento', 'agendou', 'cancelou', 'faltou', 'concluiu'];
       allow read, update, delete: if false;
     }
   }

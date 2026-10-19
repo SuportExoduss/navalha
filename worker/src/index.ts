@@ -14,6 +14,8 @@ export interface Env {
   /** URL pública do bucket (r2.dev ou domínio próprio). Vazio = servir pelo Worker. */
   FOTOS_URL_PUBLICA?: string;
   ORIGENS_PERMITIDAS?: string;
+  /** Limitador nativo do Workers (wrangler.toml › ratelimits): fotos por conta por minuto. */
+  LIMITE_FOTOS?: RateLimit;
   // Segredos (wrangler secret put):
   GOOGLE_SA_EMAIL?: string;
   GOOGLE_SA_PRIVATE_KEY?: string;
@@ -47,6 +49,10 @@ export default {
       const token = req.headers.get('Authorization')?.replace(/^Bearer /, '') ?? '';
       const uid = token ? await verificarIdToken(token, env.FIREBASE_PROJECT_ID) : null;
       if (!uid) return json({ erro: 'Entre na sua conta para enviar fotos.' }, 401, h);
+      // Por conta, não por IP: barra quem tenta encher o R2 (SEC-006) sem afetar quem divide o Wi-Fi.
+      if (env.LIMITE_FOTOS && !(await env.LIMITE_FOTOS.limit({ key: uid })).success) {
+        return json({ erro: 'Muitas fotos em pouco tempo. Espere um minuto e tente de novo.' }, 429, h);
+      }
 
       const tipo = url.searchParams.get('tipo') ?? '';
       const refId = url.searchParams.get('refId') ?? '';

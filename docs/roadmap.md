@@ -33,7 +33,7 @@ Firebase no plano gratuito Spark (sem cartão) cuida de login, banco e push; o C
 
 | Camada | Ferramenta | Limite gratuito | Quando paga |
 | --- | --- | --- | --- |
-| App (Android, iOS e web) | [Expo / React Native](https://expo.dev/pricing.md) | Código aberto; nuvem com 15 builds Android + 15 iOS por mês | Mais builds: US$ 19/mês (ou compilar local, grátis) |
+| App (Android, iOS e web) | Expo / React Native (código aberto) | Build Android no próprio computador (Gradle/Android Studio), **sem conta Expo** (decisão do dono) | — |
 | Login Google | Firebase Auth | Gratuito | — |
 | Banco de dados | [Cloud Firestore](https://cloud.google.com/firestore/quotas) | 1 GiB armazenado, 50 mil leituras/dia, 20 mil gravações/dia, 10 GiB de transferência/mês | Plano Blaze, pago por uso acima disso |
 | Notificações push | Firebase Cloud Messaging (direto, sem Expo Push) | Gratuito | — |
@@ -41,8 +41,8 @@ Firebase no plano gratuito Spark (sem cartão) cuida de login, banco e push; o C
 | Servidor (upload de fotos, lembretes, webhooks de pagamento) | [Cloudflare Workers](https://developers.cloudflare.com/workers/platform/limits) | 100 mil requisições/dia, 5 tarefas agendadas (cron), 10 ms de CPU por requisição | Workers Paid, US$ 5/mês |
 | Busca por perto | Geohash no Firestore (biblioteca geofire-common) | Incluído | — |
 | Nota e avaliações Google | [Places API (New)](https://openplacesapi.com/blog/google-places-api-pricing) | Grátis por mês: 10 mil chamadas Essentials, 5 mil Pro, 1 mil Enterprise por SKU | Por mil chamadas acima da franquia |
-| Monitoramento de erros e uso | [EAS Observe](https://releasebot.io/updates/expo) | 100 mil eventos/mês | Plano Starter |
-| Painel do dono e landing page | Cloudflare Workers (arquivos estáticos) | Arquivos estáticos gratuitos e ilimitados ([DEV](https://dev.to/301st/every-job-your-vps-does-and-what-cloudflares-free-plan-does-with-it-5eao)) | — |
+| Monitoramento de erros | Erros do app gravados no Firestore (coleção `erros`, só gravação, tamanho limitado) | Dentro da cota do Spark | Crashlytics se precisar de falhas nativas |
+| Versão web (iPhone, painel do dono, landing) | Firebase Hosting em **navalha.web.app** | 10 GB de armazenamento e 360 MB/dia de transferência | Plano Blaze, por uso |
 | Pagamentos (fase 3) | [Asaas](https://www.asaas.com/precos-e-taxas) | Sem mensalidade nem adesão | Taxa por Pix/cartão recebido |
 | Design e código | Figma (grátis), GitHub + GitHub Projects | Gratuito | — |
 
@@ -89,7 +89,7 @@ Duas semanas para provar que barbeiros e clientes querem o app antes de escrever
 
 **Técnico**
 
-- [ ] Criar contas gratuitas: GitHub, Expo, Firebase (plano Spark) e Cloudflare (R2 + Workers)
+- [ ] Criar contas gratuitas: GitHub, Firebase (plano Spark) e Cloudflare (R2 + Workers) — sem conta Expo
 - [ ] Desenhar o modelo de dados completo, já incluindo pagamentos, avaliações e assinaturas (mesmo que vazios no MVP)
 - [ ] Montar o quadro de tarefas no GitHub Projects com o backlog da Fase 1
 
@@ -135,7 +135,7 @@ Cinco semanas com 10 barbearias reais usando o app de graça, em troca de feedba
 - [ ] Ensinar clientes de iPhone a adicionar a versão web à tela de início (sem isso não chega lembrete)
 - [ ] Grupo de WhatsApp com os donos para suporte e ideias
 - [ ] Visita ou ligação semanal: o que travou, o que faltou
-- [ ] Corrigir bugs em ciclos de 2–3 dias usando atualização pelo ar (nova versão no teste fechado do Google Play; sem EAS Update)
+- [ ] Corrigir bugs em ciclos de 2–3 dias publicando nova versão no teste fechado do Google Play (sem atualização pelo ar: o app não usa conta Expo)
 - [ ] **Preparar a Fase 3 em paralelo:** abrir o CNPJ, criar a conta Asaas e testar Pix e cartão no ambiente de testes; criar a conta de faturamento do Google Cloud com alerta de orçamento (a Places API exige cartão mesmo dentro da franquia gratuita); se a Apple for em nome da empresa, pedir o número D-U-N-S
 - [ ] Na última semana, perguntar a cada dono: "Você pagaria R$ 29,90 / R$ 49,90 para continuar?"
 
@@ -233,7 +233,7 @@ Até o lançamento, o gasto obrigatório total é de cerca de US$ 124 (as duas l
 | CNPJ e contador | 3 | Depende da forma jurídica | Necessário para receber pagamentos com split |
 | Taxas do Asaas | 3 | Por transação, sem mensalidade | Pago pela barbearia no split, não pela plataforma |
 | Firebase Blaze e Workers Paid | 4 | Por uso + US$ 5/mês | Acima de 50 mil leituras/dia no Firestore ou 100 mil requisições/dia nos Workers |
-| Builds extras na nuvem | 4 (opcional) | US$ 19/mês | Ou compilar no próprio computador |
+| Builds extras na nuvem | — | R$ 0 | Não se aplica: o app é compilado no próprio computador |
 | WhatsApp oficial | 5 | Por mensagem | Custo embutido no plano Casa cheia |
 
 **Conta de equilíbrio:** com 30 barbearias numa média de R$ 45/mês (mistura dos planos), a receita é de R$ 1.350/mês — cobre com folga Apple + Firebase e Workers pagos. A margem cresce porque o custo por barbearia nova é quase zero.
@@ -243,7 +243,7 @@ Até o lançamento, o gasto obrigatório total é de cerca de US$ 124 (as duas l
 A primeira semana é toda gratuita e serve para destravar a Fase 0.
 
 - [ ] **Dom 18/out** — Confirmar o nome (INPI, Registro.br, lojas) e criar Gmail e Instagram do projeto
-- [ ] **Seg 19/out** — Criar contas GitHub, Expo, Firebase (Spark) e Cloudflare; listar 30 barbearias da região
+- [ ] **Seg 19/out** — Criar contas GitHub, Firebase (Spark) e Cloudflare; listar 30 barbearias da região
 - [ ] **Ter 20/out** — Montar o roteiro de entrevista (10 perguntas para donos, 8 para clientes)
 - [ ] **Qua 21/out** — Visitar as 5 primeiras barbearias: entrevista + convite para o piloto
 - [ ] **Qui 22/out** — Aplicar os ajustes nas 3 telas e desenhar as 6 restantes (perfil da barbearia, pagamento, agenda do barbeiro, painel do dono, perfil do cliente, entrar)
@@ -272,7 +272,7 @@ A primeira semana é toda gratuita e serve para destravar a Fase 0.
 - [Firestore: cotas gratuitas](https://cloud.google.com/firestore/quotas)
 - [Firebase: Cloud Storage exige plano Blaze desde 3/fev/2026](https://dev.to/androve2k/spark-vs-blaze-the-firebase-pricing-guide-i-wish-id-read-sooner-onb)
 - [Cloudflare Workers: limites do plano gratuito](https://developers.cloudflare.com/workers/platform/limits) · [Cloudflare R2: plano gratuito](https://filebase.com/blog/cloudflare-r2-pricing-costs-savings-and-alternatives-in-2026/)
-- [Expo: planos e builds gratuitos](https://expo.dev/pricing.md) · [EAS Observe gratuito](https://releasebot.io/updates/expo)
+- Expo/React Native: código aberto, compilado localmente (sem EAS)
 - [Google Maps Platform: franquias por SKU](https://mapsplatform.google.com/lp/maps-apis/) · [Places API (New) em 2026](https://openplacesapi.com/blog/google-places-api-pricing)
 - [Asaas: preços e taxas](https://www.asaas.com/precos-e-taxas)
 - [WhatsApp: cobrança de mensagens de serviço a partir de 1/out/2026](https://support.zenvia.com/kb/en/article/600343/preguntas-frecuentes-nuevas-reglas-de-cobro-de-whatsapp-business)

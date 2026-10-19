@@ -55,5 +55,5 @@ Antes de dizer que algo está pronto: testes, typecheck, regras e export web pas
 ## Mapa rápido
 - `src/lib/agenda.ts` horários, expediente, folgas · `src/lib/busca.ts` filtros · `src/lib/painel.ts` números do dono
 - `src/services/agendamentos.ts` reservar/cancelar/agenda/folgas/eventos · `barbearias.ts` casa, equipe, cardápio
-- `src/services/usuarios.ts` perfil e exclusão de conta · `push(.native).ts` token do FCM (sem Expo Push) · `upload.ts` fotos → Worker
+- `src/services/usuarios.ts` perfil e exclusão de conta · `push(.native).ts` token do FCM (sem Expo Push; web via `public/firebase-messaging-sw.js`) · `upload.ts` fotos → Worker · `erros.ts` falhas → coleção `erros`
 - `worker/src/index.ts` upload R2 + cron de lembretes · `docs/modelo-de-dados.md` coleções e trava

@@ -2,7 +2,7 @@
 // o agendamento e um documento de ocupação por bloco de horário.
 // Se qualquer bloco já existir, a transação aborta e nada é gravado.
 import {
-  addDoc, collection, deleteDoc, doc, getDocs, limit, onSnapshot, orderBy, query, runTransaction, setDoc,
+  addDoc, collection, deleteDoc, doc, getDocs, limit, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc,
   where, updateDoc, type Firestore, type Unsubscribe,
 } from 'firebase/firestore';
 import {
@@ -64,6 +64,10 @@ export async function reservar(db: Firestore, r: NovaReserva): Promise<string> {
     };
     tx.set(ref, ag);
     refs.forEach(o => tx.set(o, { barbeariaId: r.barbeariaId, barbeiroId: r.barbeiroId, agendamentoId: ref.id, inicio: r.inicio }));
+    // Limite de uso: a regra exige esta marca (horário do servidor) e 20 s desde a reserva anterior da conta.
+    if (r.origem === 'app' && r.cliente.uid) {
+      tx.set(doc(db, 'users', r.cliente.uid), { uid: r.cliente.uid, ultimaReserva: serverTimestamp() }, { merge: true });
+    }
   });
   return ref.id;
 }
