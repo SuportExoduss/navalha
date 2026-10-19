@@ -5,7 +5,7 @@ import { router } from 'expo-router';
 import type { BarbeariaPerto } from '../services/barbearias';
 import { formatarPreco } from '../lib/agenda';
 import { abertaAgora } from '../lib/busca';
-import { colors, radius, space, type } from '../theme';
+import { colors, radius, space, type, sobreFoto } from '../theme';
 
 export const distancia = (km: number) => (km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1).replace('.', ',')} km`);
 const nota = (n: number) => n.toFixed(1).replace('.', ',');
@@ -17,9 +17,9 @@ export function CardBarbearia({ b }: { b: BarbeariaPerto }) {
     <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/barbearia/[id]', params: { id: b.id } })} style={{ borderRadius: radius.card, overflow: 'hidden', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
       <View style={{ height: 150, backgroundColor: colors.surfaceRaised }}>
         {capa ? <Image source={{ uri: capa }} style={{ width: '100%', height: '100%' }} /> : null}
-        <View style={{ position: 'absolute', top: space(3), left: space(3), flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(14,15,17,0.8)', borderRadius: radius.chip, paddingHorizontal: space(3), paddingVertical: space(1) }}>
-          <Ionicons name="location-outline" size={13} color={colors.text} />
-          <Text style={[type.caption, { color: colors.text }]}>{distancia(b.distanciaKm)}</Text>
+        <View style={{ position: 'absolute', top: space(3), left: space(3), flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: sobreFoto.veu, borderRadius: radius.chip, paddingHorizontal: space(3), paddingVertical: space(1) }}>
+          <Ionicons name="location-outline" size={13} color={sobreFoto.texto} />
+          <Text style={[type.caption, { color: sobreFoto.texto }]}>{distancia(b.distanciaKm)}</Text>
         </View>
       </View>
       <View style={{ padding: space(4), gap: space(1) }}>

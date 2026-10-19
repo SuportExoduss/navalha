@@ -136,29 +136,30 @@ export function EmBreve({ titulo, texto, fase }: { titulo: string; texto: string
   );
 }
 
-const s = StyleSheet.create({
-  tela: { flex: 1, backgroundColor: colors.bg },
+// Getters em vez de StyleSheet.create: as cores saem da paleta ativa na hora de desenhar (tema claro/escuro).
+const s = {
+  get tela() { return { flex: 1, backgroundColor: colors.bg }; },
   conteudo: { padding: space(5), gap: space(5), paddingBottom: space(10) },
-  rodape: { paddingHorizontal: space(5), paddingVertical: space(3), gap: space(2), borderTopWidth: 1, borderColor: colors.border, backgroundColor: colors.bg },
+  get rodape() { return { paddingHorizontal: space(5), paddingVertical: space(3), gap: space(2), borderTopWidth: 1, borderColor: colors.border, backgroundColor: colors.bg }; },
   botao: {
     minHeight: minTouch + 8, borderRadius: radius.card, paddingHorizontal: space(5),
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space(2),
+  } as ViewStyle,
+  get botaoPrimario() { return { backgroundColor: colors.accent }; },
+  get botaoSecundario() { return { backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.border }; },
+  botaoTexto: { fontSize: 16, fontWeight: '600' } as const,
+  // Toque mínimo de 44 px também nos chips (dias, filtros e horários são os toques mais frequentes).
+  get chip(): ViewStyle {
+    return { minHeight: minTouch, paddingHorizontal: space(4), borderRadius: radius.chip,
+      backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' };
   },
-  botaoPrimario: { backgroundColor: colors.accent },
-  botaoSecundario: { backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.border },
-  botaoTexto: { fontSize: 16, fontWeight: '600' },
-  chip: {
-    minHeight: minTouch - 4, paddingHorizontal: space(4), borderRadius: radius.chip,
-    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
-    alignItems: 'center', justifyContent: 'center',
+  get chipTexto() { return { color: colors.text, fontSize: 14 }; },
+  get campo() {
+    return { minHeight: 48, color: colors.text, fontSize: 15, backgroundColor: colors.surfaceRaised,
+      borderRadius: radius.input, paddingHorizontal: space(4), borderWidth: 1, borderColor: colors.border };
   },
-  chipTexto: { color: colors.text, fontSize: 14 },
-  campo: {
-    minHeight: 48, color: colors.text, fontSize: 15, backgroundColor: colors.surfaceRaised,
-    borderRadius: radius.input, paddingHorizontal: space(4), borderWidth: 1, borderColor: colors.border,
-  },
-  cartao: { backgroundColor: colors.surface, borderRadius: radius.card, padding: space(4), borderWidth: 1, borderColor: colors.border },
-});
+  get cartao() { return { backgroundColor: colors.surface, borderRadius: radius.card, padding: space(4), borderWidth: 1, borderColor: colors.border }; },
+};
 
 /** Sem posição do GPS dentro do prazo: explica e deixa tentar de novo (em vez de girar para sempre). */
 export function SemSinal({ onTentar }: { onTentar: () => void }) {

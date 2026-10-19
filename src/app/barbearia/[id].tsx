@@ -9,7 +9,7 @@ import { db } from '../../services/firebase';
 import { registrarEvento } from '../../services/agendamentos';
 import { useAuth } from '../../auth/AuthProvider';
 import { formatarPreco } from '../../lib/agenda';
-import { colors, radius, space, type } from '../../theme';
+import { colors, radius, space, type, sobreFoto } from '../../theme';
 import type { Barbearia, Barbeiro, Servico } from '../../types/models';
 
 const ABAS = ['Cortes', 'Barbeiros', 'Fotos'] as const;
@@ -50,8 +50,8 @@ export default function PaginaBarbearia() {
       <View style={{ height: 200, marginHorizontal: -space(5), marginTop: -space(5), backgroundColor: colors.surfaceRaised }}>
         {b.capaUrl ? <Image source={{ uri: b.capaUrl }} style={{ width: '100%', height: '100%' }} /> : null}
         <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Voltar" hitSlop={8}
-          style={{ position: 'absolute', top: space(4), left: space(4), width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(14,15,17,0.8)', alignItems: 'center', justifyContent: 'center' }}>
-          <Ionicons name="arrow-back" size={20} color={colors.text} />
+          style={{ position: 'absolute', top: space(4), left: space(4), width: 40, height: 40, borderRadius: 20, backgroundColor: sobreFoto.veu, alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name="arrow-back" size={20} color={sobreFoto.texto} />
         </Pressable>
       </View>
 

@@ -12,7 +12,7 @@ import {
 import { escolherEEnviar } from '../services/fotos';
 import { db } from '../services/firebase';
 import { formatarPreco } from '../lib/agenda';
-import { colors, radius, space, type } from '../theme';
+import { colors, radius, space, type, sobreFoto } from '../theme';
 import type { Servico } from '../types/models';
 
 const CATEGORIAS: { id: Servico['categoria']; nome: string }[] = [
@@ -137,8 +137,8 @@ function Editor({ servico, aoSair }: { servico: Servico; aoSair: () => void }) {
             <View key={f} style={{ width: 96, aspectRatio: 4 / 5, borderRadius: radius.input, overflow: 'hidden' }}>
               <Image source={{ uri: f }} style={{ width: '100%', height: '100%' }} />
               <Pressable accessibilityLabel="Remover foto" hitSlop={8} onPress={() => setS(x => ({ ...x, fotos: x.fotos.filter(y => y !== f) }))}
-                style={{ position: 'absolute', top: 4, right: 4, backgroundColor: 'rgba(14,15,17,0.8)', borderRadius: 12, padding: 2 }}>
-                <Ionicons name="close" size={16} color={colors.text} />
+                style={{ position: 'absolute', top: 4, right: 4, backgroundColor: sobreFoto.veu, borderRadius: 12, padding: 2 }}>
+                <Ionicons name="close" size={16} color={sobreFoto.texto} />
               </Pressable>
             </View>
           ))}

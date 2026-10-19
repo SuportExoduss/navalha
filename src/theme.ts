@@ -1,27 +1,68 @@
-// Identidade visual do Navalha: grafite quase preto + um único âmbar latão.
-// O âmbar é reservado para ações e seleções; o resto fica em tons neutros.
-export const colors = {
-  bg: '#0E0F11',
-  surface: '#17181B',
-  surfaceRaised: '#1F2024',
-  border: '#2A2B30',
-  text: '#F4F2EE',
-  textMuted: '#A3A19C', // contraste ≥ 4,5:1 sobre surface
-  accent: '#C8A24A',
-  accentText: '#141210', // texto sobre o âmbar
-  danger: '#E5675B',
-  success: '#5FBF7F',
-} as const;
+// Identidade visual do Navalha: grafite + um único âmbar latão, em dois temas.
+// Escuro: grafite quase preto, como a parede de uma barbearia à noite. Claro: papel quente com tinta grafite.
+// O âmbar é reservado para ações e seleções nos dois; no claro ele escurece para manter o contraste.
+
+export type NomePaleta = 'escuro' | 'claro';
+export type PreferenciaTema = 'sistema' | NomePaleta;
+
+export interface Paleta {
+  bg: string; surface: string; surfaceRaised: string; border: string;
+  text: string; textMuted: string; accent: string; accentText: string;
+  danger: string; success: string;
+}
+
+export const paletas: Record<NomePaleta, Paleta> = {
+  escuro: {
+    bg: '#0E0F11',
+    surface: '#17181B',
+    surfaceRaised: '#1F2024',
+    border: '#2A2B30',
+    text: '#F4F2EE',
+    textMuted: '#A3A19C',
+    accent: '#C8A24A',
+    accentText: '#141210', // texto sobre o âmbar
+    danger: '#E5675B',
+    success: '#5FBF7F',
+  },
+  claro: {
+    bg: '#F6F3EC',          // papel quente, não branco puro
+    surface: '#FFFDF8',
+    surfaceRaised: '#EFEBE2',
+    border: '#DED8CB',
+    text: '#17181B',        // a mesma tinta grafite do tema escuro
+    textMuted: '#5F5A50',
+    accent: '#8A6714',      // latão escurecido: contraste ≥ 4,5:1 sobre o papel
+    accentText: '#FFFDF8',
+    danger: '#B3372B',
+    success: '#2E7A4C',
+  },
+};
+
+/**
+ * Cores do tema ativo. O objeto é o mesmo o tempo todo e os valores são trocados por `aplicarPaleta`;
+ * as telas leem `colors.x` ao desenhar e o app é redesenhado inteiro quando o tema muda (TemaProvider).
+ */
+export const colors: Paleta = { ...paletas.escuro };
+export let paletaAtiva: NomePaleta = 'escuro';
+
+export function aplicarPaleta(nome: NomePaleta) {
+  Object.assign(colors, paletas[nome]);
+  paletaAtiva = nome;
+}
+
+// Sobre fotos o véu é sempre escuro e o texto sempre claro, nos dois temas (a foto não muda com o tema).
+export const sobreFoto = { veu: 'rgba(14,15,17,0.8)', texto: '#F4F2EE' } as const;
 
 export const radius = { card: 16, chip: 999, input: 12 } as const;
 
 export const space = (n: number) => n * 4;
 
+// Getters: a cor do texto acompanha o tema ativo no momento em que o estilo é usado.
 export const type = {
-  title: { fontSize: 28, fontWeight: '700' as const, color: colors.text, letterSpacing: -0.3 },
-  heading: { fontSize: 18, fontWeight: '600' as const, color: colors.text },
-  body: { fontSize: 15, fontWeight: '400' as const, color: colors.text },
-  caption: { fontSize: 13, fontWeight: '400' as const, color: colors.textMuted },
+  title: { fontSize: 28, fontWeight: '700' as const, letterSpacing: -0.3, get color() { return colors.text; } },
+  heading: { fontSize: 18, fontWeight: '600' as const, get color() { return colors.text; } },
+  body: { fontSize: 15, fontWeight: '400' as const, get color() { return colors.text; } },
+  caption: { fontSize: 13, fontWeight: '400' as const, get color() { return colors.textMuted; } },
   // Números tabulares em preços e horários para alinhar colunas.
   number: { fontVariant: ['tabular-nums' as const] },
 };

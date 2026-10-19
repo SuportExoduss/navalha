@@ -1,5 +1,5 @@
 // Perfil compartilhado por cliente e barbearia: foto, nome, apelido, telefone,
-// modo ativo, trocar conta Google e excluir a conta.
+// modo ativo, aparência (tema), trocar conta Google e excluir a conta.
 import { useEffect, useState } from 'react';
 import { Image, Pressable, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
@@ -10,7 +10,8 @@ import { auth, db } from '../services/firebase';
 import { atualizarPerfil, escolherPapel, excluirConta } from '../services/usuarios';
 import { reautenticarGoogle, sairDoGoogle } from '../services/googleSignIn';
 import { escolherEEnviar } from '../services/fotos';
-import { colors, radius, space, type } from '../theme';
+import { colors, radius, space, type, type PreferenciaTema } from '../theme';
+import { useTema } from './TemaProvider';
 import type { Role } from '../types/models';
 
 const NOMES: Record<Role, string> = { cliente: 'Cliente', barbeiro: 'Barbeiro', dono: 'Dono' };
@@ -99,6 +100,8 @@ export function PerfilConta() {
         </View>
       </Cartao>
 
+      <SeletorTema />
+
       <Botao titulo="Trocar conta Google" variante="secundario" onPress={sair} />
       <ExcluirConta />
     </Tela>
@@ -147,6 +150,38 @@ function ExcluirConta() {
       <View style={{ flexDirection: 'row', gap: space(2) }}>
         <Botao titulo="Voltar" variante="secundario" style={{ flex: 1 }} onPress={() => setAberto(false)} />
         <Botao titulo="Excluir" style={{ flex: 1, backgroundColor: colors.danger }} carregando={excluindo} onPress={confirmar} />
+      </View>
+    </Cartao>
+  );
+}
+
+const OPCOES_TEMA: { valor: PreferenciaTema; rotulo: string; icone: keyof typeof Ionicons.glyphMap }[] = [
+  { valor: 'sistema', rotulo: 'Seguir o celular', icone: 'phone-portrait-outline' },
+  { valor: 'escuro', rotulo: 'Escuro', icone: 'moon-outline' },
+  { valor: 'claro', rotulo: 'Claro', icone: 'sunny-outline' },
+];
+
+/** Aparência: três botões lado a lado; a escolha fica salva no aparelho. */
+function SeletorTema() {
+  const { preferencia, escolher } = useTema();
+  return (
+    <Cartao style={{ gap: space(3) }}>
+      <Text style={type.heading}>Aparência</Text>
+      <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', gap: space(2) }}>
+        {OPCOES_TEMA.map(o => {
+          const ativo = preferencia === o.valor;
+          return (
+            <Pressable
+              key={o.valor} accessibilityRole="radio" accessibilityState={{ checked: ativo }} accessibilityLabel={`Tema: ${o.rotulo}`}
+              onPress={() => !ativo && escolher(o.valor)}
+              style={{ flex: 1, minHeight: 72, gap: space(1), alignItems: 'center', justifyContent: 'center', borderRadius: radius.card,
+                borderWidth: 1, borderColor: ativo ? colors.accent : colors.border, backgroundColor: ativo ? colors.surfaceRaised : colors.surface }}
+            >
+              <Ionicons name={o.icone} size={22} color={ativo ? colors.accent : colors.textMuted} />
+              <Text style={[type.caption, { textAlign: 'center' }, ativo && { color: colors.text, fontWeight: '600' }]}>{o.rotulo}</Text>
+            </Pressable>
+          );
+        })}
       </View>
     </Cartao>
   );

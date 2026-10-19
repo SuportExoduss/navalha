@@ -6,7 +6,7 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
     "backgroundColor": "#0E0F11",
     "ios": {
       "supportsTablet": false,
@@ -38,6 +38,7 @@
       "backgroundColor": "#0E0F11"
     },
     "plugins": [
+      "./plugins/local-properties",
       "expo-router",
       [
         "expo-location",

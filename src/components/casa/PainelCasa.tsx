@@ -10,7 +10,7 @@ import {
 import { escolherEEnviar } from '../../services/fotos';
 import { PainelDono } from './PainelDono';
 import { db } from '../../services/firebase';
-import { colors, radius, space, type } from '../../theme';
+import { colors, radius, space, type, sobreFoto } from '../../theme';
 import type { Barbearia, Barbeiro } from '../../types/models';
 
 export function PainelCasa({ b, equipe, ehDono, uid }: { b: Barbearia; equipe: Barbeiro[]; ehDono: boolean; uid: string }) {
@@ -61,9 +61,9 @@ export function PainelCasa({ b, equipe, ehDono, uid }: { b: Barbearia; equipe: B
         style={{ height: 170, borderRadius: radius.card, overflow: 'hidden', backgroundColor: colors.surfaceRaised, alignItems: 'center', justifyContent: 'center' }}>
         {b.capaUrl ? <Image source={{ uri: b.capaUrl }} style={{ position: 'absolute', width: '100%', height: '100%' }} /> : null}
         {ehDono ? (
-          <View style={{ flexDirection: 'row', gap: space(2), alignItems: 'center', backgroundColor: 'rgba(14,15,17,0.75)', paddingHorizontal: space(3), paddingVertical: space(2), borderRadius: radius.chip }}>
-            <Ionicons name="camera-outline" size={16} color={colors.text} />
-            <Text style={type.caption}>{enviandoCapa ? 'Enviando…' : b.capaUrl ? 'Trocar capa' : 'Adicionar foto de capa'}</Text>
+          <View style={{ flexDirection: 'row', gap: space(2), alignItems: 'center', backgroundColor: sobreFoto.veu, paddingHorizontal: space(3), paddingVertical: space(2), borderRadius: radius.chip }}>
+            <Ionicons name="camera-outline" size={16} color={sobreFoto.texto} />
+            <Text style={[type.caption, { color: sobreFoto.texto }]}>{enviandoCapa ? 'Enviando…' : b.capaUrl ? 'Trocar capa' : 'Adicionar foto de capa'}</Text>
           </View>
         ) : null}
       </Pressable>

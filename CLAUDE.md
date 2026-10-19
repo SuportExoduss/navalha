@@ -38,6 +38,9 @@ Antes de dizer que algo está pronto: testes, typecheck, regras e export web pas
 - Telas em `src/app/` (Expo Router). **Não use abas ocultas (`href: null`)**: na web elas redirecionam.
   Subtelas (cardápio, expediente, agendar) ficam na raiz de `src/app/` com botão voltar.
 - UI: componentes de `src/components/ui.tsx` e tema de `src/theme.ts` (grafite + âmbar; âmbar só para ação/seleção).
+- **Dois temas (escuro e claro)**, escolhidos no Perfil (seguir o celular / escuro / claro, `TemaProvider`). Nunca escreva cor fixa
+  (hex/rgba) em tela: leia `colors.x` na hora de desenhar (nada de `StyleSheet.create` ou constante de módulo com cor).
+  Sobre foto use `sobreFoto` (véu escuro + texto claro nos dois temas). Paleta nova passa por `src/lib/contraste.test.ts`.
 - Firestore não aceita `undefined`: omita o campo (`...(x ? { x } : {})`).
 
 ## Regras de negócio que não podem quebrar
