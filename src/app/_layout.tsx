@@ -4,6 +4,7 @@ import { Stack, type ErrorBoundaryProps } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from '../auth/AuthProvider';
 import { TemaProvider } from '../components/TemaProvider';
+import { AvisoApp } from '../components/AvisoApp';
 import { Botao, Titulo } from '../components/ui';
 import { capturarErrosGlobais, registrarErro } from '../services/erros';
 import { colors, space, type } from '../theme';
@@ -15,7 +16,10 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <TemaProvider>
         <AuthProvider>
-          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />
+          <View style={{ flex: 1, backgroundColor: colors.bg }}>
+            <AvisoApp />
+            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />
+          </View>
         </AuthProvider>
       </TemaProvider>
     </SafeAreaProvider>
