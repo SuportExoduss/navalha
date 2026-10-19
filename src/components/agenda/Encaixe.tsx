@@ -63,7 +63,13 @@ export function Encaixe({ barbearia, barbeiro, dia, aoSair }: { barbearia: Barbe
   }
 
   return (
-    <Tela>
+    <Tela rodape={<>
+      {erro ? <Aviso texto={erro} tom="erro" /> : null}
+      <Botao
+        titulo={inicio && servico ? `Encaixar às ${formatarHora(inicio)} · ${formatarPreco(servico.precoCentavos)}` : 'Escolha corte e horário'}
+        onPress={salvar} carregando={salvando} disabled={!inicio || !servico}
+      />
+    </>}>
       <Pressable onPress={aoSair} hitSlop={12} accessibilityRole="button" accessibilityLabel="Voltar">
         <Ionicons name="arrow-back" size={24} color={colors.text} />
       </Pressable>
@@ -89,12 +95,6 @@ export function Encaixe({ barbearia, barbeiro, dia, aoSair }: { barbearia: Barbe
             : <GradeHorarios horarios={horarios} valor={inicio} onChange={setInicio} />}
         </Secao>
       ) : null}
-
-      {erro ? <Aviso texto={erro} tom="erro" /> : null}
-      <Botao
-        titulo={inicio && servico ? `Encaixar às ${formatarHora(inicio)} · ${formatarPreco(servico.precoCentavos)}` : 'Escolha corte e horário'}
-        onPress={salvar} carregando={salvando} disabled={!inicio || !servico}
-      />
     </Tela>
   );
 }

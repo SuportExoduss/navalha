@@ -109,8 +109,19 @@ export default function Agendar() {
     );
   }
 
+  // Confirmar fica fixo no rodapé: com o dia cheio de horários ele sumia abaixo da grade (quebrava os 3 toques).
+  const rodape = (
+    <>
+      {erro ? <Aviso texto={erro} tom="erro" /> : null}
+      <Botao
+        titulo={escolhido ? `Confirmar · ${rotuloDia(dia, hoje)} às ${formatarHora(escolhido)}` : 'Escolha um horário'}
+        onPress={confirmar} carregando={salvando} disabled={!escolhido}
+      />
+    </>
+  );
+
   return (
-    <Tela>
+    <Tela rodape={rodape}>
       <Voltar />
       <Cartao style={{ flexDirection: 'row', gap: space(3), alignItems: 'center' }}>
         {servico.fotos[0]
@@ -133,11 +144,6 @@ export default function Agendar() {
           : <GradeHorarios horarios={horarios} valor={escolhido} onChange={setEscolhido} />}
       </Secao>
 
-      {erro ? <Aviso texto={erro} tom="erro" /> : null}
-      <Botao
-        titulo={escolhido ? `Confirmar · ${rotuloDia(dia, hoje)} às ${formatarHora(escolhido)}` : 'Escolha um horário'}
-        onPress={confirmar} carregando={salvando} disabled={!escolhido}
-      />
       <Aviso texto="Pagamento no balcão, direto com a barbearia." />
     </Tela>
   );

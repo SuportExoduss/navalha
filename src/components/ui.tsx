@@ -6,11 +6,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, minTouch, radius, space, type } from '../theme';
 
-export function Tela({ children, rolar = true }: { children: ReactNode; rolar?: boolean }) {
+/** `rodape` fica fixo embaixo, fora da rolagem: a ação principal não some abaixo de uma lista longa. */
+export function Tela({ children, rolar = true, rodape }: { children: ReactNode; rolar?: boolean; rodape?: ReactNode }) {
   return (
-    <SafeAreaView style={s.tela} edges={['top']}>
+    <SafeAreaView style={s.tela} edges={rodape ? ['top', 'bottom'] : ['top']}>
       {rolar ? <ScrollView contentContainerStyle={s.conteudo}>{children}</ScrollView>
         : <View style={[s.conteudo, { flex: 1 }]}>{children}</View>}
+      {rodape ? <View style={s.rodape}>{rodape}</View> : null}
     </SafeAreaView>
   );
 }
@@ -137,6 +139,7 @@ export function EmBreve({ titulo, texto, fase }: { titulo: string; texto: string
 const s = StyleSheet.create({
   tela: { flex: 1, backgroundColor: colors.bg },
   conteudo: { padding: space(5), gap: space(5), paddingBottom: space(10) },
+  rodape: { paddingHorizontal: space(5), paddingVertical: space(3), gap: space(2), borderTopWidth: 1, borderColor: colors.border, backgroundColor: colors.bg },
   botao: {
     minHeight: minTouch + 8, borderRadius: radius.card, paddingHorizontal: space(5),
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space(2),
