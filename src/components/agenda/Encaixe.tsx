@@ -1,7 +1,7 @@
 // Encaixe manual: cliente que chegou no balcão ou marcou por telefone.
 // Usa a mesma trava do app, então nunca encaixa por cima de outro cliente.
 import { useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { BackHandler, Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Aviso, Botao, Campo, Carregando, Cartao, Chip, Secao, Tela, Titulo } from '../ui';
 import { GradeHorarios } from './GradeHorarios';
@@ -13,6 +13,11 @@ import { colors, space, type } from '../../theme';
 import type { Barbearia, Barbeiro, ISODate, Millis, Servico } from '../../types/models';
 
 export function Encaixe({ barbearia, barbeiro, dia, aoSair }: { barbearia: Barbearia; barbeiro: Barbeiro; dia: ISODate; aoSair: () => void }) {
+  // O Encaixe é desenhado por cima da agenda (não é rota): sem isto o Voltar do Android fechava o app.
+  useEffect(() => {
+    const s = BackHandler.addEventListener('hardwareBackPress', () => { aoSair(); return true; });
+    return () => s.remove();
+  }, [aoSair]);
   const [servicos, setServicos] = useState<Servico[] | null>(null);
   const [servico, setServico] = useState<Servico | null>(null);
   const [nome, setNome] = useState('');

@@ -86,7 +86,10 @@ function ItemAgendamento({ a, uid, podeCancelar }: { a: Agendamento; uid: string
           {a.fotos.map(f => <Image key={f} source={{ uri: f }} accessibilityLabel="Foto do corte" style={{ width: 96, height: 120, borderRadius: 12 }} />)}
         </ScrollView>
       ) : null}
-      <Pressable onPress={() => router.push({ pathname: '/barbearia/[id]', params: { id: a.barbeariaId } })} hitSlop={8}>
+      {/* "Agendar de novo" vai direto ao mesmo corte, já na escolha de horário (um toque a menos). */}
+      <Pressable onPress={() => podeCancelar
+        ? router.push({ pathname: '/barbearia/[id]', params: { id: a.barbeariaId } })
+        : router.push({ pathname: '/agendar/[id]', params: { id: a.barbeariaId, servico: a.servicoId } })} hitSlop={8}>
         <Text style={[type.caption, { color: colors.accent }]}>{podeCancelar ? 'Ver barbearia' : 'Agendar de novo'}</Text>
       </Pressable>
       {podeCancelar && !confirmando ? <Botao titulo="Cancelar horário" variante="secundario" onPress={pedirCancelamento} /> : null}

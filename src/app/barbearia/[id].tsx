@@ -41,7 +41,9 @@ export default function PaginaBarbearia() {
 
   const rota = linksDeRota(b.geo.lat, b.geo.lng);
   const nota = b.resumo.notaRanking ?? b.resumo.notaApp;
-  const whats = b.telefone?.replace(/\D/g, '');
+  // Só dígitos e com o 55 do Brasil uma vez só (o dono pode ter digitado +55).
+  const digitos = b.telefone?.replace(/\D/g, '');
+  const whats = digitos ? (digitos.length >= 12 && digitos.startsWith('55') ? digitos : '55' + digitos) : undefined;
 
   return (
     <Tela>
@@ -70,7 +72,7 @@ export default function PaginaBarbearia() {
           icone={<Ionicons name="car-outline" size={16} color={colors.text} />} />
         {whats ? (
           <Botao titulo="" variante="secundario" accessibilityLabel="WhatsApp" style={{ width: 56, paddingHorizontal: 0 }}
-            onPress={() => Linking.openURL(`https://wa.me/55${whats}?text=${encodeURIComponent(`Olá! Vi a ${b.nome} no Navalha.`)}`)}
+            onPress={() => Linking.openURL(`https://wa.me/${whats}?text=${encodeURIComponent(`Olá! Vi a ${b.nome} no Navalha.`)}`)}
             icone={<Ionicons name="logo-whatsapp" size={20} color={colors.text} />} />
         ) : null}
       </View>
