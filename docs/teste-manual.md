@@ -1,10 +1,8 @@
 # Navalha — roteiro de teste manual
 
 Use o APK mais recente no Android. Marque cada item e anote o que der errado (tela, horário, o que esperava).
-Itens com ✅ já passaram no teste de 18/out/2026 no Redmi Note 13; vale repetir se quiser.
-
-**Atenção no estado atual:** o domingo da "The lord barber" está aberto até 23h só para teste, e existe uma
-reserva sua hoje às 21:30 (confirmada). Avise quando terminar para eu fechar o domingo de novo.
+Itens com ✅ já passaram no teste de 18–19/out/2026 no Redmi Note 13; vale repetir se quiser.
+O resultado completo da rodada pelo adb está no fim deste arquivo; o que falta é só o que exige você na frente do celular.
 
 ## 1. Entrada e conta
 - [ ] ✅ Abrir o app → "Continuar com Google" → escolher a conta → entra sem erro
@@ -74,3 +72,28 @@ reserva sua hoje às 21:30 (confirmada). Avise quando terminar para eu fechar o 
 ## Como anotar um problema
 Tela + o que fez + o que esperava + o que aconteceu + horário. Se for no Android, deixe o celular conectado
 (depuração por Wi-Fi) que eu leio os logs daquele horário.
+
+## Resultado da rodada no celular (19/out/2026, pelo adb, conta do dono)
+
+**Passou:** login persistente ao reabrir · perfil salvo · troca Cliente/Dono · "Conferir no mapa" · corte com foto da
+galeria · editar preço (reflete na página pública e na faixa de preço) · pausar corte (some para o cliente e do filtro) ·
+expediente (terça às 10:00 refletiu na grade) · encaixe de balcão e horários ocupados fora da grade · tirar e pôr na
+busca · salvar código do Google · busca por perto (24 m) · 10 filtros e buscas do Explorar · botões Maps/Waze/WhatsApp ·
+grade sem os horários ocupados e com o almoço · reservar · cancelar (blocos liberados) · "Agendar de novo" ·
+Concluído com foto → foto no histórico do cliente · Faltou · painel do dono (previsto, faturado, faltas, mais pedido) ·
+lembrete de 2 h (com o app aberto **e fechado**) · reserva cancelada sem lembrete.
+
+**Bugs achados e corrigidos nesta rodada:**
+1. Início preso em "Localizando…" quando o GPS não respondia → prazo de 12 s e "Tentar de novo".
+2. Permissão de localização pedida a cada abertura (no MIUI mandava o app para trás) → só pede se faltar.
+3. Voltar do Android no Encaixe fechava o app → volta para a agenda.
+4. "Confirmar" e "Encaixar" sumiam abaixo da grade em dias cheios (quebrava os 3 toques) → fixos no rodapé.
+5. Telefone com +55 gerava wa.me/5555… → prefixo uma vez só.
+6. "Agendar de novo" abria a página da barbearia → abre direto o mesmo corte.
+7. Cabeçalho "Ibiúna, Ibiúna" → sem repetir.
+8. Agenda e painel contavam o dia diferente (2 × 3 clientes) → mesma conta.
+9. "1 concluídos, 1 faltas" → singular certo.
+
+**Falta, só você consegue:** 1.2 pedido de notificação com conta nova · 1.6 sem internet · foto pela Câmera ·
+bloco 3 (equipe, precisa de 2ª conta) · 4.5 dois celulares no mesmo horário · bloco 7 (excluir conta, use conta de teste) ·
+bloco 8 (web no iPhone).
