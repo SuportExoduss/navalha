@@ -85,6 +85,7 @@ Firebase Cloud Messaging (o app guarda o token do FCM; o Worker manda pelo FCM H
 
 - `android/` é **gerada** (`npx expo prebuild --platform android`) e fica fora do git. Mudanças nativas vão em
   `app.json`/plugins; depois de mudar, rode o prebuild de novo (`--clean` recria do zero).
+- **Modo imersivo** (`plugins/modo-imersivo.js`): barra de status e de navegação ocultas, voltam num arrasto da borda e somem sozinhas; reaplicado quando a tela recupera o foco. Mesma lógica do `WindowHelper` do Cronos e do LystSync, injetada no `MainActivity.kt` a cada prebuild.
 - `google-services.json` (raiz) liga o app ao Firebase `navalha-1a8f5`; o prebuild copia para `android/app/`.
 - **Android Studio:** File › Open › pasta `android/`. Para o JS embutido, gere o release; para desenvolver com
   recarga ao vivo, rode `npx expo start` e o build debug.

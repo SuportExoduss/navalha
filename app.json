@@ -39,6 +39,7 @@
     },
     "plugins": [
       "./plugins/local-properties",
+      "./plugins/modo-imersivo",
       "expo-router",
       [
         "expo-location",
