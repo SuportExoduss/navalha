@@ -26,8 +26,13 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION", "CAMERA"],
-      "predictiveBackGestureEnabled": false
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "CAMERA"
+      ],
+      "predictiveBackGestureEnabled": false,
+      "allowBackup": false
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -54,13 +59,19 @@
           "photosPermission": "Usamos a galeria para escolher fotos de perfil e de cortes."
         }
       ],
-      ["expo-notifications", { "defaultChannel": "lembretes" }],
+      [
+        "expo-notifications",
+        {
+          "defaultChannel": "lembretes"
+        }
+      ],
       [
         "@react-native-google-signin/google-signin",
         {
           "iosUrlScheme": "com.googleusercontent.apps.SUBSTITUA_PELO_IOS_CLIENT_ID"
         }
-      ]
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true

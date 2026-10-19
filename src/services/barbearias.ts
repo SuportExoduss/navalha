@@ -125,7 +125,12 @@ export function gerarCodigo(rand: () => number = Math.random): string {
 
 /** Código curto (válido por 7 dias, uso único) para o barbeiro entrar na casa. */
 export async function criarConvite(db: Firestore, barbeariaId: string, donoUid: string): Promise<string> {
-  const codigo = gerarCodigo();
+  // Sorteio criptográfico (Math.random é previsível; SEC-014). 32 letras: byte % 32 não tem viés.
+  // Import dinâmico: o expo-crypto é nativo e não carrega nos testes de Node que importam este arquivo.
+  const { getRandomBytes } = await import('expo-crypto');
+  const bytes = getRandomBytes(6);
+  let i = 0;
+  const codigo = gerarCodigo(() => (bytes[i++] % ALFABETO.length) / ALFABETO.length);
   const c: Convite = { codigo, barbeariaId, criadoPor: donoUid, expiraEm: Date.now() + 7 * 86_400_000 };
   await setDoc(doc(db, 'convites', codigo), c);
   return codigo;

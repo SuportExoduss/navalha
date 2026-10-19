@@ -181,7 +181,10 @@ service cloud.firestore {
     }
     match /clubes/{id} {
       allow read: if true;
-      allow write: if logado() && ehDono(request.resource.data.barbeariaId);
+      // Dono só mexe no clube da própria casa: o update confere o documento atual e não deixa trocar de casa (SEC-005).
+      allow create: if logado() && ehDono(request.resource.data.barbeariaId);
+      allow update: if logado() && ehDono(resource.data.barbeariaId) && !mudou(['barbeariaId']);
+      allow delete: if logado() && ehDono(resource.data.barbeariaId);
     }
     match /assinaturasClube/{id} {
       allow read: if logado() && resource.data.clienteUid == eu();

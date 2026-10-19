@@ -127,7 +127,7 @@ export default function PaginaBarbearia() {
       ) : (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space(2) }}>
           {[...b.fotos, ...servicos.flatMap(s => s.fotos)].slice(0, 24).map(f => (
-            <Image key={f} source={{ uri: f }} style={{ width: '31.5%', aspectRatio: 4 / 5, borderRadius: radius.input }} />
+            <Image key={f} source={{ uri: f }} accessibilityLabel="Foto de corte da barbearia" style={{ width: '31.5%', aspectRatio: 4 / 5, borderRadius: radius.input }} />
           ))}
         </View>
       )}

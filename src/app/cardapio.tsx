@@ -135,7 +135,7 @@ function Editor({ servico, aoSair }: { servico: Servico; aoSair: () => void }) {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space(2) }}>
           {s.fotos.map(f => (
             <View key={f} style={{ width: 96, aspectRatio: 4 / 5, borderRadius: radius.input, overflow: 'hidden' }}>
-              <Image source={{ uri: f }} style={{ width: '100%', height: '100%' }} />
+              <Image source={{ uri: f }} accessibilityLabel="Foto do corte" style={{ width: '100%', height: '100%' }} />
               <Pressable accessibilityLabel="Remover foto" hitSlop={8} onPress={() => setS(x => ({ ...x, fotos: x.fotos.filter(y => y !== f) }))}
                 style={{ position: 'absolute', top: 4, right: 4, backgroundColor: sobreFoto.veu, borderRadius: 12, padding: 2 }}>
                 <Ionicons name="close" size={16} color={sobreFoto.texto} />

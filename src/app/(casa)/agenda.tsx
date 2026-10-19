@@ -170,7 +170,7 @@ function ItemAgenda({ a, barbeiro, uid }: { a: Agendamento; barbeiro?: string; u
       ) : null}
       {a.status === 'concluido' && a.fotos.length ? (
         <View style={{ flexDirection: 'row', gap: space(2) }}>
-          {a.fotos.map(f => <Image key={f} source={{ uri: f }} style={{ width: 56, height: 70, borderRadius: 8 }} />)}
+          {a.fotos.map(f => <Image key={f} source={{ uri: f }} accessibilityLabel="Foto do corte" style={{ width: 56, height: 70, borderRadius: 8 }} />)}
         </View>
       ) : null}
       {confirmarCancelamento ? (

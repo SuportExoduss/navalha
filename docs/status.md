@@ -64,7 +64,9 @@ Código no computador: `C:\Users\andre\AndroidStudioProjects\navalha` (no Androi
 - [x] SEC-003 corrigido: preço, duração e barbeiro da reserva conferidos com o cardápio
 - [x] SEC-004 corrigido: cliente só cancela reserva de pé e futura; reserva cancelada não volta a valer
 - [x] 3 testes novos em tests/regras.test.ts (falhavam antes, passam depois); regras publicadas em produção
-- [ ] SEC-002: chave de assinatura própria (dono) · SEC-005/006 e endurecimento: pendentes
+- [x] SEC-005 (clubes só da própria casa, + teste), SEC-007 (tipo da foto pelos bytes), SEC-010 (allowBackup desligado), SEC-014 (convite com sorteio criptográfico) — 19/out
+- [x] Varredura geral (19/out): expo-font que faltava instalado, SDK 58 alinhado (expo-doctor 20/20), teclado com modo imersivo, deps sem uso removidas, acessibilidade (avisos anunciados, botão desabilitado distinto, fotos descritas)
+- [ ] SEC-002: chave de assinatura própria (dono) · SEC-006 (limite de uso) e endurecimento restante: pendentes
 
 ## Fase 1 — o que falta para o portão da Fase 2
 O código do MVP está completo. O portão é "3 barbearias amigas usando por 1 semana sem erro grave e nenhum horário duplicado".

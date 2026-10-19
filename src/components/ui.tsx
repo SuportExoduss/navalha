@@ -1,18 +1,24 @@
 import type { ReactNode } from 'react';
 import {
-  ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View,
+  ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Switch, Text, TextInput, View,
   type PressableProps, type StyleProp, type TextInputProps, type ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, minTouch, radius, space, type } from '../theme';
 
-/** `rodape` fica fixo embaixo, fora da rolagem: a ação principal não some abaixo de uma lista longa. */
+/**
+ * `rodape` fica fixo embaixo, fora da rolagem: a ação principal não some abaixo de uma lista longa.
+ * Com as barras ocultas (modo imersivo) o Android não redimensiona a janela para o teclado; o
+ * KeyboardAvoidingView empurra o conteúdo para o campo em foco não ficar escondido.
+ */
 export function Tela({ children, rolar = true, rodape }: { children: ReactNode; rolar?: boolean; rodape?: ReactNode }) {
   return (
     <SafeAreaView style={s.tela} edges={rodape ? ['top', 'bottom'] : ['top']}>
-      {rolar ? <ScrollView contentContainerStyle={s.conteudo}>{children}</ScrollView>
-        : <View style={[s.conteudo, { flex: 1 }]}>{children}</View>}
-      {rodape ? <View style={s.rodape}>{rodape}</View> : null}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'web' ? undefined : 'padding'}>
+        {rolar ? <ScrollView contentContainerStyle={s.conteudo} keyboardShouldPersistTaps="handled">{children}</ScrollView>
+          : <View style={[s.conteudo, { flex: 1 }]}>{children}</View>}
+        {rodape ? <View style={s.rodape}>{rodape}</View> : null}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -29,11 +35,14 @@ export function Botao({ titulo, variante = 'primario', carregando, icone, style,
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={p.accessibilityLabel ?? titulo}
+      accessibilityState={{ disabled: !!(disabled || carregando), busy: !!carregando }}
       disabled={disabled || carregando}
       style={({ pressed }) => [
         s.botao,
         primario ? s.botaoPrimario : s.botaoSecundario,
-        (pressed || disabled) && { opacity: 0.75 },
+        // Desabilitado bem apagado e pressionado só levemente: dá para distinguir "não pode" de "apertei".
+        disabled ? { opacity: 0.4 } : pressed && { opacity: 0.75 },
         style as StyleProp<ViewStyle>,
       ]}
       {...p}
@@ -106,7 +115,15 @@ export function Secao({ titulo, acao, onAcao, children }: { titulo: string; acao
 
 export function Aviso({ texto, tom = 'neutro' }: { texto: string; tom?: 'neutro' | 'erro' | 'ok' }) {
   const cor = tom === 'erro' ? colors.danger : tom === 'ok' ? colors.success : colors.textMuted;
-  return <Text style={[type.caption, { color: cor }]}>{texto}</Text>;
+  // Erro e confirmação são anunciados pelo leitor de tela (ex.: "horário acabou de ser reservado").
+  const anunciar = tom !== 'neutro';
+  return (
+    <Text style={[type.caption, { color: cor }]}
+      accessibilityRole={tom === 'erro' ? 'alert' : undefined}
+      accessibilityLiveRegion={anunciar ? 'polite' : undefined}>
+      {texto}
+    </Text>
+  );
 }
 
 export function Carregando() {
@@ -123,16 +140,6 @@ export function Interruptor({ value, onValueChange, rotulo }: { value: boolean; 
   return (
     <Switch value={value} onValueChange={onValueChange} accessibilityLabel={rotulo}
       trackColor={{ true: colors.accent, false: colors.border }} thumbColor={colors.text} {...web} />
-  );
-}
-
-export function EmBreve({ titulo, texto, fase }: { titulo: string; texto: string; fase: string }) {
-  return (
-    <Cartao style={{ gap: space(2) }}>
-      <Text style={type.heading}>{titulo}</Text>
-      <Text style={type.caption}>{texto}</Text>
-      <Text style={[type.caption, { color: colors.accent }]}>{fase}</Text>
-    </Cartao>
   );
 }
 
