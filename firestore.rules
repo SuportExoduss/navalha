@@ -54,7 +54,8 @@ service cloud.firestore {
         || (ehBarbeiro(bid)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['resumo'])
           && request.resource.data.resumo.diff(resource.data.resumo).affectedKeys().hasOnly(['fotosDestaque', 'precoMin', 'precoMax', 'categorias'])));
-      allow delete: if false;
+      // Excluir a barbearia: só o dono (Configurações › Excluir barbearia).
+      allow delete: if ehDono(bid);
 
       match /barbeiros/{uid} {
         allow read: if true;

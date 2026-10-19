@@ -7,7 +7,7 @@ import { Redirect, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Aviso, Botao, Campo, Carregando, Cartao, Interruptor, Linha, Secao, Tela, Titulo } from '../components/ui';
 import { useMinhaBarbearia } from '../hooks/useMinhaBarbearia';
-import { atualizarBarbearia, listarServicos } from '../services/barbearias';
+import { atualizarBarbearia, excluirBarbearia, listarServicos } from '../services/barbearias';
 import { escolherEEnviar } from '../services/fotos';
 import { db } from '../services/firebase';
 import { colors, radius, space, type, sobreFoto } from '../theme';
@@ -29,6 +29,7 @@ export default function Configuracoes() {
           onPress={() => router.push({ pathname: '/expediente', params: { alvo: 'casa' } })} />
       </Secao>
       <PlaceIdGoogle b={b} />
+      <ExcluirBarbearia b={b} />
     </Tela>
   );
 }
@@ -138,6 +139,50 @@ function PlaceIdGoogle({ b }: { b: Barbearia }) {
         <Botao titulo="Salvar código" variante="secundario" onPress={salvar} />
       </Cartao>
     </Secao>
+  );
+}
+
+/** Último item, de propósito: apaga a casa. Pede o nome digitado para não acontecer por engano. */
+function ExcluirBarbearia({ b }: { b: Barbearia }) {
+  const [aberto, setAberto] = useState(false);
+  const [confirmacao, setConfirmacao] = useState('');
+  const [excluindo, setExcluindo] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const confere = confirmacao.trim().toLowerCase() === b.nome.trim().toLowerCase();
+
+  async function excluir() {
+    setErro(null);
+    setExcluindo(true);
+    try {
+      await excluirBarbearia(db, b.id, b.donoUid);
+      router.replace('/casa');
+    } catch {
+      setErro('Não foi possível excluir agora. Verifique a conexão e tente de novo.');
+      setExcluindo(false);
+    }
+  }
+
+  if (!aberto) {
+    return (
+      <Pressable onPress={() => setAberto(true)} hitSlop={8} accessibilityRole="button" style={{ paddingVertical: space(3) }}>
+        <Text style={[type.caption, { color: colors.danger, textAlign: 'center' }]}>Excluir barbearia</Text>
+      </Pressable>
+    );
+  }
+  return (
+    <Cartao style={{ gap: space(3), borderColor: colors.danger }}>
+      <Text style={type.heading}>Excluir barbearia</Text>
+      <Text style={type.caption}>
+        Os horários marcados daqui para frente são cancelados (o cliente vê "Barbearia encerrada"), e o cardápio, as folgas
+        e a equipe são apagados. Os cortes já feitos continuam no histórico dos clientes. Isso não pode ser desfeito.
+      </Text>
+      <Campo rotulo={`Para confirmar, digite: ${b.nome}`} value={confirmacao} onChangeText={setConfirmacao} autoCapitalize="none" />
+      {erro ? <Aviso texto={erro} tom="erro" /> : null}
+      <View style={{ flexDirection: 'row', gap: space(2) }}>
+        <Botao titulo="Voltar" variante="secundario" style={{ flex: 1 }} onPress={() => { setAberto(false); setConfirmacao(''); }} />
+        <Botao titulo="Excluir" style={{ flex: 1, backgroundColor: colors.danger }} disabled={!confere} carregando={excluindo} onPress={excluir} />
+      </View>
+    </Cartao>
   );
 }
 

@@ -30,7 +30,8 @@ const METODOS = `
 module.exports = config => withMainActivity(config, cfg => {
   let src = cfg.modResults.contents;
   if (src.includes('fun ocultarBarras()')) return cfg; // já aplicado (prebuild sem --clean)
-  for (const imp of IMPORTS) if (!src.includes(imp)) src = src.replace(/^(package .*\n)/m, `$1\n${imp}`);
+  // Cada import com a própria quebra de linha: o expo-splash-screen também insere imports aqui.
+  for (const imp of IMPORTS) if (!src.includes(imp)) src = src.replace(/^(package .*\n)/m, `$1${imp}\n`);
   // Logo depois do super.onCreate, e os métodos antes do fim da classe.
   src = src.replace(/(super\.onCreate\([^)]*\)\s*\n)/, '$1    ocultarBarras()\n');
   src = src.replace(/\}\s*$/, `${METODOS}}\n`);

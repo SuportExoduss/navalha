@@ -16,6 +16,7 @@ import {
   agendamentosDaSemana, cancelar, concluir, criarFolga, definirStatus, horariosLivres, reservar, type NovaReserva,
 } from '../src/services/agendamentos';
 import { NOME_REMOVIDO } from '../src/services/usuarios';
+import { MOTIVO_CASA_ENCERRADA, excluirBarbearia } from '../src/services/barbearias';
 import type { Barbearia, Barbeiro } from '../src/types/models';
 
 let env: RulesTestEnvironment;
@@ -250,6 +251,29 @@ test('configurações: nome, capa e foto de perfil da casa só o dono troca', as
     await assertFails(updateDoc(doc(dbDe('ana'), 'barbearias/b1'), campos));
     await assertSucceeds(updateDoc(doc(dbDe('dono'), 'barbearias/b1'), campos));
   }
+});
+
+test('excluir barbearia: só o dono; cancela o futuro, libera os horários e apaga a casa', async () => {
+  await env.withSecurityRulesDisabled(async ctx => {
+    await setDoc(doc(ctx.firestore(), 'users/dono'), { uid: 'dono', barbearias: ['b1'] });
+    await setDoc(doc(ctx.firestore(), 'barbearias/b1/barbeiros/dono'), { uid: 'dono', ativo: true });
+  });
+  await reservaDe('ana', 'a1');
+  await assertFails(deleteDoc(doc(dbDe('lucas'), 'barbearias/b1')));
+  await assertFails(deleteDoc(doc(dbDe('ana'), 'barbearias/b1')));
+
+  await excluirBarbearia(dbDe('dono'), 'b1', 'dono', 0);
+  await env.withSecurityRulesDisabled(async ctx => {
+    const db = ctx.firestore();
+    const a = (await getDoc(doc(db, 'agendamentos/a1'))).data()!;
+    assert.equal(a.status, 'cancelado');
+    assert.equal(a.cancelamento.motivo, MOTIVO_CASA_ENCERRADA);
+    assert.equal((await getDocs(query(collection(db, 'ocupacao'), where('agendamentoId', '==', 'a1')))).size, 0);
+    assert.equal((await getDoc(doc(db, 'barbearias/b1'))).exists(), false);
+    assert.equal((await getDocs(collection(db, 'barbearias/b1/servicos'))).size, 0);
+    assert.equal((await getDocs(collection(db, 'barbearias/b1/barbeiros'))).size, 0);
+    assert.deepEqual((await getDoc(doc(db, 'users/dono'))).data()!.barbearias, []);
+  });
 });
 
 // ---------- Sprint 4: cliente ----------

@@ -2,11 +2,12 @@
 // Busca por perto com geohash (sem API paga): consulta as faixas de geohash
 // que cobrem o raio e filtra pela distância real.
 import {
-  arrayUnion, collection, deleteDoc, doc, endAt, getDoc, getDocs, onSnapshot, orderBy, query,
+  arrayRemove, arrayUnion, collection, deleteDoc, doc, endAt, getDoc, getDocs, onSnapshot, orderBy, query,
   setDoc, startAt, updateDoc, where, writeBatch, type Firestore, type Unsubscribe,
 } from 'firebase/firestore';
 import { distanceBetween, geohashForLocation, geohashQueryBounds } from 'geofire-common';
-import type { Barbearia, Barbeiro, Convite, Expediente, Servico } from '../types/models';
+import { cancelar } from './agendamentos';
+import type { Agendamento, Barbearia, Barbeiro, Convite, Expediente, Servico } from '../types/models';
 
 export interface BarbeariaPerto extends Barbearia { distanciaKm: number }
 
@@ -237,4 +238,35 @@ export function precoParaCentavos(texto: string): number | null {
   const v = Number(limpo);
   if (!Number.isFinite(v) || v < 0 || v > 10_000) return null;
   return Math.round(v * 100);
+}
+
+export const MOTIVO_CASA_ENCERRADA = 'Barbearia encerrada';
+
+/**
+ * Exclui a barbearia (só o dono): cancela os horários futuros (o cliente vê o motivo e o horário é liberado),
+ * apaga cardápio, folgas, equipe e a casa, e tira a casa do perfil do dono.
+ * Os atendimentos passados ficam no histórico dos clientes (com o nome da casa gravado neles).
+ */
+export async function excluirBarbearia(db: Firestore, barbeariaId: string, donoUid: string, agora = Date.now()) {
+  // Sem índice novo: lê os agendamentos da casa e filtra os futuros aqui (exclusão é rara).
+  const daCasa = await getDocs(query(collection(db, 'agendamentos'), where('barbeariaId', '==', barbeariaId)));
+  for (const d of daCasa.docs) {
+    const a = d.data() as Agendamento;
+    if (a.inicio > agora && ['reservado', 'confirmado'].includes(a.status)) {
+      await cancelar(db, a, { por: 'casa', motivo: MOTIVO_CASA_ENCERRADA });
+    }
+  }
+  // Equipe por último: as regras de cardápio e folgas ainda olham quem é da casa.
+  for (const sub of ['servicos', 'bloqueios', 'barbeiros']) {
+    const docs = (await getDocs(collection(db, 'barbearias', barbeariaId, sub))).docs;
+    for (let i = 0; i < docs.length; i += 400) {
+      const lote = writeBatch(db);
+      docs.slice(i, i + 400).forEach(x => lote.delete(x.ref));
+      await lote.commit();
+    }
+  }
+  const fim = writeBatch(db);
+  fim.delete(doc(db, 'barbearias', barbeariaId));
+  fim.update(doc(db, 'users', donoUid), { barbearias: arrayRemove(barbeariaId) });
+  await fim.commit();
 }

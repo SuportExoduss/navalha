@@ -21,7 +21,7 @@
       "package": "br.com.navalha.app",
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "backgroundColor": "#0E0F11",
+        "backgroundColor": "#000000",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -71,7 +71,16 @@
           "iosUrlScheme": "com.googleusercontent.apps.SUBSTITUA_PELO_IOS_CLIENT_ID"
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#0E0F11"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
