@@ -163,6 +163,8 @@ export interface Agendamento {
   pagamentoId?: string;
   fotos: string[];
   fotosAprovadas?: boolean;
+  /** Quem cancelou e por quê: a barbearia vê o motivo do cliente e o cliente vê o da barbearia. */
+  cancelamento?: { por: 'cliente' | 'casa'; motivo: string; em: Millis };
   avaliado?: { cliente: boolean; barbeiro: boolean };
   criadoEm: Millis;
   atualizadoEm: Millis;

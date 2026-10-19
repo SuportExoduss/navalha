@@ -68,10 +68,17 @@ export async function reservar(db: Firestore, r: NovaReserva): Promise<string> {
   return ref.id;
 }
 
-/** Cancela e libera os blocos de horário na mesma transação. */
-export async function cancelar(db: Firestore, ag: Pick<Agendamento, 'id' | 'slots'>) {
+/** Cancela e libera os blocos de horário na mesma transação. O motivo fica registrado para o outro lado ver. */
+export async function cancelar(
+  db: Firestore, ag: Pick<Agendamento, 'id' | 'slots'>, motivo?: { por: 'cliente' | 'casa'; motivo: string },
+) {
+  const agora = Date.now();
+  const texto = motivo?.motivo.trim().slice(0, 200);
   await runTransaction(db, async tx => {
-    tx.update(doc(db, 'agendamentos', ag.id), { status: 'cancelado', atualizadoEm: Date.now() });
+    tx.update(doc(db, 'agendamentos', ag.id), {
+      status: 'cancelado', atualizadoEm: agora,
+      ...(motivo && texto ? { cancelamento: { por: motivo.por, motivo: texto, em: agora } } : {}),
+    });
     ag.slots.forEach(k => tx.delete(doc(db, 'ocupacao', k)));
   });
 }
@@ -80,26 +87,30 @@ export async function concluir(db: Firestore, id: string, fotos: string[]) {
   await updateDoc(doc(db, 'agendamentos', id), { status: 'concluido', fotos, atualizadoEm: Date.now() });
 }
 
+function consultaOcupacao(db: Firestore, barbeiroId: string, data: ISODate) {
+  return query(
+    collection(db, 'ocupacao'),
+    where('barbeiroId', '==', barbeiroId),
+    where('inicio', '>=', paraMillis(data, 0) - 4 * 3_600_000),
+    where('inicio', '<', paraMillis(data, 24 * 60)),
+  );
+}
+
+/** Cada documento de ocupação = um bloco de `passoMin` minutos; o horário vem do próprio ID. */
+function blocosDe(ids: string[], passoMin: number): Intervalo[] {
+  return ids.map(id => {
+    const [, dataBloco, hhmm] = id.split('_');
+    const inicio = paraMillis(dataBloco, Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(2)));
+    return { inicio, fim: inicio + passoMin * 60_000 };
+  });
+}
+
 /** Intervalos ocupados de um barbeiro num dia (escuta só o dia aberto na tela). */
 export async function ocupadosDoDia(
   db: Firestore, barbeiroId: string, data: ISODate, passoMin: number,
 ): Promise<Intervalo[]> {
-  const ini = paraMillis(data, 0);
-  const fim = paraMillis(data, 24 * 60);
-  const q = query(
-    collection(db, 'ocupacao'),
-    where('barbeiroId', '==', barbeiroId),
-    where('inicio', '>=', ini - 4 * 3_600_000),
-    where('inicio', '<', fim),
-  );
-  const snap = await getDocs(q);
-  // Cada documento de ocupação = um bloco de `passoMin` minutos.
-  return snap.docs.map(d => {
-    const [, dataBloco, hhmm] = d.id.split('_');
-    const m = Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(2));
-    const inicio = paraMillis(dataBloco, m);
-    return { inicio, fim: inicio + passoMin * 60_000 };
-  });
+  const snap = await getDocs(consultaOcupacao(db, barbeiroId, data));
+  return blocosDe(snap.docs.map(d => d.id), passoMin);
 }
 
 // ---------- Sprint 3: horários livres, agenda do dia e folgas ----------
@@ -135,6 +146,34 @@ export async function horariosLivres(
     agora: p.agora ?? Date.now(),
     antecedenciaMin: p.antecedenciaMin ?? p.barbearia.antecedenciaMin,
   });
+}
+
+/**
+ * Horários livres em tempo real: quando alguém reserva (ou cancela), a grade de quem está
+ * escolhendo muda na hora, sem esperar o "acabou de ser ocupado" no confirmar.
+ * Escuta só a ocupação do dia aberto; folgas mudam pouco e são lidas uma vez.
+ */
+export function ouvirHorariosLivres(
+  db: Firestore,
+  p: { barbearia: Barbearia; barbeiro: Barbeiro; duracaoMin: number; data: ISODate; agora?: () => Millis; antecedenciaMin?: number },
+  cb: (horarios: Millis[]) => void,
+  erro: (e: Error) => void,
+): Unsubscribe {
+  let parar: Unsubscribe | null = null;
+  let ativo = true;
+  bloqueiosDoDia(db, p.barbearia.id, p.barbeiro.uid, p.data).then(folgas => {
+    if (!ativo) return;
+    parar = onSnapshot(consultaOcupacao(db, p.barbeiro.uid, p.data), s => cb(gerarHorarios({
+      data: p.data,
+      expediente: expedienteEfetivo(p.barbearia.expediente, p.barbeiro.expediente),
+      duracaoMin: p.duracaoMin,
+      passoMin: p.barbearia.passoMin,
+      ocupados: [...blocosDe(s.docs.map(d => d.id), p.barbearia.passoMin), ...folgas],
+      agora: p.agora?.() ?? Date.now(),
+      antecedenciaMin: p.antecedenciaMin ?? p.barbearia.antecedenciaMin,
+    })), erro);
+  }).catch(erro);
+  return () => { ativo = false; parar?.(); };
 }
 
 /** Agenda da casa num dia, em tempo real (escuta só o dia aberto na tela). */

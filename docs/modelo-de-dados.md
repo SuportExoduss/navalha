@@ -12,6 +12,8 @@ Tipos completos em `src/types/models.ts`; permissões em `firestore.rules`.
 | `barbearias/{id}/servicos/{id}` | barbeiro (o próprio) ou dono | 1 | Cardápio: nome, preço em centavos, duração, até 6 fotos |
 | `barbearias/{id}/bloqueios/{id}` | barbeiro ou dono | 1 | Folgas, férias, pausas pontuais |
 | `agendamentos/{id}` | cliente (app) ou casa (balcão) | 1 | Status: reservado, confirmado, pago, concluído, faltou, cancelado |
+
+> `cancelamento: { por: 'cliente' | 'casa', motivo, em }` — gravado junto com o status `cancelado`; a regra só aceita o motivo assinado por quem cancela (até 200 caracteres). O outro lado vê o motivo na agenda ou no histórico.
 | `ocupacao/{barbeiro_data_HHMM}` | junto com o agendamento | 1 | **Trava contra horário duplo** (abaixo) |
 | `eventos/{id}` | app | 1 | Métricas do piloto: agendou, cancelou, faltou, tempo até agendar |
 | `pagamentos/{id}` | Worker (webhook Asaas) | 3 | Pix, cartão, split, assinatura |

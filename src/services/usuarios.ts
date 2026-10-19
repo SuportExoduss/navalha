@@ -55,7 +55,8 @@ export async function excluirConta(db: Firestore, user: User, agora = Date.now()
   const meus = (await getDocs(query(collection(db, 'agendamentos'), where('clienteUid', '==', user.uid))))
     .docs.map(d => d.data() as Agendamento);
   for (const a of meus) {
-    if (['reservado', 'confirmado', 'pago'].includes(a.status) && a.fim > agora) await cancelar(db, a);
+    // Só o que ainda não começou: a regra não deixa o cliente cancelar horário em andamento (SEC-004).
+    if (['reservado', 'confirmado'].includes(a.status) && a.inicio > agora) await cancelar(db, a, { por: 'cliente', motivo: 'Conta excluída' });
     if (a.clienteNome !== NOME_REMOVIDO) {
       await updateDoc(doc(db, 'agendamentos', a.id), { clienteNome: NOME_REMOVIDO, atualizadoEm: agora });
     }

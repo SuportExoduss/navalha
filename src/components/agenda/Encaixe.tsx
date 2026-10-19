@@ -7,7 +7,7 @@ import { Aviso, Botao, Campo, Carregando, Cartao, Chip, Secao, Tela, Titulo } fr
 import { GradeHorarios } from './GradeHorarios';
 import { db } from '../../services/firebase';
 import { listarServicos } from '../../services/barbearias';
-import { HorarioOcupadoError, horariosLivres, reservar } from '../../services/agendamentos';
+import { HorarioOcupadoError, ouvirHorariosLivres, reservar } from '../../services/agendamentos';
 import { formatarHora, formatarPreco, rotuloDia, dataLocal } from '../../lib/agenda';
 import { colors, space, type } from '../../theme';
 import type { Barbearia, Barbeiro, ISODate, Millis, Servico } from '../../types/models';
@@ -38,9 +38,10 @@ export function Encaixe({ barbearia, barbeiro, dia, aoSair }: { barbearia: Barbe
     setHorarios(null);
     setInicio(null);
     // No balcão vale encaixar para já: sem antecedência mínima, e o horário que começou há pouco ainda conta.
-    horariosLivres(db, { barbearia, barbeiro, duracaoMin: servico.duracaoMin, data: dia, agora: Date.now() - barbearia.passoMin * 60_000, antecedenciaMin: 0 })
-      .then(setHorarios)
-      .catch(() => { setHorarios([]); setErro('Não foi possível carregar os horários.'); });
+    // Em tempo real, como no app do cliente: se alguém reservar pelo app agora, some daqui também.
+    return ouvirHorariosLivres(db, { barbearia, barbeiro, duracaoMin: servico.duracaoMin, data: dia, agora: () => Date.now() - barbearia.passoMin * 60_000, antecedenciaMin: 0 },
+      h => { setHorarios(h); setInicio(i => (i && !h.includes(i) ? null : i)); },
+      () => { setHorarios([]); setErro('Não foi possível carregar os horários.'); });
   }, [servico?.id, dia, recarregar]);
 
   async function salvar() {

@@ -1,6 +1,6 @@
 // Reserva do cliente: escolhe o dia, vê só os horários em que o corte inteiro cabe e confirma.
-// A trava contra horário duplo está em reservar(): se outro cliente pegar o horário
-// no mesmo instante, a tela avisa e recarrega a grade.
+// A grade escuta a ocupação em tempo real; a trava contra horário duplo continua em reservar()
+// (se dois confirmarem no mesmo instante, só um passa e o outro vê o aviso).
 import { useEffect, useRef, useState } from 'react';
 import { Image, Pressable, Text, View } from 'react-native';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
@@ -11,7 +11,7 @@ import { GradeHorarios } from '../../components/agenda/GradeHorarios';
 import { useAuth } from '../../auth/AuthProvider';
 import { db } from '../../services/firebase';
 import { lerBarbearia, listarBarbeiros, listarServicos } from '../../services/barbearias';
-import { HorarioOcupadoError, horariosLivres, registrarEvento, reservar } from '../../services/agendamentos';
+import { HorarioOcupadoError, ouvirHorariosLivres, registrarEvento, reservar } from '../../services/agendamentos';
 import { dataLocal, formatarHora, formatarPreco, proximosDias, rotuloDia } from '../../lib/agenda';
 import { colors, radius, space, type } from '../../theme';
 import type { Barbearia, Barbeiro, ISODate, Millis, Servico } from '../../types/models';
@@ -50,10 +50,19 @@ export default function Agendar() {
     if (!b || !barbeiro || !servico) return;
     setHorarios(null);
     setEscolhido(null);
-    horariosLivres(db, { barbearia: b, barbeiro, duracaoMin: servico.duracaoMin, data: dia })
-      .then(setHorarios)
-      .catch(() => { setHorarios([]); setErro('Não foi possível carregar os horários. Verifique a conexão.'); });
+    // Em tempo real: se outra pessoa reservar enquanto esta tela está aberta, o horário some na hora.
+    return ouvirHorariosLivres(db, { barbearia: b, barbeiro, duracaoMin: servico.duracaoMin, data: dia },
+      setHorarios,
+      () => { setHorarios([]); setErro('Não foi possível carregar os horários. Verifique a conexão.'); });
   }, [b?.id, barbeiro?.uid, servico?.id, dia, recarregar]);
+
+  // O horário escolhido foi pego por outra pessoa antes do confirmar: desmarca e avisa.
+  useEffect(() => {
+    if (escolhido && horarios && !horarios.includes(escolhido)) {
+      setErro(`O horário das ${formatarHora(escolhido)} acabou de ser reservado por outra pessoa. Escolha outro.`);
+      setEscolhido(null);
+    }
+  }, [horarios]);
 
   if (!carregandoAuth && !user) return <Redirect href="/entrar" />;
   if (b === undefined || !perfil) return <Carregando />;
@@ -141,7 +150,7 @@ export default function Agendar() {
       <Secao titulo="Horário">
         {horarios === null ? <Carregando />
           : horarios.length === 0 ? <Cartao><Text style={type.caption}>Sem horários livres neste dia. Tente outro dia.</Text></Cartao>
-          : <GradeHorarios horarios={horarios} valor={escolhido} onChange={setEscolhido} />}
+          : <GradeHorarios horarios={horarios} valor={escolhido} onChange={h => { setErro(null); setEscolhido(h); }} />}
       </Secao>
 
       <Aviso texto="Pagamento no balcão, direto com a barbearia." />

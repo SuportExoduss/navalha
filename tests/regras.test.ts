@@ -319,3 +319,29 @@ test('SEC-004: cliente não apaga a própria falta; a casa não reativa reserva 
   await assertSucceeds(cancelar(dbDe('beto'), { id: id2, slots: ag.slots }));
   await assertFails(definirStatus(dbDe('lucas'), id2, 'confirmado'));
 });
+
+test('cancelamento com motivo: cada lado assina o seu, e o motivo só vale junto com o cancelar', async () => {
+  const id = await reservar(dbDe('ana'), novaReserva('ana', inicio));
+  const ag = (await getDoc(doc(dbDe('ana'), 'agendamentos', id))).data()!;
+  const ref = (uid: string) => doc(dbDe(uid), 'agendamentos', id);
+  // Motivo sem cancelar, motivo grande demais ou assinado como a casa: não.
+  await assertFails(updateDoc(ref('ana'), { cancelamento: { por: 'cliente', motivo: 'x', em: 1 }, atualizadoEm: 1 }));
+  await assertFails(cancelar(dbDe('ana'), { id, slots: ag.slots }, { por: 'casa', motivo: 'Fingindo ser a barbearia' }));
+  // O app corta em 200; aqui grava direto, como um atacante faria, para provar que a regra barra.
+  await assertFails(updateDoc(ref('ana'), { status: 'cancelado', atualizadoEm: 1, cancelamento: { por: 'cliente', motivo: 'x'.repeat(201), em: 1 } }));
+  // O certo passa e fica registrado.
+  await assertSucceeds(cancelar(dbDe('ana'), { id, slots: ag.slots }, { por: 'cliente', motivo: 'Imprevisto' }));
+  const c = (await getDoc(ref('lucas'))).data()!.cancelamento;
+  assert.equal(c.por, 'cliente');
+  assert.equal(c.motivo, 'Imprevisto');
+
+  // A casa cancela com o motivo dela; não consegue assinar como o cliente.
+  const id2 = await reservar(dbDe('beto'), novaReserva('beto', inicio + 3_600_000));
+  const ag2 = (await getDoc(doc(dbDe('beto'), 'agendamentos', id2))).data()!;
+  await assertFails(cancelar(dbDe('lucas'), { id: id2, slots: ag2.slots }, { por: 'cliente', motivo: 'Desisti' }));
+  await assertSucceeds(cancelar(dbDe('lucas'), { id: id2, slots: ag2.slots }, { por: 'casa', motivo: 'Barbeiro indisponível' }));
+  // Cancelar sem motivo continua valendo (versões antigas do app).
+  const id3 = await reservar(dbDe('ana'), novaReserva('ana', inicio + 7_200_000));
+  const ag3 = (await getDoc(doc(dbDe('ana'), 'agendamentos', id3))).data()!;
+  await assertSucceeds(cancelar(dbDe('ana'), { id: id3, slots: ag3.slots }));
+});

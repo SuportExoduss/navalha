@@ -101,6 +101,13 @@ service cloud.firestore {
       // Bloco é do barbeiro quando o prefixo da chave é literalmente o id dele. Nada de regex com
       // dado do usuário: barbeiroId ".*" casaria com a agenda de qualquer um (SEC-001).
       function blocoDoBarbeiro(chave, barbeiroId) { return chave.split('_')[0] == barbeiroId; }
+      // Motivo do cancelamento: só junto com o cancelar, assinado por quem cancela (ninguém se passa pelo outro lado).
+      function cancelamentoOk(por) {
+        let c = request.resource.data.get('cancelamento', null);
+        return !mudou(['cancelamento']) || (c != null && request.resource.data.status == 'cancelado'
+          && c.keys().hasOnly(['por', 'motivo', 'em']) && c.por == por
+          && c.motivo is string && c.motivo.size() >= 1 && c.motivo.size() <= 200 && c.em is int);
+      }
       allow read: if logado() && (ag().clienteUid == eu() || ehDaCasa(ag().barbeariaId));
 
       allow create: if logado()
@@ -130,13 +137,15 @@ service cloud.firestore {
         && (
           (ag().clienteUid == eu() && request.resource.data.status == 'cancelado'
              && ag().status in ['reservado', 'confirmado'] && ag().inicio > request.time.toMillis()
-             && request.resource.data.diff(ag()).affectedKeys().hasOnly(['status', 'atualizadoEm', 'fotosAprovadas']))
+             && request.resource.data.diff(ag()).affectedKeys().hasOnly(['status', 'atualizadoEm', 'fotosAprovadas', 'cancelamento'])
+             && cancelamentoOk('cliente'))
           || (ag().clienteUid == eu() && request.resource.data.diff(ag()).affectedKeys().hasOnly(['fotosAprovadas', 'atualizadoEm']))
           // Exclusão de conta (LGPD): o cliente apaga o próprio nome do histórico da barbearia.
           || (ag().clienteUid == eu() && request.resource.data.clienteNome == 'Cliente removido'
              && request.resource.data.diff(ag()).affectedKeys().hasOnly(['clienteNome', 'atualizadoEm']))
           || (ehDaCasa(ag().barbeariaId) && ag().status != 'cancelado'
-             && request.resource.data.status in ['confirmado', 'concluido', 'faltou', 'cancelado'])
+             && request.resource.data.status in ['confirmado', 'concluido', 'faltou', 'cancelado']
+             && cancelamentoOk('casa'))
         );
       allow delete: if false;
     }

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Aviso, Botao, Carregando, Cartao, Secao, Tela, Titulo } from '../../components/ui';
+import { MotivoCancelamento, textoCancelamento } from '../../components/agenda/MotivoCancelamento';
 import { EtiquetaStatus, ATIVOS } from '../../components/agenda/StatusAgendamento';
 import { useAuth } from '../../auth/AuthProvider';
 import { db } from '../../services/firebase';
@@ -51,8 +52,10 @@ export default function Agendamentos() {
 function ItemAgendamento({ a, uid, podeCancelar }: { a: Agendamento; uid: string; podeCancelar?: boolean }) {
   const [confirmando, setConfirmando] = useState<string | null>(null);
   const [cancelando, setCancelando] = useState(false);
+  const [motivo, setMotivo] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const hoje = dataLocal(Date.now());
+  const cancelamento = textoCancelamento(a, 'cliente');
 
   async function pedirCancelamento() {
     setErro(null);
@@ -66,7 +69,7 @@ function ItemAgendamento({ a, uid, podeCancelar }: { a: Agendamento; uid: string
   async function confirmarCancelamento() {
     setCancelando(true);
     try {
-      await cancelar(db, a);
+      await cancelar(db, a, { por: 'cliente', motivo });
       registrarEvento(db, { tipo: 'cancelou', uid, barbeariaId: a.barbeariaId, em: Date.now() });
     } catch { setErro('Não foi possível cancelar. Tente de novo.'); setCancelando(false); }
   }
@@ -81,6 +84,7 @@ function ItemAgendamento({ a, uid, podeCancelar }: { a: Agendamento; uid: string
         </View>
         <EtiquetaStatus status={a.status} />
       </View>
+      {cancelamento ? <Aviso texto={cancelamento} /> : null}
       {a.fotos.length ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space(2) }}>
           {a.fotos.map(f => <Image key={f} source={{ uri: f }} accessibilityLabel="Foto do corte" style={{ width: 96, height: 120, borderRadius: 12 }} />)}
@@ -96,9 +100,10 @@ function ItemAgendamento({ a, uid, podeCancelar }: { a: Agendamento; uid: string
       {confirmando ? (
         <View style={{ gap: space(2) }}>
           <Aviso texto={confirmando} />
+          <MotivoCancelamento por="cliente" onChange={setMotivo} />
           <View style={{ flexDirection: 'row', gap: space(2) }}>
-            <Botao titulo="Manter" variante="secundario" style={{ flex: 1 }} onPress={() => setConfirmando(null)} />
-            <Botao titulo="Cancelar" style={{ flex: 1 }} carregando={cancelando} onPress={confirmarCancelamento} />
+            <Botao titulo="Manter" variante="secundario" style={{ flex: 1 }} onPress={() => { setConfirmando(null); setMotivo(''); }} />
+            <Botao titulo="Cancelar" style={{ flex: 1 }} carregando={cancelando} disabled={!motivo} onPress={confirmarCancelamento} />
           </View>
         </View>
       ) : null}

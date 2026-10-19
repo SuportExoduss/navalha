@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Aviso, Botao, Carregando, Cartao, Chip, Tela, Titulo } from '../../components/ui';
 import { SeletorDia } from '../../components/agenda/SeletorDia';
 import { EtiquetaStatus, ATIVOS } from '../../components/agenda/StatusAgendamento';
+import { MotivoCancelamento, textoCancelamento } from '../../components/agenda/MotivoCancelamento';
 import { Encaixe } from '../../components/agenda/Encaixe';
 import { useAuth } from '../../auth/AuthProvider';
 import { useMinhaBarbearia } from '../../hooks/useMinhaBarbearia';
@@ -100,7 +101,9 @@ export default function AgendaBarbeiro() {
 function ItemAgenda({ a, barbeiro, uid }: { a: Agendamento; barbeiro?: string; uid: string }) {
   const [ocupado, setOcupado] = useState(false);
   const [confirmarCancelamento, setConfirmarCancelamento] = useState(false);
+  const [motivo, setMotivo] = useState('');
   const [concluindo, setConcluindo] = useState(false);
+  const cancelamento = textoCancelamento(a, 'casa');
   const [erro, setErro] = useState<string | null>(null);
   const ativo = ATIVOS.includes(a.status);
   const comecou = Date.now() >= a.inicio;
@@ -137,6 +140,7 @@ function ItemAgenda({ a, barbeiro, uid }: { a: Agendamento; barbeiro?: string; u
         </View>
         <EtiquetaStatus status={a.status} />
       </View>
+      {cancelamento ? <Aviso texto={cancelamento} /> : null}
       {ativo && !confirmarCancelamento && !concluindo ? (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space(2) }}>
           {a.status === 'reservado' && !comecou ? <Chip rotulo="Confirmar" onPress={() => agir(() => definirStatus(db, a.id, 'confirmado'))} /> : null}
@@ -171,11 +175,12 @@ function ItemAgenda({ a, barbeiro, uid }: { a: Agendamento; barbeiro?: string; u
       ) : null}
       {confirmarCancelamento ? (
         <View style={{ gap: space(2) }}>
-          <Aviso texto={a.clienteUid ? 'O cliente vê o cancelamento no app. Se puder, avise também pelo WhatsApp.' : 'O horário volta a ficar livre.'} />
+          <Aviso texto={a.clienteUid ? 'O cliente vê o cancelamento e o motivo no app. Se puder, avise também pelo WhatsApp.' : 'O horário volta a ficar livre.'} />
+          <MotivoCancelamento por="casa" onChange={setMotivo} />
           <View style={{ flexDirection: 'row', gap: space(2) }}>
-            <Botao titulo="Manter" variante="secundario" style={{ flex: 1 }} onPress={() => setConfirmarCancelamento(false)} />
-            <Botao titulo="Cancelar" style={{ flex: 1 }} carregando={ocupado} onPress={() => agir(async () => {
-              await cancelar(db, a);
+            <Botao titulo="Manter" variante="secundario" style={{ flex: 1 }} onPress={() => { setConfirmarCancelamento(false); setMotivo(''); }} />
+            <Botao titulo="Cancelar" style={{ flex: 1 }} carregando={ocupado} disabled={!motivo} onPress={() => agir(async () => {
+              await cancelar(db, a, { por: 'casa', motivo });
               registrarEvento(db, { tipo: 'cancelou', uid, barbeariaId: a.barbeariaId, em: Date.now() });
             })} />
           </View>
