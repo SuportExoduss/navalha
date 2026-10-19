@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { auth, db } from '../services/firebase';
-import { garantirPerfil, ouvirPerfil } from '../services/usuarios';
+import { criarPerfil, ouvirPerfil } from '../services/usuarios';
 import { registrarPush } from '../services/push';
 import type { UserProfile } from '../types/models';
 
@@ -22,15 +22,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       pararPerfil?.();
       if (!user) { setState({ carregando: false, user: null, perfil: null }); return; }
       setState(s => ({ ...s, carregando: true, user }));
-      try {
-        const p = await garantirPerfil(db, user);
-        // Lembretes: registra (ou atualiza) o token de push a cada login; nunca bloqueia a entrada.
-        registrarPush(user.uid, p.pushToken).catch(e => console.warn('Push indisponível', e));
-        pararPerfil = ouvirPerfil(db, user.uid, perfil => setState({ carregando: false, user, perfil }));
-      } catch (e) {
+      // Uma leitura por abertura: a própria escuta traz o perfil (antes havia um getDoc antes dela).
+      let primeira = true;
+      let pushFeito = false;
+      pararPerfil = ouvirPerfil(db, user.uid, perfil => {
+        const eraPrimeira = primeira;
+        primeira = false;
+        // Sem documento logo na 1ª resposta = primeiro login: cria (a escuta recebe o novo em seguida).
+        // Sumiu depois = conta sendo excluída: não recria.
+        if (!perfil && !eraPrimeira) { setState({ carregando: false, user, perfil: null }); return; }
+        if (!perfil) {
+          criarPerfil(db, user).catch(e => { console.warn('Falha ao criar o perfil', e); setState({ carregando: false, user, perfil: null }); });
+          return;
+        }
+        if (!pushFeito) {
+          pushFeito = true;
+          // Lembretes: registra (ou atualiza) o token de push a cada login; nunca bloqueia a entrada.
+          registrarPush(user.uid, perfil.pushToken).catch(e => console.warn('Push indisponível', e));
+        }
+        setState({ carregando: false, user, perfil });
+      }, e => {
+        // Sem isto a tela de carregamento girava para sempre quando o servidor recusava ou caía.
         console.warn('Falha ao carregar o perfil', e);
         setState({ carregando: false, user, perfil: null });
-      }
+      });
     });
     return () => { pararAuth(); pararPerfil?.(); };
   }, []);

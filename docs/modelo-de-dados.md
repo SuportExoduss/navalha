@@ -38,7 +38,12 @@ O agendamento guarda `barbeariaNome` e `barbeiroNome` para a lista do cliente n�
 
 - A lista "Perto de você" lê só `barbearias` com o campo `resumo` desnormalizado: 1 leitura por card.
 - A agenda escuta só o dia aberto na tela (`ocupacao` filtrada por barbeiro e dia).
-- Cache offline do Firestore ligado no app.
+- Cache de 5 min das leituras públicas (`src/services/cache.ts`, padrão do controle de O.S. do MyHub): lista perto
+  (chave por ~1 km, compartilhada por Início e Explorar), página da casa + agendar (`dadosDaCasa`) e painel do dono.
+  Gravação do próprio aparelho limpa a chave; "Tentar de novo" ignora o cache. Tempo real só onde precisa ser exato:
+  horários livres, agenda do dia, perfil.
+- Perfil: 1 leitura por abertura (a escuta já traz o documento). Lista do cliente: 20 mais recentes.
+- Worker (lembretes): perfis em 1 `batchGet` e marcações em 1 `commit` por janela (limite de 50 chamadas por execução no plano grátis).
 
 ## Fotos
 

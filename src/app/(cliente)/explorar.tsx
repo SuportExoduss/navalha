@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Cartao, Chip, Interruptor, Secao, SemSinal, Tela, Titulo } from '../../components/ui';
+import { Cartao, Chip, Interruptor, Secao, SemSinal, Tela, Titulo, FalhaAoCarregar } from '../../components/ui';
 import { CardBarbearia } from '../../components/CardBarbearia';
 import { useBarbeariasPerto } from '../../hooks/useBarbeariasPerto';
 import { FILTROS_PADRAO, RAIOS, contarFiltros, filtrarBarbearias, type FaixaPreco, type Filtros } from '../../lib/busca';
@@ -17,7 +17,7 @@ const CATEGORIAS: { id: Servico['categoria']; rotulo: string }[] = [
 ];
 
 export default function Explorar() {
-  const { negada, semSinal, tentarDeNovo, lista, erro } = useBarbeariasPerto();
+  const { negada, semSinal, tentarDeNovo, lista, erro, recarregar } = useBarbeariasPerto();
   const [f, setF] = useState<Filtros>(FILTROS_PADRAO);
   const mudar = (p: Partial<Filtros>) => setF(x => ({ ...x, ...p }));
   const resultado = filtrarBarbearias(lista ?? [], f, Date.now());
@@ -59,7 +59,7 @@ export default function Explorar() {
 
       {negada ? <Cartao><Text style={type.caption}>Permita a localização para buscar barbearias por perto.</Text></Cartao>
         : semSinal ? <SemSinal onTentar={tentarDeNovo} />
-        : erro ? <Cartao><Text style={[type.caption, { color: colors.danger }]}>{erro}</Text></Cartao>
+        : erro ? <FalhaAoCarregar texto={erro} onTentar={recarregar} />
         : lista === null ? <ActivityIndicator color={colors.accent} />
         : resultado.length === 0 ? <Cartao><Text style={type.caption}>Nenhuma barbearia com esses filtros. Tente aumentar a distância.</Text></Cartao>
         : resultado.map(b => <CardBarbearia key={b.id} b={b} />)}

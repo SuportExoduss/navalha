@@ -108,13 +108,12 @@ export async function enviarLembretes(env: Env, agora = Date.now()) {
     });
     const mensagens: { token: string; title: string; body: string; agendamentoId: string }[] = [];
     const marcar: string[] = [];
-    for (const { id, dados } of ags) {
-      const lembretes = (dados.lembretes ?? {}) as Record<string, number>;
-      if (lembretes[j.chave]) continue; // já avisado
-      const uid = dados.clienteUid as string | null;
-      if (!uid) continue; // encaixe de balcão
-      const user = await db.get(`users/${uid}`);
-      const push = user?.pushToken as string | undefined;
+    // Plano grátis: até 50 chamadas por execução. Perfis numa leitura só e marcações numa gravação só;
+    // sobram as chamadas do FCM (uma por mensagem). ponytail: ~45 lembretes/hora; acima disso, Workers pago ou fila.
+    const pendentes = ags.filter(({ dados }) => !((dados.lembretes ?? {}) as Record<string, number>)[j.chave] && dados.clienteUid);
+    const perfis = await db.varios([...new Set(pendentes.map(({ dados }) => `users/${dados.clienteUid as string}`))]);
+    for (const { id, dados } of pendentes) {
+      const push = perfis.get(`users/${dados.clienteUid as string}`)?.pushToken as string | undefined;
       if (push) {
         const m = mensagemLembrete(dados as { servicoNome: string; inicio: number; barbeariaNome?: string }, j.quando);
         mensagens.push({ token: push, ...m, agendamentoId: id });
@@ -132,6 +131,6 @@ export async function enviarLembretes(env: Env, agora = Date.now()) {
       // Sem isto a falha some: o lembrete fica marcado como enviado e ninguém sabe por quê.
       if (!r.ok) console.error('FCM falhou', m.agendamentoId, r.status, await r.text());
     }
-    for (const id of marcar) await db.marcarNumero(`agendamentos/${id}`, `lembretes.${j.chave}`, agora);
+    await db.marcarVarios(marcar.map(id => `agendamentos/${id}`), `lembretes.${j.chave}`, agora);
   }
 }

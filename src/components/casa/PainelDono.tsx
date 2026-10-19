@@ -5,6 +5,7 @@ import { Text, View } from 'react-native';
 import { Cartao, Secao } from '../ui';
 import { db } from '../../services/firebase';
 import { agendamentosDaSemana } from '../../services/agendamentos';
+import { lembrar } from '../../services/cache';
 import { dataLocal, formatarPreco } from '../../lib/agenda';
 import { calcularPainel, type Painel } from '../../lib/painel';
 import { colors, space, type } from '../../theme';
@@ -15,7 +16,8 @@ export function PainelDono({ barbeariaId }: { barbeariaId: string }) {
 
   useEffect(() => {
     const agora = Date.now();
-    agendamentosDaSemana(db, barbeariaId, dataLocal(agora))
+    // Uma consulta da semana, guardada 5 min: voltar para a aba ou trocar o tema não relê.
+    lembrar(`painel:${barbeariaId}:${dataLocal(agora)}`, () => agendamentosDaSemana(db, barbeariaId, dataLocal(agora)))
       .then(l => setP(calcularPainel(l, agora)))
       .catch(() => setErro(true));
   }, [barbeariaId]);

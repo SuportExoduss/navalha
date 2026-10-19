@@ -1,16 +1,14 @@
 import {
-  collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, query, setDoc, updateDoc, where,
+  collection, deleteDoc, doc, getDocs, onSnapshot, query, setDoc, updateDoc, where,
   type Firestore, type Unsubscribe,
 } from 'firebase/firestore';
 import { deleteUser, type User } from 'firebase/auth';
 import { cancelar } from './agendamentos';
 import type { Agendamento, Role, UserProfile } from '../types/models';
 
-/** Cria o perfil no primeiro login, com nome e foto vindos do Google. */
-export async function garantirPerfil(db: Firestore, user: User): Promise<UserProfile> {
+/** Cria o perfil no primeiro login, com nome e foto vindos do Google. Só é chamado quando a escuta não acha o documento. */
+export async function criarPerfil(db: Firestore, user: User): Promise<UserProfile> {
   const ref = doc(db, 'users', user.uid);
-  const snap = await getDoc(ref);
-  if (snap.exists()) return snap.data() as UserProfile;
   const perfil: UserProfile = {
     uid: user.uid,
     nome: user.displayName ?? 'Sem nome',
@@ -28,8 +26,13 @@ export async function garantirPerfil(db: Firestore, user: User): Promise<UserPro
   return perfil;
 }
 
-export function ouvirPerfil(db: Firestore, uid: string, cb: (p: UserProfile | null) => void): Unsubscribe {
-  return onSnapshot(doc(db, 'users', uid), s => cb(s.exists() ? (s.data() as UserProfile) : null));
+export function ouvirPerfil(db: Firestore, uid: string, cb: (p: UserProfile | null) => void, erro?: (e: Error) => void): Unsubscribe {
+  // "Não existe" vindo do cache (sem internet) não é resposta do servidor: ignora, senão o primeiro
+  // login recriaria o perfil por cima do verdadeiro (perdendo papéis e barbearias).
+  return onSnapshot(doc(db, 'users', uid), s => {
+    if (!s.exists() && s.metadata.fromCache) return;
+    cb(s.exists() ? (s.data() as UserProfile) : null);
+  }, erro);
 }
 
 /** Ativa um papel (primeira escolha) ou troca o modo ativo. */

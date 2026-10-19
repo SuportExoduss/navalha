@@ -1,5 +1,5 @@
-// Agenda da barbearia: linha do tempo do dia, ações rápidas (confirmar, concluído, faltou,
-// cancelar) e encaixe manual de cliente de balcão. Escuta só o dia aberto na tela.
+// Agenda da barbearia: linha do tempo do dia, ações rápidas (antes do horário só cancelar; depois, concluído,
+// faltou ou cancelar) e encaixe manual de cliente de balcão. Escuta só o dia aberto na tela.
 import { useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
@@ -143,7 +143,6 @@ function ItemAgenda({ a, barbeiro, uid }: { a: Agendamento; barbeiro?: string; u
       {cancelamento ? <Aviso texto={cancelamento} /> : null}
       {ativo && !confirmarCancelamento && !concluindo ? (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space(2) }}>
-          {a.status === 'reservado' && !comecou ? <Chip rotulo="Confirmar" onPress={() => agir(() => definirStatus(db, a.id, 'confirmado'))} /> : null}
           {comecou ? <Chip rotulo="Concluído" ativo onPress={() => setConcluindo(true)} /> : null}
           {comecou ? <Chip rotulo="Faltou" onPress={() => agir(async () => {
             await definirStatus(db, a.id, 'faltou');

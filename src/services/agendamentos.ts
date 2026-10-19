@@ -193,11 +193,11 @@ export function ouvirAgendaDoDia(
   return onSnapshot(q, s => cb(s.docs.map(d => d.data() as Agendamento)), erro);
 }
 
-/** Agendamentos do cliente, mais recentes primeiro. */
+/** Agendamentos do cliente, mais recentes primeiro. 20 cobrem os próximos e o histórico recente (era 50 por abertura). */
 export function ouvirMeusAgendamentos(
   db: Firestore, uid: string, cb: (l: Agendamento[]) => void, erro?: (e: Error) => void,
 ): Unsubscribe {
-  const q = query(collection(db, 'agendamentos'), where('clienteUid', '==', uid), orderBy('inicio', 'desc'), limit(50));
+  const q = query(collection(db, 'agendamentos'), where('clienteUid', '==', uid), orderBy('inicio', 'desc'), limit(20));
   return onSnapshot(q, s => cb(s.docs.map(d => d.data() as Agendamento)), erro);
 }
 

@@ -7,11 +7,20 @@ import {
 } from 'firebase/firestore';
 import { distanceBetween, geohashForLocation, geohashQueryBounds } from 'geofire-common';
 import { cancelar } from './agendamentos';
+import { esquecer, lembrar } from './cache';
 import type { Agendamento, Barbearia, Barbeiro, Convite, Expediente, Servico } from '../types/models';
 
 export interface BarbeariaPerto extends Barbearia { distanciaKm: number }
 
-export async function buscarPerto(db: Firestore, lat: number, lng: number, raioKm = 10): Promise<BarbeariaPerto[]> {
+/**
+ * Lista "Perto de você". Cacheada por ~1 km (2 casas decimais): a posição rápida e a precisa,
+ * que chegam uma logo depois da outra, caem na mesma chave e custam uma consulta só.
+ */
+export function buscarPerto(db: Firestore, lat: number, lng: number, raioKm = 10, { forcar = false } = {}): Promise<BarbeariaPerto[]> {
+  return lembrar(`perto:${lat.toFixed(2)},${lng.toFixed(2)},${raioKm}`, () => buscarPertoServidor(db, lat, lng, raioKm), { forcar });
+}
+
+async function buscarPertoServidor(db: Firestore, lat: number, lng: number, raioKm: number): Promise<BarbeariaPerto[]> {
   const bounds = geohashQueryBounds([lat, lng], raioKm * 1000);
   const snaps = await Promise.all(bounds.map(([ini, fim]) => getDocs(query(
     collection(db, 'barbearias'),
@@ -63,6 +72,17 @@ export function ouvirServicosDoBarbeiro(
   const q = query(collection(db, 'barbearias', barbeariaId, 'servicos'), where('barbeiroId', '==', barbeiroId));
   return onSnapshot(q, s => cb(s.docs.map(d => d.data() as Servico).sort((a, b) => a.nome.localeCompare(b.nome))));
 }
+
+/** Página pública da casa e o agendar usam os mesmos dados: lidos uma vez e guardados 5 min. */
+export function dadosDaCasa(db: Firestore, id: string, { forcar = false } = {}) {
+  return lembrar(`casa:${id}`, async () => {
+    const [barbearia, equipe, servicos] = await Promise.all([lerBarbearia(db, id), listarBarbeiros(db, id), listarServicos(db, id)]);
+    return { barbearia, equipe, servicos };
+  }, { forcar });
+}
+
+/** Depois de qualquer gravação na casa: a próxima leitura (inclusive a lista perto) vem do servidor. */
+function casaMudou(id: string) { esquecer(`casa:${id}`); esquecer('perto:'); }
 
 export interface DadosBarbearia {
   nome: string; endereco: string; cidade: string; lat: number; lng: number; telefone?: string; instagram?: string;
@@ -116,6 +136,7 @@ export async function criarBarbearia(
 export async function atualizarBarbearia(db: Firestore, id: string, dados: Partial<Pick<Barbearia,
   'nome' | 'endereco' | 'cidade' | 'telefone' | 'instagram' | 'capaUrl' | 'logoUrl' | 'fotos' | 'publicada' | 'comodidades' | 'googlePlaceId'>>) {
   await updateDoc(doc(db, 'barbearias', id), dados);
+  casaMudou(id);
 }
 
 const ALFABETO = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sem 0/O e 1/I para não confundir
@@ -173,14 +194,17 @@ export function limparExpediente(e: Expediente): Expediente {
 
 export async function salvarExpedienteCasa(db: Firestore, barbeariaId: string, e: Expediente) {
   await updateDoc(doc(db, 'barbearias', barbeariaId), { expediente: limparExpediente(e) });
+  casaMudou(barbeariaId);
 }
 
 export async function salvarExpedienteBarbeiro(db: Firestore, barbeariaId: string, uid: string, e: Expediente) {
   await updateDoc(doc(db, 'barbearias', barbeariaId, 'barbeiros', uid), { expediente: limparExpediente(e) });
+  casaMudou(barbeariaId);
 }
 
 export async function definirBarbeiroAtivo(db: Firestore, barbeariaId: string, uid: string, ativo: boolean) {
   await updateDoc(doc(db, 'barbearias', barbeariaId, 'barbeiros', uid), { ativo });
+  casaMudou(barbeariaId);
 }
 
 // ---------- Cardápio ----------
@@ -191,10 +215,12 @@ export function novoIdServico(db: Firestore, barbeariaId: string): string {
 
 export async function salvarServico(db: Firestore, s: Servico) {
   await setDoc(doc(db, 'barbearias', s.barbeariaId, 'servicos', s.id), s);
+  casaMudou(s.barbeariaId);
 }
 
 export async function removerServico(db: Firestore, barbeariaId: string, id: string) {
   await deleteDoc(doc(db, 'barbearias', barbeariaId, 'servicos', id));
+  casaMudou(barbeariaId);
 }
 
 /**
@@ -221,6 +247,7 @@ export async function atualizarResumoCardapio(db: Firestore, barbeariaId: string
     'resumo.categorias': r.categorias,
     ...(r.precoMin !== undefined ? { 'resumo.precoMin': r.precoMin, 'resumo.precoMax': r.precoMax } : {}),
   });
+  casaMudou(barbeariaId);
 }
 
 /** Link de rota que abre Google Maps ou Waze — sem API paga. */
@@ -269,4 +296,5 @@ export async function excluirBarbearia(db: Firestore, barbeariaId: string, donoU
   fim.delete(doc(db, 'barbearias', barbeariaId));
   fim.update(doc(db, 'users', donoUid), { barbearias: arrayRemove(barbeariaId) });
   await fim.commit();
+  casaMudou(barbeariaId);
 }

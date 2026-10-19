@@ -6,12 +6,13 @@ import { Image, Pressable, Text, View } from 'react-native';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { Aviso, Botao, Carregando, Cartao, Secao, Tela, Titulo } from '../../components/ui';
+import { Aviso, Botao, Carregando, Cartao, FalhaAoCarregar, Secao, Tela, Titulo } from '../../components/ui';
 import { SeletorDia } from '../../components/agenda/SeletorDia';
 import { GradeHorarios } from '../../components/agenda/GradeHorarios';
 import { useAuth } from '../../auth/AuthProvider';
 import { db } from '../../services/firebase';
-import { lerBarbearia, listarBarbeiros, listarServicos } from '../../services/barbearias';
+import { dadosDaCasa } from '../../services/barbearias';
+import { esquecer } from '../../services/cache';
 import { HorarioOcupadoError, ouvirHorariosLivres, registrarEvento, reservar } from '../../services/agendamentos';
 import { dataLocal, formatarHora, formatarPreco, proximosDias, rotuloDia } from '../../lib/agenda';
 import { colors, radius, space, type } from '../../theme';
@@ -33,19 +34,23 @@ export default function Agendar() {
   const [erro, setErro] = useState<string | null>(null);
   const [feito, setFeito] = useState<Millis | null>(null);
   const [recarregar, setRecarregar] = useState(0);
+  const [falhou, setFalhou] = useState(false);
+  const [tentativa, setTentativa] = useState(0);
   const abriuEm = useRef(Date.now());
 
   useEffect(() => {
     if (!id) return;
+    setFalhou(false);
     (async () => {
-      const [casa, equipe, cardapio] = await Promise.all([lerBarbearia(db, id), listarBarbeiros(db, id), listarServicos(db, id)]);
+      // Mesmos dados da página da casa, já guardados: abrir o agendar não custa leitura nova.
+      const { barbearia: casa, equipe, servicos: cardapio } = await dadosDaCasa(db, id, { forcar: tentativa > 0 });
       const s = cardapio.find(x => x.id === servicoId) ?? null;
       setB(casa);
       setServico(s);
       setBarbeiro(equipe.find(e => e.uid === s?.barbeiroId) ?? null);
-      if (perfil) registrarEvento(db, { tipo: 'iniciou_agendamento', uid: perfil.uid, barbeariaId: id, em: Date.now() });
-    })().catch(() => setB(null));
-  }, [id, servicoId]);
+      if (perfil && !tentativa) registrarEvento(db, { tipo: 'iniciou_agendamento', uid: perfil.uid, barbeariaId: id, em: Date.now() });
+    })().catch(() => { setFalhou(true); setB(null); });
+  }, [id, servicoId, tentativa]);
 
   useEffect(() => {
     if (!b || !barbeiro || !servico) return;
@@ -67,6 +72,7 @@ export default function Agendar() {
 
   if (!carregandoAuth && !user) return <Redirect href="/entrar" />;
   if (b === undefined || !perfil) return <Carregando />;
+  if (falhou) return <Tela><Voltar /><FalhaAoCarregar onTentar={() => { setB(undefined); setTentativa(n => n + 1); }} /></Tela>;
   if (!b || !servico || !barbeiro) {
     return (
       <Tela>
@@ -99,8 +105,11 @@ export default function Agendar() {
         setErro(e.message);
         setRecarregar(n => n + 1);
       } else if ((e as { code?: string })?.code === 'permission-denied') {
-        // Regra de limite de uso: 20 s entre reservas da mesma conta.
-        setErro('Você acabou de reservar. Espere alguns segundos e tente de novo.');
+        // Recusado pelas regras: limite de 20 s entre reservas OU o cardápio mudou (preço/duração) depois
+        // da leitura guardada. Relê a casa do servidor e pede para tentar de novo.
+        esquecer(`casa:${b.id}`);
+        setTentativa(n => n + 1);
+        setErro('Não deu para reservar agora. Espere alguns segundos e tente de novo.');
       } else {
         setErro('Não foi possível reservar. Verifique a conexão e tente de novo.');
       }

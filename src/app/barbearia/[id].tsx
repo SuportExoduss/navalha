@@ -3,8 +3,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Image, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Aviso, Botao, Carregando, Cartao, Chip, Tela, Titulo } from '../../components/ui';
-import { linksDeRota, listarBarbeiros, listarServicos, lerBarbearia } from '../../services/barbearias';
+import { Aviso, Botao, Carregando, Cartao, Chip, FalhaAoCarregar, Tela, Titulo } from '../../components/ui';
+import { dadosDaCasa, linksDeRota } from '../../services/barbearias';
 import { db } from '../../services/firebase';
 import { registrarEvento } from '../../services/agendamentos';
 import { useAuth } from '../../auth/AuthProvider';
@@ -22,19 +22,26 @@ export default function PaginaBarbearia() {
   const [servicos, setServicos] = useState<Servico[]>([]);
   const [aba, setAba] = useState<(typeof ABAS)[number]>('Cortes');
   const [barbeiro, setBarbeiro] = useState<string | null>(null);
+  const [falhou, setFalhou] = useState(false);
+  const [tentativa, setTentativa] = useState(0);
 
   useEffect(() => {
     if (!id) return;
-    if (perfil) registrarEvento(db, { tipo: 'viu_barbearia', uid: perfil.uid, barbeariaId: id, em: Date.now() });
-    lerBarbearia(db, id).then(setB).catch(() => setB(null));
-    listarBarbeiros(db, id).then(setEquipe).catch(() => undefined);
-    listarServicos(db, id).then(setServicos).catch(() => undefined);
-  }, [id]);
+    if (perfil && !tentativa) registrarEvento(db, { tipo: 'viu_barbearia', uid: perfil.uid, barbeariaId: id, em: Date.now() });
+    setFalhou(false);
+    // Uma leitura guardada por 5 min, reaproveitada pelo agendar (ir e voltar não relê).
+    dadosDaCasa(db, id, { forcar: tentativa > 0 })
+      .then(d => { setB(d.barbearia); setEquipe(d.equipe); setServicos(d.servicos); })
+      .catch(() => { setFalhou(true); setB(null); });
+  }, [id, tentativa]);
 
   const visiveis = useMemo(() => servicos.filter(s => !barbeiro || s.barbeiroId === barbeiro), [servicos, barbeiro]);
   const nomeDe = (uid: string) => equipe.find(e => e.uid === uid)?.apelido || equipe.find(e => e.uid === uid)?.nome || '';
 
   if (b === undefined) return <Carregando />;
+  if (b === null && falhou) {
+    return <Tela><Voltar /><FalhaAoCarregar onTentar={() => { setB(undefined); setTentativa(n => n + 1); }} /></Tela>;
+  }
   if (b === null) {
     return <Tela><Voltar /><Titulo>Barbearia não encontrada</Titulo><Aviso texto="Ela pode ter saído do ar." /></Tela>;
   }

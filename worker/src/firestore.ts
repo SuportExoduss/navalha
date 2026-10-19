@@ -61,21 +61,33 @@ export class Firestore {
     }));
   }
 
-  async get(caminho: string): Promise<Record<string, unknown> | null> {
-    const r = await fetch(`${this.base}/${caminho}`, { headers: this.headers() });
-    if (r.status === 404) return null;
-    if (!r.ok) throw new Error(`get ${r.status}`);
-    const d = (await r.json()) as { fields: Record<string, Valor> };
-    return Object.fromEntries(Object.entries(d.fields ?? {}).map(([k, v]) => [k, lerValor(v)]));
+  /** Vários documentos numa chamada só (o plano grátis do Worker limita as chamadas por execução). */
+  async varios(caminhos: string[]): Promise<Map<string, Record<string, unknown>>> {
+    const res = new Map<string, Record<string, unknown>>();
+    if (!caminhos.length) return res;
+    const raiz = `projects/${this.projectId}/databases/(default)/documents/`;
+    const r = await fetch(`${this.base}:batchGet`, {
+      method: 'POST', headers: this.headers(), body: JSON.stringify({ documents: caminhos.map(c => raiz + c) }),
+    });
+    if (!r.ok) throw new Error(`batchGet ${r.status}`);
+    for (const l of (await r.json()) as { found?: { name: string; fields?: Record<string, Valor> } }[]) {
+      if (!l.found) continue;
+      res.set(l.found.name.slice(raiz.length), Object.fromEntries(Object.entries(l.found.fields ?? {}).map(([k, v]) => [k, lerValor(v)])));
+    }
+    return res;
   }
 
-  /** Atualiza só um campo inteiro (ex.: lembretes.h24). */
-  async marcarNumero(caminho: string, campo: string, valor: number) {
-    const r = await fetch(`${this.base}/${caminho}?updateMask.fieldPaths=${encodeURIComponent(campo)}`, {
-      method: 'PATCH', headers: this.headers(),
-      body: JSON.stringify({ fields: montarCampo(campo.split('.'), { integerValue: String(valor) }) }),
-    });
-    if (!r.ok) throw new Error(`patch ${r.status}`);
+  /** O mesmo campo inteiro em vários documentos, numa gravação só (até 500). */
+  async marcarVarios(caminhos: string[], campo: string, valor: number) {
+    if (!caminhos.length) return;
+    const raiz = `projects/${this.projectId}/databases/(default)/documents/`;
+    const writes = caminhos.map(c => ({
+      update: { name: raiz + c, fields: montarCampo(campo.split('.'), { integerValue: String(valor) }) },
+      updateMask: { fieldPaths: [campo] },
+      currentDocument: { exists: true },
+    }));
+    const r = await fetch(`${this.base}:commit`, { method: 'POST', headers: this.headers(), body: JSON.stringify({ writes }) });
+    if (!r.ok) throw new Error(`commit ${r.status}: ${await r.text()}`);
   }
 }
 

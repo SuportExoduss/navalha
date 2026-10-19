@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Cartao, Chip, SemSinal, Tela, Titulo } from '../../components/ui';
+import { Cartao, Chip, SemSinal, Tela, Titulo, FalhaAoCarregar } from '../../components/ui';
 import { CardBarbearia } from '../../components/CardBarbearia';
 import { useBarbeariasPerto } from '../../hooks/useBarbeariasPerto';
 import { FILTROS_PADRAO, filtrarBarbearias, type Filtros } from '../../lib/busca';
@@ -20,7 +20,7 @@ const ATALHOS: { rotulo: string; filtro: Partial<Filtros> }[] = [
 ];
 
 export default function Inicio() {
-  const { loc, negada, semSinal, tentarDeNovo, lista, erro } = useBarbeariasPerto();
+  const { loc, negada, semSinal, tentarDeNovo, lista, erro, recarregar } = useBarbeariasPerto();
   const [atalho, setAtalho] = useState(0);
   const [busca, setBusca] = useState('');
 
@@ -69,7 +69,7 @@ export default function Inicio() {
       ) : semSinal ? (
         <SemSinal onTentar={tentarDeNovo} />
       ) : erro ? (
-        <Cartao><Text style={[type.caption, { color: colors.danger }]}>{erro}</Text></Cartao>
+        <FalhaAoCarregar texto={erro} onTentar={recarregar} />
       ) : lista === null ? (
         <ActivityIndicator color={colors.accent} />
       ) : filtrada.length === 0 ? (

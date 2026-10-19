@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { chaveFoto, janelasLembrete, mensagemFcm, mensagemLembrete, tipoDaImagem } from './util';
 import { validarClaims, decodificarParte, type Claims } from './auth';
-import { lerValor } from './firestore';
+import { Firestore, lerValor } from './firestore';
 
 test('chave da foto aceita só tipos e ids seguros', () => {
   assert.equal(chaveFoto('corte', 'uid123', 'ag_1', 'abc-1'), 'corte/ag_1/uid123-abc-1.webp');
@@ -60,4 +60,29 @@ test('tipo da foto vem dos bytes, não do cabeçalho', () => {
   assert.equal(tipoDaImagem(bytes('<svg onload=alert(1)>')), null);
   assert.equal(tipoDaImagem(bytes('RIFF', 0, 0, 0, 0, 'WAVE')), null);
   assert.equal(tipoDaImagem(new Uint8Array()), null);
+});
+
+test('lembretes: perfis numa leitura só e marcações numa gravação só (limite de chamadas do plano grátis)', async () => {
+  const chamadas: { url: string; corpo: any }[] = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (url: string, init?: RequestInit) => {
+    chamadas.push({ url, corpo: JSON.parse(String(init?.body ?? '{}')) });
+    const raiz = 'projects/p/databases/(default)/documents/';
+    const resp = url.endsWith(':batchGet')
+      ? [{ found: { name: raiz + 'users/ana', fields: { pushToken: { stringValue: 't1' } } } }, { missing: raiz + 'users/beto' }]
+      : {};
+    return new Response(JSON.stringify(resp), { status: 200 });
+  }) as typeof fetch;
+  try {
+    const db = new Firestore('p', 'tk');
+    const perfis = await db.varios(['users/ana', 'users/beto']);
+    assert.equal(perfis.get('users/ana')?.pushToken, 't1');
+    assert.equal(perfis.has('users/beto'), false);
+    await db.marcarVarios(['agendamentos/a1', 'agendamentos/a2'], 'lembretes.h2', 5);
+    assert.equal(chamadas.length, 2);
+    assert.deepEqual(chamadas[1].corpo.writes.map((w: any) => w.updateMask.fieldPaths), [['lembretes.h2'], ['lembretes.h2']]);
+    assert.equal(chamadas[1].corpo.writes[0].update.fields.lembretes.mapValue.fields.h2.integerValue, '5');
+    await db.marcarVarios([], 'lembretes.h2', 5);
+    assert.equal(chamadas.length, 2); // nada a marcar = nenhuma chamada
+  } finally { globalThis.fetch = original; }
 });

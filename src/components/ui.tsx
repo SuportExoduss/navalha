@@ -179,6 +179,16 @@ export function SemSinal({ onTentar }: { onTentar: () => void }) {
   );
 }
 
+/** Falha de rede/servidor: diz o que houve e oferece tentar de novo (que ignora o cache). */
+export function FalhaAoCarregar({ texto = 'Não foi possível carregar. Verifique a conexão.', onTentar }: { texto?: string; onTentar: () => void }) {
+  return (
+    <Cartao style={{ gap: space(3) }}>
+      <Text accessibilityRole="alert" style={type.caption}>{texto}</Text>
+      <Botao titulo="Tentar de novo" variante="secundario" onPress={onTentar} />
+    </Cartao>
+  );
+}
+
 /** Linha de menu (ícone, título, dica e seta): atalhos para subtelas. */
 export function Linha({ icone, titulo, dica, onPress }: { icone: keyof typeof Ionicons.glyphMap; titulo: string; dica?: string; onPress: () => void }) {
   return (
