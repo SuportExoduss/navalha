@@ -5,7 +5,7 @@ Atualizado em 18/out/2026.
 ## Onde fica cada coisa
 - **Roadmap (o plano das 6 fases):** `knowledge/Navalha — Roadmap de execução.md` neste projeto, com uma cópia em `docs/roadmap.md` dentro do código.
 - **Andamento (o que está concluído):** `knowledge/claude/status-fase-1.md`, com uma cópia em `docs/status.md` no código.
-- **Código:** `C:\dev\navalha` (caminho curto: o build Android no Windows falha com caminhos longos) no seu computador.
+- **Código:** `C:\Users\andre\AndroidStudioProjects\navalha` (no Android Studio: File › Open › pasta `android`) no seu computador.
 - **Guia para o Claude Code:** `CLAUDE.md` na raiz do código. O Claude Code lê esse arquivo sozinho ao abrir a pasta.
 
 ## O roadmap em uma tabela
