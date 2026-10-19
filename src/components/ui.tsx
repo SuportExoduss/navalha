@@ -4,6 +4,7 @@ import {
   type PressableProps, type StyleProp, type TextInputProps, type ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, minTouch, radius, space, type } from '../theme';
 
 /**
@@ -175,5 +176,21 @@ export function SemSinal({ onTentar }: { onTentar: () => void }) {
       <Text style={type.caption}>Não conseguimos sua localização agora. Confira se a localização do aparelho está ligada ou vá para perto de uma janela.</Text>
       <Botao titulo="Tentar de novo" variante="secundario" onPress={onTentar} />
     </Cartao>
+  );
+}
+
+/** Linha de menu (ícone, título, dica e seta): atalhos para subtelas. */
+export function Linha({ icone, titulo, dica, onPress }: { icone: keyof typeof Ionicons.glyphMap; titulo: string; dica?: string; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={titulo}>
+      <Cartao style={{ flexDirection: 'row', alignItems: 'center', gap: space(3), minHeight: 56 }}>
+        <Ionicons name={icone} size={22} color={colors.accent} />
+        <View style={{ flex: 1 }}>
+          <Text style={type.body}>{titulo}</Text>
+          {dica ? <Text style={type.caption}>{dica}</Text> : null}
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+      </Cartao>
+    </Pressable>
   );
 }

@@ -1,13 +1,11 @@
-// Painel da barbearia: capa, status de publicação com checklist, equipe e convites.
-import { useEffect, useState } from 'react';
+// Aba Barbearia, na ordem do dia a dia: quem é a casa → números de hoje (dono) → cardápio → equipe.
+// Nome, fotos, publicação, horário da casa e Google ficam em Configurações (engrenagem, só o dono).
+import { useState } from 'react';
 import { Image, Linking, Pressable, Share, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Aviso, Botao, Campo, Cartao, Interruptor, Secao, Titulo } from '../ui';
-import {
-  atualizarBarbearia, criarConvite, definirBarbeiroAtivo, linksDeRota, listarServicos,
-} from '../../services/barbearias';
-import { escolherEEnviar } from '../../services/fotos';
+import { Aviso, Cartao, Interruptor, Linha, Secao } from '../ui';
+import { criarConvite, definirBarbeiroAtivo, linksDeRota } from '../../services/barbearias';
 import { PainelDono } from './PainelDono';
 import { db } from '../../services/firebase';
 import { colors, radius, space, type, sobreFoto } from '../../theme';
@@ -16,34 +14,7 @@ import type { Barbearia, Barbeiro } from '../../types/models';
 export function PainelCasa({ b, equipe, ehDono, uid }: { b: Barbearia; equipe: Barbeiro[]; ehDono: boolean; uid: string }) {
   const [convite, setConvite] = useState<string | null>(null);
   const [gerando, setGerando] = useState(false);
-  const [enviandoCapa, setEnviandoCapa] = useState(false);
-  const [totalServicos, setTotalServicos] = useState<number | null>(null);
   const [erro, setErro] = useState<string | null>(null);
-
-  useEffect(() => { listarServicos(db, b.id).then(l => setTotalServicos(l.length)).catch(() => setTotalServicos(0)); }, [b.id, b.resumo.precoMin]);
-
-  const checklist = [
-    { ok: true, texto: 'Localização marcada' },
-    { ok: !!b.capaUrl, texto: 'Foto de capa' },
-    { ok: (totalServicos ?? 0) > 0, texto: 'Pelo menos 1 serviço no cardápio' },
-  ];
-  const prontaParaPublicar = checklist.every(c => c.ok);
-
-  async function trocarCapa() {
-    setErro(null);
-    setEnviandoCapa(true);
-    try {
-      const url = await escolherEEnviar('barbearia', b.id, 'galeria', [16, 9]);
-      if (url) await atualizarBarbearia(db, b.id, { capaUrl: url, fotos: [url, ...b.fotos].slice(0, 12) });
-    } catch (e) { setErro(e instanceof Error ? e.message : 'Falha ao enviar a foto.'); }
-    finally { setEnviandoCapa(false); }
-  }
-
-  async function alternarPublicacao(v: boolean) {
-    if (v && !prontaParaPublicar) { setErro('Complete a lista abaixo antes de aparecer na busca.'); return; }
-    setErro(null);
-    await atualizarBarbearia(db, b.id, { publicada: v });
-  }
 
   async function convidar() {
     setGerando(true);
@@ -57,59 +28,46 @@ export function PainelCasa({ b, equipe, ehDono, uid }: { b: Barbearia; equipe: B
 
   return (
     <>
-      <Pressable accessibilityRole="button" accessibilityLabel="Trocar foto de capa" onPress={ehDono ? trocarCapa : undefined}
-        style={{ height: 170, borderRadius: radius.card, overflow: 'hidden', backgroundColor: colors.surfaceRaised, alignItems: 'center', justifyContent: 'center' }}>
-        {b.capaUrl ? <Image source={{ uri: b.capaUrl }} style={{ position: 'absolute', width: '100%', height: '100%' }} /> : null}
+      <View style={{ height: 150, borderRadius: radius.card, overflow: 'hidden', backgroundColor: colors.surfaceRaised }}>
+        {b.capaUrl ? <Image source={{ uri: b.capaUrl }} style={{ width: '100%', height: '100%' }} accessibilityLabel={`Capa da ${b.nome}`} /> : null}
         {ehDono ? (
-          <View style={{ flexDirection: 'row', gap: space(2), alignItems: 'center', backgroundColor: sobreFoto.veu, paddingHorizontal: space(3), paddingVertical: space(2), borderRadius: radius.chip }}>
-            <Ionicons name="camera-outline" size={16} color={sobreFoto.texto} />
-            <Text style={[type.caption, { color: sobreFoto.texto }]}>{enviandoCapa ? 'Enviando…' : b.capaUrl ? 'Trocar capa' : 'Adicionar foto de capa'}</Text>
-          </View>
+          <Pressable onPress={() => router.push('/configuracoes')} accessibilityRole="button" accessibilityLabel="Configurações da barbearia" hitSlop={8}
+            style={{ position: 'absolute', top: space(3), right: space(3), width: 44, height: 44, borderRadius: 22, backgroundColor: sobreFoto.veu, alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="settings-outline" size={22} color={sobreFoto.texto} />
+          </Pressable>
         ) : null}
-      </Pressable>
+      </View>
 
-      <View style={{ gap: space(1) }}>
-        <Titulo>{b.nome}</Titulo>
-        <Text style={type.caption}>{b.endereco} · {b.cidade}</Text>
-        <View style={{ flexDirection: 'row', gap: space(4), marginTop: space(1) }}>
-          <Pressable onPress={() => Linking.openURL(linksDeRota(b.geo.lat, b.geo.lng).googleMaps)} hitSlop={8}>
-            <Text style={[type.caption, { color: colors.accent }]}>Conferir no mapa</Text>
-          </Pressable>
-          <Pressable onPress={() => router.push({ pathname: '/barbearia/[id]', params: { id: b.id } })} hitSlop={8}>
-            <Text style={[type.caption, { color: colors.accent }]}>Ver como cliente</Text>
-          </Pressable>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space(3) }}>
+        {b.logoUrl
+          ? <Image source={{ uri: b.logoUrl }} style={{ width: 56, height: 56, borderRadius: 28 }} />
+          : <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: colors.surfaceRaised, alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="storefront-outline" size={24} color={colors.textMuted} />
+            </View>}
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={type.title} numberOfLines={2}>{b.nome}</Text>
+          <Text style={type.caption} numberOfLines={1}>{b.endereco} · {b.cidade}</Text>
         </View>
       </View>
+      <View style={{ flexDirection: 'row', gap: space(4) }}>
+        <Pressable onPress={() => router.push({ pathname: '/barbearia/[id]', params: { id: b.id } })} hitSlop={8} accessibilityRole="link">
+          <Text style={[type.caption, { color: colors.accent }]}>Ver como cliente</Text>
+        </Pressable>
+        <Pressable onPress={() => Linking.openURL(linksDeRota(b.geo.lat, b.geo.lng).googleMaps)} hitSlop={8} accessibilityRole="link">
+          <Text style={[type.caption, { color: colors.accent }]}>Conferir no mapa</Text>
+        </Pressable>
+      </View>
+
+      {/* Rascunho é o que mais trava o dono: avisa no topo e leva direto para publicar. */}
+      {ehDono && !b.publicada ? (
+        <Linha icone="eye-off-outline" titulo="Rascunho: ainda fora da busca" dica="Toque para completar e publicar" onPress={() => router.push('/configuracoes')} />
+      ) : null}
 
       {erro ? <Aviso texto={erro} tom="erro" /> : null}
 
-      {ehDono ? (
-        <Cartao style={{ gap: space(3) }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <View style={{ flex: 1 }}>
-              <Text style={type.heading}>{b.publicada ? 'Aparecendo na busca' : 'Rascunho'}</Text>
-              <Text style={type.caption}>{b.publicada ? 'Clientes por perto já encontram sua barbearia.' : 'Só você e sua equipe veem por enquanto.'}</Text>
-            </View>
-            <Interruptor value={b.publicada} onValueChange={alternarPublicacao} rotulo="Publicar barbearia" />
-          </View>
-          {checklist.map(c => (
-            <View key={c.texto} style={{ flexDirection: 'row', gap: space(2), alignItems: 'center' }}>
-              <Ionicons name={c.ok ? 'checkmark-circle' : 'ellipse-outline'} size={18} color={c.ok ? colors.success : colors.textMuted} />
-              <Text style={[type.body, !c.ok && { color: colors.textMuted }]}>{c.texto}</Text>
-            </View>
-          ))}
-        </Cartao>
-      ) : null}
-
       {ehDono ? <PainelDono barbeariaId={b.id} /> : null}
-      {ehDono ? <PlaceIdGoogle b={b} /> : null}
 
-      <Botao
-        titulo="Meu cardápio de cortes"
-        variante="secundario"
-        onPress={() => router.push('/cardapio')}
-        icone={<Ionicons name="cut-outline" size={18} color={colors.text} />}
-      />
+      <Linha icone="cut-outline" titulo="Cardápio de cortes" dica="Seus cortes, preços e fotos" onPress={() => router.push('/cardapio')} />
 
       <Secao titulo={`Equipe (${equipe.filter(e => e.ativo).length})`} acao={ehDono ? (gerando ? 'Gerando…' : 'Convidar barbeiro') : undefined} onAcao={convidar}>
         {convite ? (
@@ -134,26 +92,5 @@ export function PainelCasa({ b, equipe, ehDono, uid }: { b: Barbearia; equipe: B
         ))}
       </Secao>
     </>
-  );
-}
-
-/** Place ID do Google: preenchido já no MVP, usado na Fase 3 para mostrar a nota do Google. */
-function PlaceIdGoogle({ b }: { b: Barbearia }) {
-  const [valor, setValor] = useState(b.googlePlaceId ?? '');
-  const [msg, setMsg] = useState<string | null>(null);
-  async function salvar() {
-    const id = valor.trim();
-    if (id && !/^[A-Za-z0-9_-]{10,}$/.test(id)) return setMsg('Cole só o código, ex.: ChIJN1t_tDeuEmsRUsoyG83frY4.');
-    await atualizarBarbearia(db, b.id, { googlePlaceId: id });
-    setMsg('Salvo.');
-  }
-  return (
-    <Cartao style={{ gap: space(3) }}>
-      <Campo rotulo="Código da barbearia no Google (opcional)" value={valor} onChangeText={t => { setMsg(null); setValor(t); }}
-        placeholder="ChIJ…" autoCapitalize="none"
-        dica="Na Fase 3 a nota do Google aparece no seu card. Ache o código pesquisando sua barbearia em developers.google.com/maps/documentation/places/web-service/place-id." />
-      {msg ? <Aviso texto={msg} tom={msg === 'Salvo.' ? 'ok' : 'erro'} /> : null}
-      <Botao titulo="Salvar código" variante="secundario" onPress={salvar} />
-    </Cartao>
   );
 }

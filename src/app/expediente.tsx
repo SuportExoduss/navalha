@@ -2,7 +2,7 @@
 // O que o cliente vê é o expediente do barbeiro recortado pelo horário da casa.
 import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Aviso, Botao, Campo, Carregando, Cartao, Chip, Interruptor, Secao, Tela, Titulo } from '../components/ui';
 import { useMinhaBarbearia } from '../hooks/useMinhaBarbearia';
@@ -50,8 +50,11 @@ function deForm(f: DiaForm[], original: Expediente): Expediente | string {
 
 export default function ExpedienteTela() {
   const { barbearia, equipe, carregando, ehDono, uid } = useMinhaBarbearia();
-  const [alvo, setAlvo] = useState<'meu' | 'casa'>('meu');
+  // Configurações abre direto no horário da casa (?alvo=casa); a Agenda abre no do barbeiro.
+  const { alvo: alvoInicial } = useLocalSearchParams<{ alvo?: string }>();
+  const [alvo, setAlvo] = useState<'meu' | 'casa'>(alvoInicial === 'casa' ? 'casa' : 'meu');
   const eu = equipe.find(e => e.uid === uid);
+  const daCasa = ehDono && alvo === 'casa'; // barbeiro nunca edita o horário da casa
 
   if (carregando || !uid) return <Carregando />;
   if (!barbearia || !eu) {
@@ -69,11 +72,11 @@ export default function ExpedienteTela() {
         </View>
       ) : null}
       <Text style={type.caption}>
-        {alvo === 'casa'
+        {daCasa
           ? 'Quando a barbearia abre. Nenhum barbeiro atende fora deste horário.'
           : 'Seus dias e horários de trabalho. O cliente só vê horários dentro do expediente da casa.'}
       </Text>
-      {alvo === 'casa'
+      {daCasa
         ? <EditorSemana key="casa" inicial={barbearia.expediente} salvar={e => salvarExpedienteCasa(db, barbearia.id, e)} />
         : <EditorSemana key="meu" inicial={eu.expediente} salvar={e => salvarExpedienteBarbeiro(db, barbearia.id, uid, e)} />}
       <Folgas barbeariaId={barbearia.id} barbeiroId={uid} />

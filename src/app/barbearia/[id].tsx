@@ -56,7 +56,10 @@ export default function PaginaBarbearia() {
       </View>
 
       <View style={{ gap: space(1) }}>
-        <Titulo>{b.nome}</Titulo>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space(3) }}>
+          {b.logoUrl ? <Image source={{ uri: b.logoUrl }} style={{ width: 56, height: 56, borderRadius: 28 }} accessibilityLabel={`Logo da ${b.nome}`} /> : null}
+          <View style={{ flex: 1 }}><Titulo>{b.nome}</Titulo></View>
+        </View>
         <Text style={type.caption}>
           <Text style={{ color: colors.accent }}>★ </Text>
           {nota > 0 ? `${nota.toFixed(1).replace('.', ',')} · ` : 'Nova no Navalha · '}

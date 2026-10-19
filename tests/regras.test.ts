@@ -243,6 +243,15 @@ test('expediente: barbeiro edita o próprio; o da casa só o dono', async () => 
   await assertSucceeds(updateDoc(doc(dbDe('dono'), 'barbearias/b1'), { expediente: exp }));
 });
 
+test('configurações: nome, capa e foto de perfil da casa só o dono troca', async () => {
+  const foto = 'https://navalha-worker.navalha-worker.workers.dev/fotos/barbearia/b1/y.webp';
+  for (const campos of [{ nome: 'Outro nome' }, { capaUrl: foto }, { logoUrl: foto }, { googlePlaceId: 'ChIJN1t_tDeuEmsRUsoyG83frY4' }]) {
+    await assertFails(updateDoc(doc(dbDe('lucas'), 'barbearias/b1'), campos));
+    await assertFails(updateDoc(doc(dbDe('ana'), 'barbearias/b1'), campos));
+    await assertSucceeds(updateDoc(doc(dbDe('dono'), 'barbearias/b1'), campos));
+  }
+});
+
 // ---------- Sprint 4: cliente ----------
 
 test('barbeiro atualiza só o resumo do cardápio da casa', async () => {
