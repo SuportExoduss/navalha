@@ -35,8 +35,8 @@ export function PainelDono({ barbeariaId }: { barbeariaId: string }) {
           </View>
           <Cartao style={{ gap: space(1) }}>
             <Text style={type.caption}>
-              Últimos 7 dias: {p.semana.agendamentos} agendamentos ({p.semana.pelaApp} pelo app), {p.semana.concluidos} concluídos,
-              {' '}{p.semana.faltas} faltas e {p.semana.cancelados} cancelados.
+              Últimos 7 dias: {qtd(p.semana.agendamentos, 'agendamento')} ({p.semana.pelaApp} pelo app), {qtd(p.semana.concluidos, 'concluído')},
+              {' '}{qtd(p.semana.faltas, 'falta')} e {qtd(p.semana.cancelados, 'cancelado')}.
             </Text>
             {p.maisPedido ? <Text style={type.caption}>Mais pedido: <Text style={{ color: colors.text }}>{p.maisPedido.nome}</Text> ({p.maisPedido.vezes}×)</Text> : null}
           </Cartao>
@@ -54,3 +54,6 @@ function Numero({ rotulo, valor, alerta }: { rotulo: string; valor: string; aler
     </Cartao>
   );
 }
+
+/** "1 falta", "2 faltas": o plural regular basta para as palavras do painel. */
+const qtd = (n: number, palavra: string) => `${n} ${n === 1 ? palavra : palavra + 's'}`;

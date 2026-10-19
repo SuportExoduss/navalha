@@ -54,7 +54,8 @@ export default function AgendaBarbeiro() {
   const visiveis = (lista ?? []).filter(a => !filtro || a.barbeiroId === filtro);
   const nomeDe = (id: string) => { const e = equipe.find(x => x.uid === id); return e ? e.apelido || e.nome.split(' ')[0] : ''; };
   const expDia = barbeiroDoEncaixe ? expedienteEfetivo(barbearia.expediente, barbeiroDoEncaixe.expediente)[diaDaSemana(dia)] : undefined;
-  const confirmados = visiveis.filter(a => ATIVOS.includes(a.status));
+  // Mesma conta do painel (ativos + concluídos): o total do dia não encolhe à medida que o barbeiro atende.
+  const confirmados = visiveis.filter(a => ATIVOS.includes(a.status) || a.status === 'concluido');
   const total = confirmados.reduce((s, a) => s + a.precoCentavos, 0);
 
   if (encaixando && barbeiroDoEncaixe) {
