@@ -1,8 +1,0 @@
-# Versão web (clientes de iPhone): só arquivos estáticos do `npx expo export --platform web`.
-# Publicar: npx expo export --platform web && npx wrangler deploy -c web.wrangler.toml
-name = "navalha-web"
-compatibility_date = "2026-10-01"
-
-[assets]
-directory = "./dist"
-not_found_handling = "single-page-application"

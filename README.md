@@ -78,6 +78,11 @@ worker/             Cloudflare Worker (R2 + lembretes)
 3. No celular: login, reserva, cancelamento, push de lembrete e foto no "Concluído".
 4. Portão da Fase 2: 3 barbearias amigas usando por 1 semana sem erro grave e sem horário duplicado.
 
+## Versão web
+
+Publicada em **https://navalha.web.app** (Firebase Hosting do projeto, site `navalha`, plano gratuito):
+`npx expo export --platform web && npx firebase deploy --only hosting --project prod`.
+
 ## App Android sem conta Expo
 
 Decisão do dono (18/out/2026): nada de EAS/conta Expo. O app é gerado no computador e o push vai direto pelo

@@ -64,7 +64,7 @@ O resultado completo da rodada pelo adb está no fim deste arquivo; o que falta 
 - [ ] Use uma conta de teste aqui, **não** a sua conta de dono (a barbearia ficaria sem dono)
 
 ## 8. Versão web (iPhone)
-- [ ] Abrir https://navalha-web.navalha-worker.workers.dev → entrar com Google
+- [ ] Abrir https://navalha.web.app → entrar com Google
 - [ ] Reservar e cancelar pelo navegador
 - [ ] No iPhone: Compartilhar → "Adicionar à Tela de Início" → abre como app
 - [ ] Sabido: na web não chega lembrete (push na web ainda não existe)
