@@ -6,7 +6,7 @@ import { buscarPerto, type BarbeariaPerto } from '../services/barbearias';
 import { db } from '../services/firebase';
 
 export function useBarbeariasPerto() {
-  const { loc, negada } = useLocalizacao();
+  const { loc, negada, semSinal, tentarDeNovo } = useLocalizacao();
   const [lista, setLista] = useState<BarbeariaPerto[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -17,5 +17,5 @@ export function useBarbeariasPerto() {
       .catch(() => setErro('Não foi possível buscar as barbearias. Verifique a conexão.'));
   }, [loc?.lat, loc?.lng]);
 
-  return { loc, negada, lista, erro };
+  return { loc, negada, semSinal, tentarDeNovo, lista, erro };
 }

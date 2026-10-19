@@ -156,3 +156,13 @@ const s = StyleSheet.create({
   },
   cartao: { backgroundColor: colors.surface, borderRadius: radius.card, padding: space(4), borderWidth: 1, borderColor: colors.border },
 });
+
+/** Sem posição do GPS dentro do prazo: explica e deixa tentar de novo (em vez de girar para sempre). */
+export function SemSinal({ onTentar }: { onTentar: () => void }) {
+  return (
+    <Cartao style={{ gap: space(3) }}>
+      <Text style={type.caption}>Não conseguimos sua localização agora. Confira se a localização do aparelho está ligada ou vá para perto de uma janela.</Text>
+      <Botao titulo="Tentar de novo" variante="secundario" onPress={onTentar} />
+    </Cartao>
+  );
+}

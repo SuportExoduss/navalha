@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Cartao, Chip, Tela, Titulo } from '../../components/ui';
+import { Cartao, Chip, SemSinal, Tela, Titulo } from '../../components/ui';
 import { CardBarbearia } from '../../components/CardBarbearia';
 import { useBarbeariasPerto } from '../../hooks/useBarbeariasPerto';
 import { FILTROS_PADRAO, filtrarBarbearias, type Filtros } from '../../lib/busca';
@@ -20,7 +20,7 @@ const ATALHOS: { rotulo: string; filtro: Partial<Filtros> }[] = [
 ];
 
 export default function Inicio() {
-  const { loc, negada, lista, erro } = useBarbeariasPerto();
+  const { loc, negada, semSinal, tentarDeNovo, lista, erro } = useBarbeariasPerto();
   const [atalho, setAtalho] = useState(0);
   const [busca, setBusca] = useState('');
 
@@ -35,7 +35,7 @@ export default function Inicio() {
         <View style={{ flex: 1 }}>
           <Text style={type.caption}>Sua localização</Text>
           <Text style={[type.body, { fontWeight: '600' }]}>
-            {negada ? 'Permita a localização' : loc?.cidade ? [loc.bairro, loc.cidade].filter(Boolean).join(', ') : 'Localizando…'}
+            {negada ? 'Permita a localização' : semSinal ? 'Sem sinal de localização' : loc?.cidade ? [...new Set([loc.bairro, loc.cidade].filter(Boolean))].join(', ') : loc ? 'Perto de você' : 'Localizando…'}
           </Text>
         </View>
       </View>
@@ -66,6 +66,8 @@ export default function Inicio() {
 
       {negada ? (
         <Cartao><Text style={type.caption}>Sem a localização não dá para ordenar por distância. Ative a permissão nas configurações do aparelho.</Text></Cartao>
+      ) : semSinal ? (
+        <SemSinal onTentar={tentarDeNovo} />
       ) : erro ? (
         <Cartao><Text style={[type.caption, { color: colors.danger }]}>{erro}</Text></Cartao>
       ) : lista === null ? (
