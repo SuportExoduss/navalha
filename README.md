@@ -92,7 +92,8 @@ Firebase Cloud Messaging (o app guarda o token do FCM; o Worker manda pelo FCM H
   celular: desinstale-o. No Firebase os dois apps Android estão cadastrados; o antigo pode ser apagado depois.
 - `android/` **está no git** (desde 20/out/2026): é um projeto Android comum. Ajustes nativos podem ser feitos direto
   nele pelo Android Studio. Os plugins de `plugins/` e o `app.json` continuam valendo se um dia rodar
-  `npx expo prebuild` — **nunca com `--clean`**, que apaga a pasta e perde o que foi editado à mão.
+  `npx expo prebuild` — **não rode**: no SDK 58 ele tenta apagar a pasta `android/` inteira (mesmo sem `--clean`) e
+  perde o que foi editado à mão. Mudança nativa nova: direto em `android/` (e anote no plugin, para referência).
 - **Modo imersivo** (`plugins/modo-imersivo.js`): barra de status e de navegação ocultas, voltam num arrasto da borda e somem sozinhas; reaplicado quando a tela recupera o foco. Mesma lógica do `WindowHelper` do Cronos e do LystSync, injetada no `MainActivity.kt` a cada prebuild.
 - `google-services.json` (raiz) liga o app ao Firebase `navalha-1a8f5`; o prebuild copia para `android/app/`.
 - **Android Studio** (como qualquer projeto Android):

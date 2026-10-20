@@ -67,7 +67,9 @@
       [
         "expo-notifications",
         {
-          "defaultChannel": "lembretes"
+          "defaultChannel": "lembretes",
+          "icon": "./assets/android-icon-monochrome.png",
+          "color": "#C8A24A"
         }
       ],
       [
