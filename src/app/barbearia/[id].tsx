@@ -1,12 +1,13 @@
 // Página pública da barbearia: o que o cliente vê antes de agendar.
-// Agendar é sempre em 3 etapas, nesta ordem: 1) barbeiro, 2) corte (só os daquele barbeiro), 3) horário (tela /agendar).
-// Casa com um barbeiro só: a etapa 1 já vem escolhida. "Agendar de novo" chega aqui com ?barbeiro= preenchido.
-import { useEffect, useMemo, useState } from 'react';
-import { Image, Linking, Pressable, ScrollView, Text, View } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+// Agendar é sempre em 3 telas, nesta ordem: 1) aqui, o barbeiro; 2) /cortes, os cortes dele; 3) /agendar, o horário,
+// com popup de confirmação. Confirmou: volta para cá (etapa 1) com o aviso da reserva.
+import { useCallback, useEffect, useState } from 'react';
+import { Image, Linking, Pressable, Text, View } from 'react-native';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Aviso, Botao, Carregando, Cartao, FalhaAoCarregar, Tela, Titulo } from '../../components/ui';
 import { Etapa } from '../../components/agenda/Etapa';
+import { pegarAvisoReserva } from '../../components/agenda/avisoReserva';
 import { dadosDaCasa, linksDeRota } from '../../services/barbearias';
 import { db } from '../../services/firebase';
 import { registrarEvento } from '../../services/agendamentos';
@@ -16,12 +17,12 @@ import { colors, radius, space, type, sobreFoto } from '../../theme';
 import type { Barbearia, Barbeiro, Servico } from '../../types/models';
 
 export default function PaginaBarbearia() {
-  const { id, barbeiro: barbeiroInicial } = useLocalSearchParams<{ id: string; barbeiro?: string }>();
+  const { id } = useLocalSearchParams<{ id: string }>();
   const { perfil } = useAuth();
   const [b, setB] = useState<Barbearia | null | undefined>(undefined);
   const [equipe, setEquipe] = useState<Barbeiro[]>([]);
   const [servicos, setServicos] = useState<Servico[]>([]);
-  const [barbeiro, setBarbeiro] = useState<string | null>(barbeiroInicial ?? null);
+  const [reservado, setReservado] = useState<string | null>(null);
   const [falhou, setFalhou] = useState(false);
   const [tentativa, setTentativa] = useState(0);
 
@@ -31,16 +32,12 @@ export default function PaginaBarbearia() {
     setFalhou(false);
     // Uma leitura guardada por 5 min, reaproveitada pelo agendar (ir e voltar não relê).
     dadosDaCasa(db, id, { forcar: tentativa > 0 })
-      .then(d => {
-        setB(d.barbearia); setEquipe(d.equipe); setServicos(d.servicos);
-        if (d.equipe.length === 1) setBarbeiro(d.equipe[0].uid); // um barbeiro só: etapa 1 já resolvida
-      })
+      .then(d => { setB(d.barbearia); setEquipe(d.equipe); setServicos(d.servicos); })
       .catch(() => { setFalhou(true); setB(null); });
   }, [id, tentativa]);
 
-  // Etapa 2 só mostra os cortes do barbeiro escolhido na etapa 1.
-  const cortes = useMemo(() => (barbeiro ? servicos.filter(s => s.barbeiroId === barbeiro) : []), [servicos, barbeiro]);
-  const escolhido = equipe.find(e => e.uid === barbeiro);
+  // Voltou da confirmação (dismissTo): mostra o aviso da reserva uma vez.
+  useFocusEffect(useCallback(() => { const t = pegarAvisoReserva(); if (t) setReservado(t); }, []));
   const fotos = [...(b?.fotos ?? []), ...servicos.flatMap(s => s.fotos)].slice(0, 24);
 
   if (b === undefined) return <Carregando />;
@@ -92,56 +89,45 @@ export default function PaginaBarbearia() {
         ) : null}
       </View>
 
-      <Etapa numero={1} titulo="Escolha o barbeiro" feito={!!escolhido} />
+      {reservado ? (
+        <Cartao style={{ gap: space(2), borderColor: colors.success }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space(2) }}>
+            <Ionicons name="checkmark-circle" size={22} color={colors.success} />
+            <Text accessibilityRole="alert" style={[type.body, { flex: 1, fontWeight: '600' }]}>Horário reservado</Text>
+          </View>
+          <Text style={type.caption}>{reservado}</Text>
+          <Pressable onPress={() => router.push('/agendamentos')} hitSlop={8} accessibilityRole="link" style={{ alignSelf: 'flex-start' }}>
+            <Text style={[type.caption, { color: colors.accent }]}>Ver meus agendamentos</Text>
+          </Pressable>
+        </Cartao>
+      ) : null}
+
+      <Etapa numero={1} titulo="Escolha o barbeiro" dica="Depois você escolhe o corte e o horário." />
       {equipe.length === 0 ? <Cartao><Text style={type.caption}>Esta barbearia ainda não tem barbeiros na agenda.</Text></Cartao> : (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space(3) }} accessibilityRole="radiogroup">
+        <View style={{ gap: space(2) }}>
           {equipe.map(e => {
-            const ativo = barbeiro === e.uid;
             const qtd = servicos.filter(s => s.barbeiroId === e.uid).length;
             return (
-              <Pressable key={e.uid} onPress={() => setBarbeiro(e.uid)} accessibilityRole="radio" accessibilityState={{ checked: ativo }}
-                accessibilityLabel={`Barbeiro ${e.apelido || e.nome}`}
-                style={{ width: 112, alignItems: 'center', gap: space(2), padding: space(3), borderRadius: radius.card, borderWidth: 1,
-                  borderColor: ativo ? colors.accent : colors.border, backgroundColor: ativo ? colors.surfaceRaised : colors.surface }}>
-                {e.fotoUrl ? <Image source={{ uri: e.fotoUrl }} style={{ width: 56, height: 56, borderRadius: 28 }} />
-                  : <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: colors.surfaceRaised, alignItems: 'center', justifyContent: 'center' }}>
-                      <Ionicons name="person-outline" size={24} color={colors.textMuted} />
+              <Pressable key={e.uid} accessibilityRole="button" accessibilityLabel={`Agendar com ${e.apelido || e.nome}`}
+                onPress={() => { setReservado(null); router.push({ pathname: '/cortes/[id]', params: { id: b.id, barbeiro: e.uid } }); }}
+                style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: space(3), padding: space(3), minHeight: 72,
+                  borderRadius: radius.card, borderWidth: 1, borderColor: colors.border, backgroundColor: pressed ? colors.surfaceRaised : colors.surface })}>
+                {e.fotoUrl ? <Image source={{ uri: e.fotoUrl }} style={{ width: 52, height: 52, borderRadius: 26 }} />
+                  : <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: colors.surfaceRaised, alignItems: 'center', justifyContent: 'center' }}>
+                      <Ionicons name="person-outline" size={22} color={colors.textMuted} />
                     </View>}
-                <Text style={[type.body, { fontWeight: ativo ? '700' : '400', textAlign: 'center' }]} numberOfLines={1}>{e.apelido || e.nome.split(' ')[0]}</Text>
-                <Text style={[type.caption, { textAlign: 'center' }]} numberOfLines={1}>
-                  {e.nota.total ? `★ ${e.nota.media.toFixed(1).replace('.', ',')} · ` : ''}{qtd} {qtd === 1 ? 'corte' : 'cortes'}
-                </Text>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={[type.body, { fontWeight: '600' }]} numberOfLines={1}>{e.apelido || e.nome}</Text>
+                  <Text style={type.caption}>
+                    {e.nota.total ? `★ ${e.nota.media.toFixed(1).replace('.', ',')} · ` : ''}{qtd} {qtd === 1 ? 'corte' : 'cortes'}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
               </Pressable>
             );
           })}
-        </ScrollView>
-      )}
-
-      <Etapa numero={2} titulo={escolhido ? `Escolha o corte com ${escolhido.apelido || escolhido.nome.split(' ')[0]}` : 'Escolha o corte'} />
-      {!escolhido ? <Text style={type.caption}>Escolha o barbeiro primeiro para ver os cortes dele.</Text>
-        : cortes.length === 0 ? <Cartao><Text style={type.caption}>Este barbeiro ainda não cadastrou cortes.</Text></Cartao> : (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space(3) }}>
-          {cortes.map(s => (
-            <Pressable key={s.id} accessibilityRole="button" accessibilityLabel={`${s.nome}, ${s.duracaoMin} minutos, ${formatarPreco(s.precoCentavos)}`}
-              onPress={() => router.push({ pathname: '/agendar/[id]', params: { id: b.id, barbeiro: s.barbeiroId, servico: s.id } })}
-              style={{ width: '47.5%', borderRadius: radius.card, overflow: 'hidden', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
-              <View style={{ aspectRatio: 4 / 5, backgroundColor: colors.surfaceRaised, alignItems: 'center', justifyContent: 'center' }}>
-                {s.fotos[0] ? <Image source={{ uri: s.fotos[0] }} style={{ width: '100%', height: '100%' }} />
-                  : <Ionicons name="cut-outline" size={28} color={colors.textMuted} />}
-              </View>
-              <View style={{ padding: space(3), gap: 2 }}>
-                <Text style={[type.body, { fontWeight: '600' }]} numberOfLines={1}>{s.nome}</Text>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Text style={type.caption}>{s.duracaoMin} min</Text>
-                  <Text style={[type.caption, { color: colors.accent, fontWeight: '600' }]}>{formatarPreco(s.precoCentavos)}</Text>
-                </View>
-              </View>
-            </Pressable>
-          ))}
         </View>
       )}
-
-      <Etapa numero={3} titulo="Escolha o horário" dica="Toque no corte para ver os horários livres." />
 
       {/* Fotos da casa e dos cortes: referência, fora do fluxo de agendar. */}
       {fotos.length ? (

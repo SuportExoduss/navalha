@@ -1,14 +1,16 @@
-// Reserva do cliente: escolhe o dia, vê só os horários em que o corte inteiro cabe e confirma.
+// Etapa 3 de 3: dia e horário. Tocar no horário abre o popup de confirmação; confirmou, a reserva é feita e o app
+// volta até a página da casa (etapa 1), que mostra o aviso. Só se chega aqui pelas etapas 1 (casa) e 2 (/cortes).
 // A grade escuta a ocupação em tempo real; a trava contra horário duplo continua em reservar()
 // (se dois confirmarem no mesmo instante, só um passa e o outro vê o aviso).
 import { useEffect, useRef, useState } from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
+import { Image, Modal, Pressable, Text, View } from 'react-native';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Aviso, Botao, Carregando, Cartao, FalhaAoCarregar, Secao, Tela, Titulo } from '../../components/ui';
 import { SeletorDia } from '../../components/agenda/SeletorDia';
 import { Etapa } from '../../components/agenda/Etapa';
+import { avisarReserva } from '../../components/agenda/avisoReserva';
 import { GradeHorarios } from '../../components/agenda/GradeHorarios';
 import { useAuth } from '../../auth/AuthProvider';
 import { db } from '../../services/firebase';
@@ -16,13 +18,12 @@ import { dadosDaCasa } from '../../services/barbearias';
 import { esquecer } from '../../services/cache';
 import { HorarioOcupadoError, ouvirHorariosLivres, registrarEvento, reservar } from '../../services/agendamentos';
 import { dataLocal, formatarHora, formatarPreco, proximosDias, rotuloDia } from '../../lib/agenda';
-import { colors, radius, space, type } from '../../theme';
+import { colors, radius, space, type, sobreFoto } from '../../theme';
 import type { Barbearia, Barbeiro, ISODate, Millis, Servico } from '../../types/models';
 
 const DIAS_VISIVEIS = 14;
 
 export default function Agendar() {
-  // Etapa 3 de 3: só chega aqui quem escolheu o barbeiro (etapa 1) e o corte dele (etapa 2).
   const { id, barbeiro: barbeiroId, servico: servicoId } = useLocalSearchParams<{ id: string; barbeiro?: string; servico: string }>();
   const { carregando: carregandoAuth, user, perfil } = useAuth();
   const [b, setB] = useState<Barbearia | null | undefined>(undefined);
@@ -34,7 +35,6 @@ export default function Agendar() {
   const [escolhido, setEscolhido] = useState<Millis | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const [feito, setFeito] = useState<Millis | null>(null);
   const [recarregar, setRecarregar] = useState(0);
   const [falhou, setFalhou] = useState(false);
   const [tentativa, setTentativa] = useState(0);
@@ -73,9 +73,10 @@ export default function Agendar() {
   }, [horarios]);
 
   if (!carregandoAuth && !user) return <Redirect href="/entrar" />;
-  // Sem barbeiro escolhido, ou corte de outro barbeiro: volta para a etapa 1/2 na página da casa.
-  if (id && (!barbeiroId || (servico && servico.barbeiroId !== barbeiroId))) {
-    return <Redirect href={{ pathname: '/barbearia/[id]', params: { id, ...(barbeiroId ? { barbeiro: barbeiroId } : {}) } }} />;
+  // Pulou etapa: sem barbeiro volta para a casa (etapa 1); corte de outro barbeiro volta para os cortes (etapa 2).
+  if (id && !barbeiroId) return <Redirect href={{ pathname: '/barbearia/[id]', params: { id } }} />;
+  if (id && barbeiroId && servico && servico.barbeiroId !== barbeiroId) {
+    return <Redirect href={{ pathname: '/cortes/[id]', params: { id, barbeiro: barbeiroId } }} />;
   }
   if (b === undefined || !perfil) return <Carregando />;
   if (falhou) return <Tela><Voltar /><FalhaAoCarregar onTentar={() => { setB(undefined); setTentativa(n => n + 1); }} /></Tela>;
@@ -105,10 +106,15 @@ export default function Agendar() {
       registrarEvento(db, { tipo: 'agendou', uid: perfil.uid, barbeariaId: b.id, duracaoMs: Date.now() - abriuEm.current, em: Date.now() });
       // Vibração curta de sucesso: o momento de valor do app (na web não faz nada).
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-      setFeito(escolhido);
+      avisarReserva(`${servico.nome} com ${nomeBarbeiro}, ${rotuloDia(dataLocal(escolhido), hoje).toLowerCase()} às ${formatarHora(escolhido)}. `
+        + `Cancelamento grátis até ${b.politica.cancelamentoGratisHoras} h antes; você recebe um lembrete.`);
+      setEscolhido(null);
+      // Volta até a casa (fecha cortes e horário): pronto para outro agendamento, começando pelo barbeiro.
+      router.dismissTo({ pathname: '/barbearia/[id]', params: { id: b.id } });
     } catch (e) {
       if (e instanceof HorarioOcupadoError) {
         setErro(e.message);
+        setEscolhido(null);
         setRecarregar(n => n + 1);
       } else if ((e as { code?: string })?.code === 'permission-denied') {
         // Recusado pelas regras: limite de 20 s entre reservas OU o cardápio mudou (preço/duração) depois
@@ -122,45 +128,12 @@ export default function Agendar() {
     } finally { setSalvando(false); }
   }
 
-  if (feito) {
-    return (
-      <Tela>
-        <View style={{ alignItems: 'center', gap: space(3), paddingTop: space(10) }}>
-          <Ionicons name="checkmark-circle" size={64} color={colors.success} />
-          <Titulo>Horário reservado</Titulo>
-          <Text style={[type.body, { textAlign: 'center' }]}>
-            {servico.nome} com {nomeBarbeiro}{'\n'}{rotuloDia(dataLocal(feito), hoje)} às {formatarHora(feito)} · {b.nome}
-          </Text>
-          <Aviso texto={`Cancelamento grátis até ${b.politica.cancelamentoGratisHoras} h antes. Você recebe um lembrete antes do horário.`} />
-        </View>
-        <Botao titulo="Ver meus agendamentos" onPress={() => router.replace('/agendamentos')} />
-        <Botao titulo="Voltar para a barbearia" variante="secundario" onPress={() => router.back()} />
-      </Tela>
-    );
-  }
-
-  // Confirmar fica fixo no rodapé: com o dia cheio de horários ele sumia abaixo da grade (quebrava os 3 toques).
-  const rodape = (
-    <>
-      {erro ? <Aviso texto={erro} tom="erro" /> : null}
-      <Botao
-        titulo={escolhido ? `Confirmar · ${rotuloDia(dia, hoje)} às ${formatarHora(escolhido)}` : 'Escolha um horário'}
-        onPress={confirmar} carregando={salvando} disabled={!escolhido}
-      />
-    </>
-  );
-
   return (
-    <Tela rodape={rodape}>
+    <Tela>
       <Voltar />
-      {/* Etapas 1 e 2 já feitas (com atalho para trocar); esta tela é a etapa 3. */}
       <Etapa numero={1} titulo={`Barbeiro: ${nomeBarbeiro}`} feito />
       <Etapa numero={2} titulo={`Corte: ${servico.nome}`} feito />
-      <Pressable onPress={() => router.replace({ pathname: '/barbearia/[id]', params: { id: b.id, barbeiro: barbeiro.uid } })}
-        hitSlop={8} accessibilityRole="button" style={{ alignSelf: 'flex-start' }}>
-        <Text style={[type.caption, { color: colors.accent }]}>Trocar barbeiro ou corte</Text>
-      </Pressable>
-      <Etapa numero={3} titulo="Escolha o dia e o horário" feito={!!escolhido} />
+      <Etapa numero={3} titulo="Escolha o dia e o horário" dica="Toque no horário para confirmar." />
       <Cartao style={{ flexDirection: 'row', gap: space(3), alignItems: 'center' }}>
         {servico.fotos[0]
           ? <Image source={{ uri: servico.fotos[0] }} style={{ width: 64, height: 80, borderRadius: radius.input }} />
@@ -182,8 +155,42 @@ export default function Agendar() {
           : <GradeHorarios horarios={horarios} valor={escolhido} onChange={h => { setErro(null); setEscolhido(h); }} />}
       </Secao>
 
+      {erro && !escolhido ? <Aviso texto={erro} tom="erro" /> : null}
       <Aviso texto="Pagamento no balcão, direto com a barbearia." />
+
+      {/* Popup de confirmação: decisão que precisa interromper (reserva de verdade). */}
+      <Modal visible={!!escolhido} transparent animationType="fade" onRequestClose={() => { if (!salvando) setEscolhido(null); }}>
+        <View style={{ flex: 1, backgroundColor: sobreFoto.veu, justifyContent: 'center', padding: space(5) }}>
+          <View accessibilityViewIsModal style={{ backgroundColor: colors.surface, borderRadius: radius.card, padding: space(5), gap: space(4),
+            borderWidth: 1, borderColor: colors.border, width: '100%', maxWidth: 420, alignSelf: 'center' }}>
+            <Titulo>Confirmar horário?</Titulo>
+            {escolhido ? (
+              <View style={{ gap: space(2) }}>
+                <Linha rotulo="Barbeiro" valor={nomeBarbeiro} />
+                <Linha rotulo="Corte" valor={`${servico.nome} · ${servico.duracaoMin} min`} />
+                <Linha rotulo="Quando" valor={`${rotuloDia(dia, hoje)} às ${formatarHora(escolhido)}`} />
+                <Linha rotulo="Valor" valor={formatarPreco(servico.precoCentavos)} destaque />
+              </View>
+            ) : null}
+            <Text style={type.caption}>Pagamento no balcão. Cancelamento grátis até {b.politica.cancelamentoGratisHoras} h antes.</Text>
+            {erro ? <Aviso texto={erro} tom="erro" /> : null}
+            <View style={{ flexDirection: 'row', gap: space(2) }}>
+              <Botao titulo="Voltar" variante="secundario" style={{ flex: 1 }} disabled={salvando} onPress={() => { setErro(null); setEscolhido(null); }} />
+              <Botao titulo="Confirmar" style={{ flex: 1 }} carregando={salvando} onPress={confirmar} />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </Tela>
+  );
+}
+
+function Linha({ rotulo, valor, destaque }: { rotulo: string; valor: string; destaque?: boolean }) {
+  return (
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: space(3) }}>
+      <Text style={type.caption}>{rotulo}</Text>
+      <Text style={[type.body, { flexShrink: 1, textAlign: 'right' }, destaque && { color: colors.accent, fontWeight: '700' }]}>{valor}</Text>
+    </View>
   );
 }
 
