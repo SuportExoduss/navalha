@@ -185,9 +185,9 @@ export function ouvirHorariosLivres(
 export function ouvirAgendaDoDia(
   db: Firestore, barbeariaId: string, data: ISODate, barbeiroId: string | null, cb: (l: Agendamento[]) => void, erro?: (e: Error) => void,
 ): Unsubscribe {
-  const q = barbeiroId
-    ? query(collection(db, 'agendamentos'), where('barbeiroId', '==', barbeiroId), where('data', '==', data), orderBy('inicio'))
-    : query(collection(db, 'agendamentos'), where('barbeariaId', '==', barbeariaId), where('data', '==', data), orderBy('inicio'));
+  // Com barbeariaId e barbeiroId juntos a consulta passa nas regras antigas (casa) e nas novas (só o próprio barbeiro).
+  const q = query(collection(db, 'agendamentos'), where('barbeariaId', '==', barbeariaId),
+    ...(barbeiroId ? [where('barbeiroId', '==', barbeiroId)] : []), where('data', '==', data), orderBy('inicio'));
   return onSnapshot(q, s => cb(s.docs.map(d => d.data() as Agendamento)), erro);
 }
 

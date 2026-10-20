@@ -244,7 +244,7 @@ test('agenda do dia: o dono lê a casa toda; o barbeiro só a dele; quem é de f
   const daCasa = (uid: string) => getDocs(query(collection(dbDe(uid), 'agendamentos'),
     where('barbeariaId', '==', 'b1'), where('data', '==', '2030-01-10'), orderBy('inicio')));
   const doBarbeiro = (uid: string, barbeiroId: string) => getDocs(query(collection(dbDe(uid), 'agendamentos'),
-    where('barbeiroId', '==', barbeiroId), where('data', '==', '2030-01-10'), orderBy('inicio')));
+    where('barbeariaId', '==', 'b1'), where('barbeiroId', '==', barbeiroId), where('data', '==', '2030-01-10'), orderBy('inicio')));
   assert.equal((await assertSucceeds(daCasa('dono'))).size, 1);
   assert.equal((await assertSucceeds(doBarbeiro('lucas', 'lucas'))).size, 1);
   await assertFails(daCasa('lucas')); // barbeiro não vê os clientes dos colegas
