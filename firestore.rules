@@ -43,17 +43,52 @@ service cloud.firestore {
       function fotosDaCasaOk(d) { return fotoOk(d, 'capaUrl') && fotoOk(d, 'logoUrl') && (!('fotos' in d) || d.fotos.size() <= 12); }
       // Comissão é dado comercial: não vai no perfil público do barbeiro (leitura aberta). Fica para um doc privado (SEC-008).
       function perfilBarbeiroOk(d) { return fotoOk(d, 'fotoUrl') && !('comissaoPercent' in d); }
-      allow read: if resource.data.publicada == true || ehDaCasa(bid);
+      function casa() { return /databases/$(database)/documents/barbearias/$(bid); }
+      function barb(u) { return /databases/$(database)/documents/barbearias/$(bid)/barbeiros/$(u); }
+      // 1 se o barbeiro u conta como ativo antes/depois desta gravação.
+      function ativoAntes(u) { return exists(barb(u)) && get(barb(u)).data.ativo == true ? 1 : 0; }
+      function ativoDepois(u) { return existsAfter(barb(u)) && getAfter(barb(u)).data.ativo == true ? 1 : 0; }
+      // Contador de barbeiros ativos (limite do plano): só muda junto com o barbeiro indicado em
+      // mudouBarbeiro, na mesma gravação, e nunca passa do limite quando sobe.
+      function contadorOk(antes, depois) {
+        let u = depois.get('mudouBarbeiro', '');
+        let delta = u == '' ? 0 : ativoDepois(u) - ativoAntes(u);
+        return depois.barbeirosAtivos == antes.get('barbeirosAtivos', 0) + delta
+          && (delta <= 0 || depois.barbeirosAtivos <= depois.assinatura.limiteBarbeiros);
+      }
+      // 60 dias grátis, uma vez por conta: a marca em testes/{uid} nasce junto e não pode ser apagada.
+      function testeOk(d) {
+        let marca = /databases/$(database)/documents/testes/$(eu());
+        return d.assinatura.keys().hasOnly(['status', 'venceEm', 'limiteBarbeiros'])
+          && d.assinatura.status == 'teste' && d.assinatura.limiteBarbeiros == 10 && d.emDia == true
+          && d.assinatura.venceEm is int
+          && d.assinatura.venceEm >= request.time.toMillis() + 59 * 86400000
+          && d.assinatura.venceEm <= request.time.toMillis() + 60 * 86400000 + 600000
+          && !exists(marca) && existsAfter(marca);
+      }
+      // Sem teste: rascunho fora da busca, até o Worker confirmar um plano pago.
+      function rascunhoOk(d) {
+        return d.assinatura.keys().hasOnly(['status', 'limiteBarbeiros'])
+          && d.assinatura.status == 'rascunho' && d.assinatura.limiteBarbeiros == 1 && d.emDia == false;
+      }
+      // Na busca só aparece casa publicada E em dia (teste ou mensalidade); a equipe sempre vê a sua.
+      allow read: if (resource.data.publicada == true && resource.data.get('emDia', false) == true) || ehDaCasa(bid);
       allow create: if logado()
-        && request.resource.data.donoUid == eu()
-        && request.resource.data.assinatura.status in ['rascunho', 'teste'] && fotosDaCasaOk(request.resource.data);
-      // O dono edita tudo, menos a assinatura (controlada pelo pagamento) e as notas Google.
-      allow update: if fotosDaCasaOk(request.resource.data) && ((ehDono(bid) && !mudou(['donoUid', 'assinatura', 'criadoEm'])
-        && request.resource.data.resumo.get('notaGoogle', null) == resource.data.resumo.get('notaGoogle', null))
+        && request.resource.data.donoUid == eu() && fotosDaCasaOk(request.resource.data)
+        && request.resource.data.barbeirosAtivos == 1 && request.resource.data.mudouBarbeiro == eu()
+        && (testeOk(request.resource.data) || rascunhoOk(request.resource.data));
+      // O dono edita tudo, menos assinatura e "em dia" (só o Worker, depois de conferir no Google Play),
+      // as notas Google e o contador (que só anda junto com a equipe).
+      allow update: if fotosDaCasaOk(request.resource.data) && ((ehDono(bid) && !mudou(['donoUid', 'assinatura', 'emDia', 'criadoEm'])
+        && request.resource.data.resumo.get('notaGoogle', null) == resource.data.resumo.get('notaGoogle', null)
+        && (!mudou(['barbeirosAtivos', 'mudouBarbeiro']) || contadorOk(resource.data, request.resource.data)))
         // O barbeiro, ao salvar o próprio cardápio, só atualiza a parte do resumo que vem do cardápio.
         || (ehBarbeiro(bid)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['resumo'])
-          && request.resource.data.resumo.diff(resource.data.resumo).affectedKeys().hasOnly(['fotosDestaque', 'precoMin', 'precoMax', 'categorias'])));
+          && request.resource.data.resumo.diff(resource.data.resumo).affectedKeys().hasOnly(['fotosDestaque', 'precoMin', 'precoMax', 'categorias']))
+        // Quem aceita o convite soma a si mesmo no contador (barrado se a equipe já está cheia no plano).
+        || (logado() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['barbeirosAtivos', 'mudouBarbeiro'])
+          && request.resource.data.mudouBarbeiro == eu() && contadorOk(resource.data, request.resource.data)));
       // Excluir a barbearia: só o dono (Configurações › Excluir barbearia).
       allow delete: if ehDono(bid);
 
@@ -61,7 +96,13 @@ service cloud.firestore {
         allow read: if true;
         // Dono cadastra (inclusive a si mesmo, no mesmo lote que cria a casa);
         // barbeiro entra aceitando um convite válido desta casa.
-        allow create: if logado() && perfilBarbeiroOk(request.resource.data) && (
+        // Todo barbeiro que entra ativo, liga ou desliga, ou sai, move o contador da casa na mesma gravação.
+        function contadorDaCasa(antes, depois) {
+          return getAfter(casa()).data.get('mudouBarbeiro', '') == uid
+            && getAfter(casa()).data.barbeirosAtivos == (exists(casa()) ? get(casa()).data.get('barbeirosAtivos', 0) : 0) + depois - antes;
+        }
+        allow create: if logado() && perfilBarbeiroOk(request.resource.data)
+          && contadorDaCasa(0, request.resource.data.ativo == true ? 1 : 0) && (
           ehDono(bid)
           || getAfter(/databases/$(database)/documents/barbearias/$(bid)).data.donoUid == eu()
           || (eu() == uid
@@ -69,8 +110,9 @@ service cloud.firestore {
               && getAfter(/databases/$(database)/documents/convites/$(request.resource.data.conviteCodigo)).data.barbeariaId == bid)
         );
         allow update: if perfilBarbeiroOk(request.resource.data)
-          && (ehDono(bid) || (logado() && eu() == uid && !mudou(['ativo', 'nota', 'barbeariaId', 'conviteCodigo'])));
-        allow delete: if ehDono(bid);
+          && (ehDono(bid) || (logado() && eu() == uid && !mudou(['ativo', 'nota', 'barbeariaId', 'conviteCodigo'])))
+          && (!mudou(['ativo']) || contadorDaCasa(resource.data.ativo == true ? 1 : 0, request.resource.data.ativo == true ? 1 : 0));
+        allow delete: if ehDono(bid) && contadorDaCasa(resource.data.ativo == true ? 1 : 0, 0);
       }
 
       match /servicos/{sid} {
@@ -87,6 +129,19 @@ service cloud.firestore {
           && request.resource.data.fim > request.resource.data.inicio;
         allow delete: if ehDono(bid) || (ehBarbeiro(bid) && resource.data.barbeiroId == eu());
       }
+    }
+
+    // ---------- Assinatura ----------
+    // Marca de "já usou os 60 dias grátis": só nasce (junto com a primeira casa), nunca muda nem some.
+    match /testes/{uid} {
+      allow get: if logado() && eu() == uid;
+      allow create: if logado() && eu() == uid && request.resource.data.keys().hasOnly(['em']) && request.resource.data.em == request.time;
+      allow update, delete: if false;
+    }
+    // Dados da compra no Google Play (token): só o Worker grava; o dono lê.
+    match /assinaturas/{bid} {
+      allow read: if ehDono(bid);
+      allow write: if false;
     }
 
     // ---------- Convites (código curto, coleção raiz para o barbeiro achar a casa) ----------

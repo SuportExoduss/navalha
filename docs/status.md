@@ -73,6 +73,15 @@ Código no computador: `C:\Users\andre\AndroidStudioProjects\navalha` (no Androi
 - [ ] SEC-002: chave de assinatura própria (dono) · App Check: API ligada, **não** ativar a obrigatoriedade antes de integrar no app (depende da SEC-002)
 - [ ] `npm audit`: avisos restantes vêm de dependências do Expo; resolver na próxima atualização do SDK
 
+## Adiantado da Fase 3: mensalidades (decisão do dono, 20/out/2026)
+- [x] Planos Solo R$ 25 (1), Equipe R$ 70 (3), R$ 100 (6) e R$ 150 (10) em `src/lib/planos.ts`; 60 dias grátis na primeira casa da conta
+- [x] Google Play Billing (expo-iap, sem conta Expo) + conferência no Worker (`/assinatura/verificar`, Android Publisher API)
+- [x] Limite de barbeiros garantido nas regras (contador `barbeirosAtivos` andando junto com a equipe); baixar de plano exige o dono escolher quem fica
+- [x] Casa sem teste/plano em dia sai da busca (`emDia`, só o servidor grava; cron de hora em hora)
+- [x] Testes: lógica 36, regras 36, Worker 10; migração das casas antigas rodada; regras, índices, Worker e web publicados
+- [ ] Play Console (dono): conta, AAB no teste interno, 4 assinaturas, API e acesso do Worker — passo a passo em `docs/play-billing.md`
+- [ ] Nomes dos planos de R$ 100 e R$ 150 (hoje provisórios: Casa e Casa cheia)
+
 ## Fase 1 — o que falta para o portão da Fase 2
 O código do MVP está completo. O portão é "3 barbearias amigas usando por 1 semana sem erro grave e nenhum horário duplicado".
 Para isso, nesta ordem:

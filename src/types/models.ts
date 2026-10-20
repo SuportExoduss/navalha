@@ -1,6 +1,7 @@
 // Modelo de dados completo do Navalha (Firestore).
 // Já inclui as coleções das Fases 3 a 5 (pagamentos, avaliações, assinaturas),
 // para que nenhuma fase futura exija migração. Ver docs/modelo-de-dados.md.
+import type { PlanoId } from '../lib/planos';
 
 export type Role = 'cliente' | 'barbeiro' | 'dono';
 
@@ -42,7 +43,19 @@ export interface Expediente {
   [diaSemana: number]: { abre: HHMM; fecha: HHMM; pausas?: { inicio: HHMM; fim: HHMM }[] } | undefined;
 }
 
-export type StatusAssinatura = 'rascunho' | 'teste' | 'ativa' | 'inadimplente' | 'cancelada';
+/** rascunho = sem teste nem plano; teste = 60 dias grátis; vencida = teste ou plano acabou. */
+export type StatusAssinatura = 'rascunho' | 'teste' | 'ativa' | 'inadimplente' | 'cancelada' | 'vencida';
+
+/** Assinatura da casa. Só o Worker grava (depois de conferir a compra no Google Play); o dono só lê. */
+export interface AssinaturaCasa {
+  status: StatusAssinatura;
+  plano?: PlanoId;
+  /** Fim do teste ou do mês pago. */
+  venceEm?: Millis;
+  /** Barbeiros ativos permitidos (dono incluso). */
+  limiteBarbeiros: number;
+  fundador?: boolean;
+}
 
 /** barbearias/{barbeariaId} */
 export interface Barbearia {
@@ -80,7 +93,13 @@ export interface Barbearia {
     fotosDestaque: string[];
   };
   pagamento: { pagarNoApp: boolean; sinalPercent: number; subcontaAsaasId?: string };
-  assinatura: { status: StatusAssinatura; plano?: 'solo' | 'equipe' | 'casa_cheia'; venceEm?: Millis; fundador?: boolean };
+  assinatura: AssinaturaCasa;
+  /** Teste ou mensalidade em dia: só assim a casa aparece na busca. Gravado só pelo servidor. */
+  emDia: boolean;
+  /** Contador de barbeiros ativos (as regras usam para barrar além do limite do plano). */
+  barbeirosAtivos: number;
+  /** Último barbeiro adicionado, ligado ou desligado: as regras conferem o contador por ele. */
+  mudouBarbeiro?: string;
   /** Só barbearias publicadas aparecem na busca. */
   publicada: boolean;
   criadoEm: Millis;

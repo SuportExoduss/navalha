@@ -2,13 +2,14 @@
 // Busca por perto com geohash (sem API paga): consulta as faixas de geohash
 // que cobrem o raio e filtra pela distância real.
 import {
-  arrayRemove, arrayUnion, collection, deleteDoc, doc, endAt, getDoc, getDocs, onSnapshot, orderBy, query,
+  arrayRemove, arrayUnion, collection, increment, serverTimestamp, deleteDoc, doc, endAt, getDoc, getDocs, onSnapshot, orderBy, query,
   setDoc, startAt, updateDoc, where, writeBatch, type Firestore, type Unsubscribe,
 } from 'firebase/firestore';
 import { distanceBetween, geohashForLocation, geohashQueryBounds } from 'geofire-common';
 import { cancelar } from './agendamentos';
 import { esquecer, lembrar } from './cache';
-import type { Agendamento, Barbearia, Barbeiro, Convite, Expediente, Servico } from '../types/models';
+import { DIAS_TESTE, LIMITE_TESTE } from '../lib/planos';
+import type { Agendamento, AssinaturaCasa, Barbearia, Barbeiro, Convite, Expediente, Servico } from '../types/models';
 
 export interface BarbeariaPerto extends Barbearia { distanciaKm: number }
 
@@ -25,6 +26,7 @@ async function buscarPertoServidor(db: Firestore, lat: number, lng: number, raio
   const snaps = await Promise.all(bounds.map(([ini, fim]) => getDocs(query(
     collection(db, 'barbearias'),
     where('publicada', '==', true),
+    where('emDia', '==', true), // teste ou mensalidade em dia; as regras também exigem
     orderBy('geo.geohash'), startAt(ini), endAt(fim),
   ))));
   const vistos = new Set<string>();
@@ -92,11 +94,24 @@ const SEMANA = { abre: '09:00', fecha: '19:00', pausas: [{ inicio: '12:00', fim:
 /** Expediente inicial: terça a sexta 9h–19h com almoço, sábado 9h–17h. O dono ajusta depois. */
 export const EXPEDIENTE_PADRAO = { 2: SEMANA, 3: SEMANA, 4: SEMANA, 5: SEMANA, 6: { abre: '09:00', fecha: '17:00' } };
 
-/** Dono cria a barbearia e já entra como primeiro barbeiro da casa, num só lote. */
+/** A conta já usou os 60 dias grátis? (1 leitura, só no cadastro da casa) */
+export async function jaUsouTeste(db: Firestore, uid: string): Promise<boolean> {
+  return (await getDoc(doc(db, 'testes', uid))).exists();
+}
+
+/**
+ * Dono cria a barbearia e já entra como primeiro barbeiro da casa, num só lote.
+ * Primeira casa da conta: 60 dias grátis (as regras conferem que a conta ainda não usou o teste).
+ * Depois disso (ex.: excluiu e criou outra), a casa nasce como rascunho e só entra na busca com um plano.
+ */
 export async function criarBarbearia(
   db: Firestore, dono: { uid: string; nome: string; fotoUrl?: string }, dados: DadosBarbearia,
 ): Promise<string> {
   const ref = doc(collection(db, 'barbearias'));
+  const comTeste = !(await jaUsouTeste(db, dono.uid));
+  const assinatura: AssinaturaCasa = comTeste
+    ? { status: 'teste', venceEm: Date.now() + DIAS_TESTE * 86_400_000, limiteBarbeiros: LIMITE_TESTE }
+    : { status: 'rascunho', limiteBarbeiros: 1 };
   const b: Barbearia = {
     id: ref.id,
     donoUid: dono.uid,
@@ -115,8 +130,10 @@ export async function criarBarbearia(
     janelaDias: 30,
     resumo: { notaApp: 0, totalAvaliacoesApp: 0, fotosDestaque: [] },
     pagamento: { pagarNoApp: false, sinalPercent: 0 },
-    // Piloto: grátis. A cobrança da assinatura entra na Fase 3.
-    assinatura: { status: 'teste' },
+    assinatura,
+    emDia: comTeste,
+    barbeirosAtivos: 1,
+    mudouBarbeiro: dono.uid,
     publicada: false,
     criadoEm: Date.now(),
   };
@@ -129,6 +146,8 @@ export async function criarBarbearia(
   batch.set(ref, b);
   batch.set(doc(db, 'barbearias', ref.id, 'barbeiros', dono.uid), barbeiro);
   batch.update(doc(db, 'users', dono.uid), { barbearias: arrayUnion(ref.id) });
+  // Marca de teste usado: coleção que só aceita criação (apagar o perfil não devolve o teste).
+  if (comTeste) batch.set(doc(db, 'testes', dono.uid), { em: serverTimestamp() });
   await batch.commit();
   return ref.id;
 }
@@ -176,7 +195,14 @@ export async function aceitarConvite(db: Firestore, codigoDigitado: string, eu: 
     especialidades: [], expediente: EXPEDIENTE_PADRAO, ativo: true, nota: { media: 0, total: 0 }, conviteCodigo: codigo,
   });
   batch.update(doc(db, 'users', eu.uid), { barbearias: arrayUnion(c.barbeariaId) });
-  await batch.commit();
+  // Contador de ativos no mesmo lote: as regras recusam se o plano da casa já está cheio.
+  batch.update(doc(db, 'barbearias', c.barbeariaId), { barbeirosAtivos: increment(1), mudouBarbeiro: eu.uid });
+  await batch.commit().catch(e => {
+    if ((e as { code?: string })?.code === 'permission-denied') {
+      throw new ConviteInvalidoError('Não deu para entrar: a equipe dessa barbearia está completa no plano atual. Fale com o dono.');
+    }
+    throw e;
+  });
   return c.barbeariaId;
 }
 
@@ -202,8 +228,12 @@ export async function salvarExpedienteBarbeiro(db: Firestore, barbeariaId: strin
   casaMudou(barbeariaId);
 }
 
+/** Liga/desliga o barbeiro e ajusta o contador de ativos no mesmo lote (as regras barram passar do plano). */
 export async function definirBarbeiroAtivo(db: Firestore, barbeariaId: string, uid: string, ativo: boolean) {
-  await updateDoc(doc(db, 'barbearias', barbeariaId, 'barbeiros', uid), { ativo });
+  const lote = writeBatch(db);
+  lote.update(doc(db, 'barbearias', barbeariaId, 'barbeiros', uid), { ativo });
+  lote.update(doc(db, 'barbearias', barbeariaId), { barbeirosAtivos: increment(ativo ? 1 : -1), mudouBarbeiro: uid });
+  await lote.commit();
   casaMudou(barbeariaId);
 }
 
@@ -284,13 +314,20 @@ export async function excluirBarbearia(db: Firestore, barbeariaId: string, donoU
     }
   }
   // Equipe por último: as regras de cardápio e folgas ainda olham quem é da casa.
-  for (const sub of ['servicos', 'bloqueios', 'barbeiros']) {
+  for (const sub of ['servicos', 'bloqueios']) {
     const docs = (await getDocs(collection(db, 'barbearias', barbeariaId, sub))).docs;
     for (let i = 0; i < docs.length; i += 400) {
       const lote = writeBatch(db);
       docs.slice(i, i + 400).forEach(x => lote.delete(x.ref));
       await lote.commit();
     }
+  }
+  // Cada barbeiro sai junto com o ajuste do contador (a regra do contador vale também aqui).
+  for (const x of (await getDocs(collection(db, 'barbearias', barbeariaId, 'barbeiros'))).docs) {
+    const lote = writeBatch(db);
+    lote.delete(x.ref);
+    lote.update(doc(db, 'barbearias', barbeariaId), { barbeirosAtivos: increment((x.data() as Barbeiro).ativo ? -1 : 0), mudouBarbeiro: x.id });
+    await lote.commit();
   }
   const fim = writeBatch(db);
   fim.delete(doc(db, 'barbearias', barbeariaId));

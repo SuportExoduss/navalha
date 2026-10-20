@@ -4,66 +4,138 @@
       "collectionGroup": "barbearias",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "publicada", "order": "ASCENDING" },
-        { "fieldPath": "geo.geohash", "order": "ASCENDING" }
+        {
+          "fieldPath": "publicada",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "emDia",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "geo.geohash",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "ocupacao",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "barbeiroId", "order": "ASCENDING" },
-        { "fieldPath": "inicio", "order": "ASCENDING" }
+        {
+          "fieldPath": "barbeiroId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "inicio",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "agendamentos",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "clienteUid", "order": "ASCENDING" },
-        { "fieldPath": "inicio", "order": "DESCENDING" }
+        {
+          "fieldPath": "clienteUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "inicio",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "agendamentos",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "barbeiroId", "order": "ASCENDING" },
-        { "fieldPath": "data", "order": "ASCENDING" },
-        { "fieldPath": "inicio", "order": "ASCENDING" }
+        {
+          "fieldPath": "barbeiroId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "data",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "inicio",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "agendamentos",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "inicio", "order": "ASCENDING" }
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "inicio",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "agendamentos",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "barbeariaId", "order": "ASCENDING" },
-        { "fieldPath": "data", "order": "ASCENDING" },
-        { "fieldPath": "inicio", "order": "ASCENDING" }
+        {
+          "fieldPath": "barbeariaId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "data",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "inicio",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "bloqueios",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "barbeiroId", "order": "ASCENDING" },
-        { "fieldPath": "fim", "order": "ASCENDING" }
+        {
+          "fieldPath": "barbeiroId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fim",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "agendamentos",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "barbeariaId", "order": "ASCENDING" },
-        { "fieldPath": "data", "order": "ASCENDING" }
+        {
+          "fieldPath": "barbeariaId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "data",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "barbearias",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "emDia",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "assinatura.venceEm",
+          "order": "ASCENDING"
+        }
       ]
     }
   ],

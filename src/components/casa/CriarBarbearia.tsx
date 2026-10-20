@@ -1,11 +1,11 @@
 // Cadastro da barbearia pelo dono. A localização vem do GPS do próprio
 // celular, de dentro da barbearia — sem mapa nem API paga.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { Aviso, Botao, Campo, Cartao, Titulo } from '../ui';
-import { criarBarbearia } from '../../services/barbearias';
+import { criarBarbearia, jaUsouTeste } from '../../services/barbearias';
 import { db } from '../../services/firebase';
 import { colors, space, type } from '../../theme';
 import type { UserProfile } from '../../types/models';
@@ -20,6 +20,8 @@ export function CriarBarbearia({ perfil }: { perfil: UserProfile }) {
   const [localizando, setLocalizando] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [testeUsado, setTesteUsado] = useState<boolean | null>(null);
+  useEffect(() => { jaUsouTeste(db, perfil.uid).then(setTesteUsado).catch(() => setTesteUsado(null)); }, [perfil.uid]);
 
   async function usarLocalizacao() {
     setErro(null);
@@ -87,6 +89,9 @@ export function CriarBarbearia({ perfil }: { perfil: UserProfile }) {
 
       {erro ? <Aviso texto={erro} tom="erro" /> : null}
       <Botao titulo="Criar barbearia" onPress={salvar} carregando={salvando} />
+      {testeUsado === null ? null : <Aviso texto={testeUsado
+        ? 'Sua conta já usou os 60 dias grátis: a barbearia entra na busca depois de escolher um plano em Configurações.'
+        : 'Os primeiros 60 dias são grátis, com até 10 barbeiros. Depois, escolha um plano em Configurações.'} />}
       <Aviso texto="Você entra como o primeiro barbeiro da casa. Horário inicial: terça a sexta 9h–19h (almoço 12h–13h) e sábado 9h–17h." />
     </>
   );

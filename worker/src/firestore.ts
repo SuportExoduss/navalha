@@ -17,7 +17,8 @@ export async function tokenGoogle(email: string, chavePem: string): Promise<stri
   const chave = await crypto.subtle.importKey('pkcs8', der, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']);
   const agora = Math.floor(Date.now() / 1000);
   const corpo = `${b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))}.${b64url(JSON.stringify({
-    iss: email, scope: 'https://www.googleapis.com/auth/datastore https://www.googleapis.com/auth/firebase.messaging',
+    // androidpublisher: conferir as assinaturas no Google Play (a conta precisa estar ligada na Play Console).
+    iss: email, scope: 'https://www.googleapis.com/auth/datastore https://www.googleapis.com/auth/firebase.messaging https://www.googleapis.com/auth/androidpublisher',
     aud: 'https://oauth2.googleapis.com/token', iat: agora, exp: agora + 3600,
   }))}`;
   const assinatura = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', chave, new TextEncoder().encode(corpo));
@@ -51,8 +52,9 @@ export class Firestore {
   private get base() { return `https://firestore.googleapis.com/v1/projects/${this.projectId}/databases/(default)/documents`; }
   private headers() { return { Authorization: `Bearer ${this.token}`, 'Content-Type': 'application/json' }; }
 
-  async query(structuredQuery: unknown): Promise<{ id: string; dados: Record<string, unknown> }[]> {
-    const r = await fetch(`${this.base}:runQuery`, { method: 'POST', headers: this.headers(), body: JSON.stringify({ structuredQuery }) });
+  /** `pai` para consultar uma subcoleção, ex.: "barbearias/abc" + from barbeiros. */
+  async query(structuredQuery: unknown, pai = ''): Promise<{ id: string; dados: Record<string, unknown> }[]> {
+    const r = await fetch(`${this.base}${pai ? '/' + pai : ''}:runQuery`, { method: 'POST', headers: this.headers(), body: JSON.stringify({ structuredQuery }) });
     if (!r.ok) throw new Error(`runQuery ${r.status}: ${await r.text()}`);
     const linhas = (await r.json()) as { document?: { name: string; fields: Record<string, Valor> } }[];
     return linhas.filter(l => l.document).map(l => ({
@@ -77,6 +79,26 @@ export class Firestore {
     return res;
   }
 
+  /**
+   * Grava campos (chaves com ponto = campo dentro de mapa) em vários documentos, numa chamada só.
+   * `criar`: o documento pode não existir ainda; sem ele, exige que exista.
+   */
+  async escrever(lista: { caminho: string; campos: Record<string, unknown>; criar?: boolean }[]) {
+    if (!lista.length) return;
+    const raiz = `projects/${this.projectId}/databases/(default)/documents/`;
+    const writes = lista.map(({ caminho, campos, criar }) => {
+      const fields: Record<string, Valor> = {};
+      for (const [k, v] of Object.entries(campos)) mesclar(fields, montarCampo(k.split('.'), paraValor(v)));
+      return {
+        update: { name: raiz + caminho, fields },
+        updateMask: { fieldPaths: Object.keys(campos) },
+        ...(criar ? {} : { currentDocument: { exists: true } }),
+      };
+    });
+    const r = await fetch(`${this.base}:commit`, { method: 'POST', headers: this.headers(), body: JSON.stringify({ writes }) });
+    if (!r.ok) throw new Error(`commit ${r.status}: ${await r.text()}`);
+  }
+
   /** O mesmo campo inteiro em vários documentos, numa gravação só (até 500). */
   async marcarVarios(caminhos: string[], campo: string, valor: number) {
     if (!caminhos.length) return;
@@ -88,6 +110,24 @@ export class Firestore {
     }));
     const r = await fetch(`${this.base}:commit`, { method: 'POST', headers: this.headers(), body: JSON.stringify({ writes }) });
     if (!r.ok) throw new Error(`commit ${r.status}: ${await r.text()}`);
+  }
+}
+
+export function paraValor(x: unknown): Valor {
+  if (x === null || x === undefined) return { nullValue: null };
+  if (typeof x === 'boolean') return { booleanValue: x };
+  if (typeof x === 'number') return Number.isInteger(x) ? { integerValue: String(x) } : { doubleValue: x };
+  if (typeof x === 'string') return { stringValue: x };
+  if (Array.isArray(x)) return { arrayValue: { values: x.map(paraValor) } };
+  return { mapValue: { fields: Object.fromEntries(Object.entries(x as object).map(([k, v]) => [k, paraValor(v)])) } };
+}
+
+/** Junta "assinatura.status" e "assinatura.plano" no mesmo mapa. */
+function mesclar(alvo: Record<string, Valor>, novo: Record<string, Valor>) {
+  for (const [k, v] of Object.entries(novo)) {
+    const atual = alvo[k];
+    if (atual?.mapValue && v.mapValue) mesclar((atual.mapValue.fields ??= {}), v.mapValue.fields ?? {});
+    else alvo[k] = v;
   }
 }
 

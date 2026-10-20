@@ -39,21 +39,23 @@ Agendamento para barbearias de bairro: o cliente marca o corte em 3 toques e a b
 
 **Já existe (Fase 1):** login Google; modos cliente / barbeiro / dono; busca perto com filtros; página da barbearia; reserva em tempo real; meus agendamentos; agenda do dia com encaixe, concluir com foto, falta e cancelar; cardápio com fotos; expediente e folgas; convite de barbeiro por código; painel do dono; Configurações só do dono (foto, capa, nome, publicação, horário da casa, código do Google, excluir barbearia); exclusão de conta; temas claro e escuro; lembretes push (Android e web).
 
-**Assinatura da barbearia (decidido pelo dono, a implementar):**
+**Assinatura da barbearia (implementado em 20/out/2026; cobrança real depende da Play Console, ver `docs/play-billing.md`):**
 
 | Plano | Mensal | Barbeiros na casa |
 | --- | --- | --- |
 | Solo | R$ 25 | 1 (só o dono) |
 | Equipe | R$ 70 | até 3 (dono + 2) |
-| — | R$ 100 | até 6 |
-| — | R$ 150 | até 10 |
+| Casa (nome provisório) | R$ 100 | até 6 |
+| Casa cheia (nome provisório) | R$ 150 | até 10 |
 
 - Primeiros usuários: 60 dias liberados antes de cobrar.
 - Todos os planos com renovação mensal; cada plano limita quantos barbeiros podem ser adicionados.
 - Com a renovação em dia (verificada pelo billing), o dono pode criar a barbearia e ela fica visível na busca. Em atraso, a barbearia sai da busca.
-- **Em aberto:** qual billing (Google Play Billing, exigido para assinatura dentro do app Android, ou Asaas, previsto no roadmap); nome dos planos de R$ 100 e R$ 150; o que acontece com os barbeiros acima do limite quando o dono troca para um plano menor.
+- Cobrança pelo **Google Play Billing** (decidido). Ao baixar de plano, o dono escolhe quem fica (desliga os excedentes antes).
+- Teste de 60 dias com o limite do maior plano (10), uma vez por conta.
+- **Em aberto:** nomes definitivos dos planos de R$ 100 e R$ 150.
 
-**Troca de modo e entrada na barbearia (decidido pelo dono, a implementar):**
+**Troca de modo e entrada na barbearia (implementado):**
 
 - A troca cliente / barbeiro / dono fica no Perfil.
 - Conta criada com a intenção de abrir uma barbearia já nasce como cliente + dono.

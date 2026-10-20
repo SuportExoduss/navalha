@@ -8,7 +8,7 @@ import {
   initializeTestEnvironment, assertFails, assertSucceeds, type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
 import {
-  collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc, runTransaction, where, writeBatch,
+  collection, deleteDoc, doc, getDoc, getDocs, increment, orderBy, query, serverTimestamp, setDoc, updateDoc, runTransaction, where, writeBatch,
   type Firestore,
 } from 'firebase/firestore';
 import { chavesOcupacao, paraMillis } from '../src/lib/agenda';
@@ -16,7 +16,7 @@ import {
   agendamentosDaSemana, cancelar, concluir, criarFolga, definirStatus, horariosLivres, reservar, type NovaReserva,
 } from '../src/services/agendamentos';
 import { NOME_REMOVIDO } from '../src/services/usuarios';
-import { MOTIVO_CASA_ENCERRADA, excluirBarbearia } from '../src/services/barbearias';
+import { MOTIVO_CASA_ENCERRADA, definirBarbeiroAtivo, excluirBarbearia } from '../src/services/barbearias';
 import type { Barbearia, Barbeiro } from '../src/types/models';
 
 let env: RulesTestEnvironment;
@@ -33,7 +33,10 @@ beforeEach(async () => {
   await env.clearFirestore();
   await env.withSecurityRulesDisabled(async ctx => {
     const db = ctx.firestore();
-    await setDoc(doc(db, 'barbearias/b1'), { id: 'b1', donoUid: 'dono', publicada: true, assinatura: { status: 'teste' }, resumo: {} });
+    await setDoc(doc(db, 'barbearias/b1'), {
+      id: 'b1', donoUid: 'dono', publicada: true, resumo: {},
+      assinatura: { status: 'teste', venceEm: Date.now() + 86400e3, limiteBarbeiros: 10 }, emDia: true, barbeirosAtivos: 1,
+    });
     await setDoc(doc(db, 'barbearias/b1/barbeiros/lucas'), { uid: 'lucas', ativo: true });
     // Cardápio: a reserva precisa bater preço, duração e barbeiro com estes serviços (SEC-003).
     await setDoc(doc(db, 'barbearias/b1/servicos/s'), { id: 's', barbeiroId: 'lucas', precoCentavos: 4500, duracaoMin: 30, ativo: true });
@@ -95,34 +98,77 @@ test('usuário só lê o próprio perfil', async () => {
   await assertFails(getDoc(doc(env.authenticatedContext('beto').firestore(), 'users/ana')));
 });
 
-test('dono cria a barbearia e entra como barbeiro no mesmo lote', async () => {
+const casaNova = (id: string, dono: string, assinatura: object, emDia: boolean) => ({
+  id, donoUid: dono, publicada: false, resumo: {}, assinatura, emDia, barbeirosAtivos: 1, mudouBarbeiro: dono,
+});
+const teste60 = () => ({ status: 'teste', venceEm: Date.now() + 60 * 86_400_000, limiteBarbeiros: 10 });
+
+test('dono cria a barbearia com 60 dias grátis, uma vez por conta; depois só rascunho', async () => {
   const db = env.authenticatedContext('novo').firestore();
   await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'users/novo'), { uid: 'novo', barbearias: [] }));
-  const batch = writeBatch(db);
-  batch.set(doc(db, 'barbearias/b2'), { id: 'b2', donoUid: 'novo', publicada: false, assinatura: { status: 'teste' }, resumo: {} });
-  batch.set(doc(db, 'barbearias/b2/barbeiros/novo'), { uid: 'novo', ativo: true });
-  batch.update(doc(db, 'users/novo'), { barbearias: ['b2'] });
-  await assertSucceeds(batch.commit());
+  const criar = (id: string, assinatura: object, emDia: boolean, marca: boolean) => {
+    const b = writeBatch(db);
+    b.set(doc(db, 'barbearias', id), casaNova(id, 'novo', assinatura, emDia));
+    b.set(doc(db, `barbearias/${id}/barbeiros/novo`), { uid: 'novo', ativo: true });
+    if (marca) b.set(doc(db, 'testes/novo'), { em: serverTimestamp() });
+    return b.commit();
+  };
+  await assertFails(criar('b2', teste60(), true, false)); // teste sem a marca
+  await assertFails(criar('b2', { ...teste60(), venceEm: Date.now() + 365 * 86_400_000 }, true, true)); // teste de 1 ano
+  await assertSucceeds(criar('b2', teste60(), true, true));
+  await assertFails(criar('b3', teste60(), true, true)); // segundo teste da mesma conta
+  await assertFails(criar('b3', { status: 'rascunho', limiteBarbeiros: 1 }, true, false)); // rascunho "em dia"
+  await assertSucceeds(criar('b3', { status: 'rascunho', limiteBarbeiros: 1 }, false, false));
+  await assertFails(deleteDoc(doc(db, 'testes/novo'))); // a marca não some
   // Ninguém cria barbearia em nome de outro dono.
-  await assertFails(setDoc(doc(db, 'barbearias/b3'), { id: 'b3', donoUid: 'outro', publicada: false, assinatura: { status: 'teste' }, resumo: {} }));
+  await assertFails(setDoc(doc(db, 'barbearias/b4'), casaNova('b4', 'outro', { status: 'rascunho', limiteBarbeiros: 1 }, false)));
 });
+
+const aceitarConvite = (uid: string, codigo = 'ABC234') => {
+  const db = env.authenticatedContext(uid).firestore();
+  const batch = writeBatch(db);
+  batch.update(doc(db, 'convites', codigo), { usadoPor: uid });
+  batch.set(doc(db, 'barbearias/b1/barbeiros', uid), { uid, ativo: true, conviteCodigo: codigo });
+  batch.update(doc(db, 'barbearias/b1'), { barbeirosAtivos: increment(1), mudouBarbeiro: uid });
+  return batch.commit();
+};
 
 test('barbeiro entra só com convite válido, uma única vez', async () => {
   const dono = env.authenticatedContext('dono').firestore();
   await assertSucceeds(setDoc(doc(dono, 'convites/ABC234'), { codigo: 'ABC234', barbeariaId: 'b1', criadoPor: 'dono', expiraEm: Date.now() + 86_400_000 }));
   await assertFails(setDoc(doc(env.authenticatedContext('intruso').firestore(), 'convites/ZZZ999'), { codigo: 'ZZZ999', barbeariaId: 'b1', criadoPor: 'intruso', expiraEm: Date.now() + 86_400_000 }));
-
-  const aceitar = (uid: string) => {
-    const db = env.authenticatedContext(uid).firestore();
-    const batch = writeBatch(db);
-    batch.update(doc(db, 'convites/ABC234'), { usadoPor: uid });
-    batch.set(doc(db, 'barbearias/b1/barbeiros', uid), { uid, ativo: true, conviteCodigo: 'ABC234' });
-    return batch.commit();
-  };
-  await assertSucceeds(aceitar('rafael'));
-  await assertFails(aceitar('bruno')); // código já usado
+  await assertSucceeds(aceitarConvite('rafael'));
+  await assertFails(aceitarConvite('bruno')); // código já usado
   // Sem convite, ninguém se coloca na equipe.
   await assertFails(setDoc(doc(env.authenticatedContext('bruno').firestore(), 'barbearias/b1/barbeiros/bruno'), { uid: 'bruno', ativo: true }));
+});
+
+test('plano: equipe cheia barra convite e religar barbeiro; desligar libera a vaga', async () => {
+  // Plano Equipe (3) com 3 ativos: dono, lucas e rafa.
+  await env.withSecurityRulesDisabled(async ctx => {
+    const db = ctx.firestore();
+    await updateDoc(doc(db, 'barbearias/b1'), { assinatura: { status: 'ativa', plano: 'equipe', limiteBarbeiros: 3 }, barbeirosAtivos: 3 });
+    await setDoc(doc(db, 'barbearias/b1/barbeiros/rafa'), { uid: 'rafa', ativo: true });
+    await setDoc(doc(db, 'barbearias/b1/barbeiros/zeca'), { uid: 'zeca', ativo: false });
+    await setDoc(doc(db, 'convites/CHEIO2'), { codigo: 'CHEIO2', barbeariaId: 'b1', criadoPor: 'dono', expiraEm: Date.now() + 86_400_000 });
+  });
+  await assertFails(aceitarConvite('bruno', 'CHEIO2'));
+  await assertFails(definirBarbeiroAtivo(dbDe('dono'), 'b1', 'zeca', true));
+  // Burlar o contador: zerar sem desligar ninguém, ou desligar sem descontar.
+  await assertFails(updateDoc(doc(dbDe('dono'), 'barbearias/b1'), { barbeirosAtivos: 0 }));
+  await assertFails(updateDoc(doc(dbDe('dono'), 'barbearias/b1/barbeiros/rafa'), { ativo: false }));
+  await assertSucceeds(definirBarbeiroAtivo(dbDe('dono'), 'b1', 'rafa', false));
+  await assertSucceeds(definirBarbeiroAtivo(dbDe('dono'), 'b1', 'zeca', true));
+});
+
+test('assinatura e "em dia" só o servidor muda; casa vencida some da busca', async () => {
+  const dono = dbDe('dono');
+  await env.withSecurityRulesDisabled(ctx => updateDoc(doc(ctx.firestore(), 'barbearias/b1'), { emDia: false }));
+  await assertFails(updateDoc(doc(dono, 'barbearias/b1'), { emDia: true, nome: 'x' }));
+  await assertFails(updateDoc(doc(dono, 'barbearias/b1'), { 'assinatura.limiteBarbeiros': 99 }));
+  await assertFails(setDoc(doc(dono, 'assinaturas/b1'), { token: 'x' }));
+  await assertFails(getDoc(doc(dbDe('ana'), 'barbearias/b1')));
+  await assertSucceeds(getDoc(doc(dono, 'barbearias/b1')));
 });
 
 test('barbearia em rascunho só aparece para a própria casa', async () => {

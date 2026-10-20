@@ -38,7 +38,7 @@ const AQUI = { latitude: -23.5015, longitude: -47.4526 };
       geo: { lat, lng, geohash: geohashForLocation([lat, lng]) }, expediente: sempre, comodidades: [],
       politica: { cancelamentoGratisHoras: 2, toleranciaMin: 10 }, passoMin: 15, antecedenciaMin: 30, janelaDias: 30,
       resumo: { notaApp: 0, totalAvaliacoesApp: 0, fotosDestaque: [], ...extra }, pagamento: { pagarNoApp: false, sinalPercent: 0 },
-      assinatura: { status: 'teste' }, publicada: true, criadoEm: agora });
+      assinatura: { status: 'teste', venceEm: agora + 60 * 86400e3, limiteBarbeiros: 10 }, emDia: true, barbeirosAtivos: 1, publicada: true, criadoEm: agora });
     await casa('b1', 'Navalha de Ouro', -23.5020, -47.4530, { precoMin: 4500, precoMax: 4500, categorias: ['cabelo'] });
     await casa('b2', 'Barba Negra', -23.5300, -47.4600, { precoMin: 8000, precoMax: 9000, categorias: ['combo'] });
     await setDoc(doc(db, 'barbearias/b1/barbeiros', lucas), { uid: lucas, barbeariaId: 'b1', nome: 'Lucas Navalha', especialidades: [], expediente: sempre, ativo: true, nota: { media: 0, total: 0 } });

@@ -35,7 +35,7 @@ const shot = (p, n) => p.screenshot({ path: `shots/${n}.png`, fullPage: true });
       geo: { lat: -23.5, lng: -47.4, geohash: '6gkz' }, expediente: exp, comodidades: [],
       politica: { cancelamentoGratisHoras: 2, toleranciaMin: 10 }, passoMin: 15, antecedenciaMin: 30, janelaDias: 30,
       resumo: { notaApp: 0, totalAvaliacoesApp: 0, fotosDestaque: [] }, pagamento: { pagarNoApp: false, sinalPercent: 0 },
-      assinatura: { status: 'teste' }, publicada: true, criadoEm: Date.now() });
+      assinatura: { status: 'teste', venceEm: Date.now() + 60 * 86400e3, limiteBarbeiros: 10 }, emDia: true, barbeirosAtivos: 1, publicada: true, criadoEm: Date.now() });
     await setDoc(doc(db, 'barbearias/b1/barbeiros', lucas), { uid: lucas, barbeariaId: 'b1', nome: 'Lucas Navalha', especialidades: [], expediente: exp, ativo: true, nota: { media: 0, total: 0 } });
     await setDoc(doc(db, 'barbearias/b1/servicos/s1'), { id: 's1', barbeariaId: 'b1', barbeiroId: lucas, nome: 'Degradê', categoria: 'cabelo', precoCentavos: 4500, duracaoMin: 45, fotos: [], ativo: true });
   });

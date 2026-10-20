@@ -2,9 +2,11 @@
 //  PUT  /fotos?tipo=…&refId=…  → recebe a foto já comprimida e grava no R2
 //  GET  /fotos/<chave>         → serve a foto (fallback; em produção use o domínio público do bucket)
 //  GET  /saude                 → verificação simples
-//  cron a cada hora            → lembretes push de 24 h e 2 h pelo FCM (Firebase), sem conta Expo
-//  POST /asaas/webhook         → reservado para a Fase 3 (pagamentos)
+//  POST /assinatura/verificar → confere no Google Play a compra do plano e libera a casa
+//  POST /admin/migrar-assinaturas → migração única das casas antigas (exige ADMIN_TOKEN)
+//  cron a cada hora            → lembretes push de 24 h e 2 h pelo FCM + casas com plano/teste vencido
 import { verificarIdToken } from './auth';
+import { conferirVencimentos, migrarAssinaturas, verificarCompra } from './assinatura';
 import { Firestore, tokenGoogle } from './firestore';
 import { chaveFoto, janelasLembrete, mensagemFcm, mensagemLembrete, tipoDaImagem, TIPOS } from './util';
 
@@ -19,6 +21,8 @@ export interface Env {
   // Segredos (wrangler secret put):
   GOOGLE_SA_EMAIL?: string;
   GOOGLE_SA_PRIVATE_KEY?: string;
+  /** Só para rotas de manutenção (migração). */
+  ADMIN_TOKEN?: string;
 }
 
 const MAX_BYTES = 1_500_000; // o app manda ~150 KB; recusa arquivos grandes
@@ -82,14 +86,43 @@ export default {
       });
     }
 
-    if (url.pathname === '/asaas/webhook') return json({ erro: 'Disponível na Fase 3.' }, 501, h);
+    if (url.pathname === '/assinatura/verificar' && req.method === 'POST') {
+      const token = req.headers.get('Authorization')?.replace(/^Bearer /, '') ?? '';
+      const uid = token ? await verificarIdToken(token, env.FIREBASE_PROJECT_ID) : null;
+      if (!uid) return json({ erro: 'Entre na sua conta.' }, 401, h);
+      const corpo = (await req.json().catch(() => null)) as { barbeariaId?: unknown; purchaseToken?: unknown } | null;
+      const barbeariaId = typeof corpo?.barbeariaId === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(corpo.barbeariaId) ? corpo.barbeariaId : '';
+      const compra = typeof corpo?.purchaseToken === 'string' && corpo.purchaseToken.length < 1000 ? corpo.purchaseToken : '';
+      if (!barbeariaId || !compra) return json({ erro: 'Dados da compra inválidos.' }, 400, h);
+      if (!env.GOOGLE_SA_EMAIL || !env.GOOGLE_SA_PRIVATE_KEY) return json({ erro: 'Servidor sem credenciais.' }, 503, h);
+      const tokenSA = await tokenGoogle(env.GOOGLE_SA_EMAIL, env.GOOGLE_SA_PRIVATE_KEY);
+      const r = await verificarCompra(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA), tokenSA, uid, barbeariaId, compra);
+      return json(r.corpo, r.status, h);
+    }
+
+    if (url.pathname === '/admin/migrar-assinaturas' && req.method === 'POST') {
+      const chave = req.headers.get('Authorization')?.replace(/^Bearer /, '') ?? '';
+      if (!env.ADMIN_TOKEN || chave !== env.ADMIN_TOKEN) return json({ erro: 'Não autorizado.' }, 401, h);
+      if (!env.GOOGLE_SA_EMAIL || !env.GOOGLE_SA_PRIVATE_KEY) return json({ erro: 'Servidor sem credenciais.' }, 503, h);
+      const tokenSA = await tokenGoogle(env.GOOGLE_SA_EMAIL, env.GOOGLE_SA_PRIVATE_KEY);
+      return json(await migrarAssinaturas(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA)), 200, h);
+    }
+
     return json({ erro: 'Rota não encontrada.' }, 404, h);
   },
 
   async scheduled(_ev: ScheduledEvent, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(enviarLembretes(env));
+    ctx.waitUntil(vencimentos(env));
   },
 };
+
+/** Casas com teste ou mensalidade vencida saem da busca (ou renovam, se o Google confirmar). */
+async function vencimentos(env: Env) {
+  if (!env.GOOGLE_SA_EMAIL || !env.GOOGLE_SA_PRIVATE_KEY) return;
+  const tokenSA = await tokenGoogle(env.GOOGLE_SA_EMAIL, env.GOOGLE_SA_PRIVATE_KEY);
+  await conferirVencimentos(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA), tokenSA).catch(e => console.error('Vencimentos falhou', e));
+}
 
 /** Lembretes de 24 h e 2 h. Roda a cada hora (cron "5 * * * *"). */
 export async function enviarLembretes(env: Env, agora = Date.now()) {

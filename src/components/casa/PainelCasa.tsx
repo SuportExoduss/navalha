@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Aviso, Cartao, Interruptor, Linha, Secao } from '../ui';
 import { criarConvite, definirBarbeiroAtivo, linksDeRota } from '../../services/barbearias';
+import { LIMITE_TESTE, cabeMaisUm } from '../../lib/planos';
 import { PainelDono } from './PainelDono';
 import { db } from '../../services/firebase';
 import { colors, radius, space, type, sobreFoto } from '../../theme';
@@ -16,7 +17,12 @@ export function PainelCasa({ b, equipe, ehDono, uid }: { b: Barbearia; equipe: B
   const [gerando, setGerando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
+  const ativos = b.barbeirosAtivos ?? equipe.filter(e => e.ativo).length;
+  const limite = b.assinatura.limiteBarbeiros ?? LIMITE_TESTE; // casa antiga, antes da migração
+  const cheia = !cabeMaisUm(ativos, limite);
+
   async function convidar() {
+    if (cheia) { setErro(`Seu plano permite ${limite} ${limite === 1 ? 'barbeiro' : 'barbeiros'} ativos. Mude de plano para chamar mais gente.`); return; }
     setGerando(true);
     try {
       const c = await criarConvite(db, b.id, uid);
@@ -58,8 +64,11 @@ export function PainelCasa({ b, equipe, ehDono, uid }: { b: Barbearia; equipe: B
         </Pressable>
       </View>
 
-      {/* Rascunho é o que mais trava o dono: avisa no topo e leva direto para publicar. */}
-      {ehDono && !b.publicada ? (
+      {/* O que tira a casa da busca vem primeiro: plano vencido, depois rascunho. */}
+      {ehDono && !b.emDia ? (
+        <Linha icone="alert-circle-outline" titulo="Fora da busca: sem plano ativo" dica="Toque para escolher um plano" onPress={() => router.push('/plano')} />
+      ) : null}
+      {ehDono && b.emDia && !b.publicada ? (
         <Linha icone="eye-off-outline" titulo="Rascunho: ainda fora da busca" dica="Toque para completar e publicar" onPress={() => router.push('/configuracoes')} />
       ) : null}
 
@@ -69,7 +78,7 @@ export function PainelCasa({ b, equipe, ehDono, uid }: { b: Barbearia; equipe: B
 
       <Linha icone="cut-outline" titulo="Cardápio de cortes" dica="Seus cortes, preços e fotos" onPress={() => router.push('/cardapio')} />
 
-      <Secao titulo={`Equipe (${equipe.filter(e => e.ativo).length})`} acao={ehDono ? (gerando ? 'Gerando…' : 'Convidar barbeiro') : undefined} onAcao={convidar}>
+      <Secao titulo={`Equipe (${ativos} de ${limite})`} acao={ehDono ? (gerando ? 'Gerando…' : 'Convidar barbeiro') : undefined} onAcao={convidar}>
         {convite ? (
           <Cartao style={{ gap: space(2), borderColor: colors.accent }}>
             <Text style={type.caption}>Código de convite (vale 7 dias, uso único)</Text>
@@ -86,7 +95,11 @@ export function PainelCasa({ b, equipe, ehDono, uid }: { b: Barbearia; equipe: B
               <Text style={type.caption}>{m.nota.total ? `★ ${m.nota.media.toFixed(1).replace('.', ',')}` : 'Sem avaliações ainda'}</Text>
             </View>
             {ehDono && m.uid !== b.donoUid ? (
-              <Interruptor value={m.ativo} onValueChange={v => definirBarbeiroAtivo(db, b.id, m.uid, v)} rotulo={`Barbeiro ${m.nome} ativo`} />
+              <Interruptor value={m.ativo} rotulo={`Barbeiro ${m.nome} ativo`} onValueChange={v => {
+                if (v && cheia) { setErro('A equipe está completa no seu plano. Desligue alguém ou mude de plano.'); return; }
+                setErro(null);
+                definirBarbeiroAtivo(db, b.id, m.uid, v).catch(() => setErro('Não foi possível salvar. Tente de novo.'));
+              }} />
             ) : null}
           </View>
         ))}

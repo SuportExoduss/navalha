@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { chaveFoto, janelasLembrete, mensagemFcm, mensagemLembrete, tipoDaImagem } from './util';
 import { validarClaims, decodificarParte, type Claims } from './auth';
 import { Firestore, lerValor } from './firestore';
+import { camposDaCasa, lerCompra } from './assinatura';
 
 test('chave da foto aceita só tipos e ids seguros', () => {
   assert.equal(chaveFoto('corte', 'uid123', 'ag_1', 'abc-1'), 'corte/ag_1/uid123-abc-1.webp');
@@ -84,5 +85,38 @@ test('lembretes: perfis numa leitura só e marcações numa gravação só (limi
     assert.equal(chamadas[1].corpo.writes[0].update.fields.lembretes.mapValue.fields.h2.integerValue, '5');
     await db.marcarVarios([], 'lembretes.h2', 5);
     assert.equal(chamadas.length, 2); // nada a marcar = nenhuma chamada
+  } finally { globalThis.fetch = original; }
+});
+
+test('assinatura: compra do Google Play só vale para a barbearia que comprou e vira campos da casa', () => {
+  const agora = Date.parse('2027-01-10T12:00:00Z');
+  const compra = {
+    subscriptionState: 'SUBSCRIPTION_STATE_ACTIVE',
+    lineItems: [{ productId: 'navalha_equipe', expiryTime: '2027-02-10T12:00:00Z' }],
+    externalAccountIdentifiers: { obfuscatedExternalAccountId: 'b1' },
+  };
+  const r = lerCompra(compra, 'b1', agora);
+  assert.equal(r.ok, true);
+  if (!r.ok) return;
+  assert.deepEqual(camposDaCasa(r), {
+    'assinatura.status': 'ativa', 'assinatura.plano': 'equipe', 'assinatura.venceEm': Date.parse('2027-02-10T12:00:00Z'),
+    'assinatura.limiteBarbeiros': 3, emDia: true,
+  });
+  assert.equal(lerCompra(compra, 'outra', agora).ok, false); // token reaproveitado em outra casa
+  assert.equal(lerCompra({ ...compra, lineItems: [{ productId: 'outro_app', expiryTime: '2027-02-10T12:00:00Z' }] }, 'b1', agora).ok, false);
+  const atrasada = lerCompra({ ...compra, subscriptionState: 'SUBSCRIPTION_STATE_ON_HOLD' }, 'b1', agora);
+  assert.ok(atrasada.ok && camposDaCasa(atrasada)['assinatura.status'] === 'inadimplente' && camposDaCasa(atrasada).emDia === false);
+});
+
+test('Firestore REST: campos com ponto viram mapa e se juntam numa gravação', async () => {
+  const chamadas: any[] = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (_u: string, init?: RequestInit) => { chamadas.push(JSON.parse(String(init?.body))); return new Response('{}'); }) as typeof fetch;
+  try {
+    await new Firestore('p', 't').escrever([{ caminho: 'barbearias/b1', campos: { 'assinatura.status': 'ativa', 'assinatura.venceEm': 5, emDia: true } }]);
+    const w = chamadas[0].writes[0];
+    assert.deepEqual(w.updateMask.fieldPaths, ['assinatura.status', 'assinatura.venceEm', 'emDia']);
+    assert.deepEqual(w.update.fields.assinatura.mapValue.fields, { status: { stringValue: 'ativa' }, venceEm: { integerValue: '5' } });
+    assert.deepEqual(w.currentDocument, { exists: true });
   } finally { globalThis.fetch = original; }
 });
