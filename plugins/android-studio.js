@@ -15,7 +15,7 @@ const comJsEmbutido = config => withAppBuildGradle(config, cfg => {
   return cfg;
 });
 
-// A vigilância de arquivos do Gradle falha nesta máquina (Windows, cache em D:gradle): sem isto o Sync
+// A vigilância de arquivos do Gradle falha nesta máquina (Windows, cache em D:\gradle): sem isto o Sync
 // do Android Studio falha com "Foi especificado um dispositivo inexistente".
 const semVigiarArquivos = config => withGradleProperties(config, cfg => {
   if (!cfg.modResults.some(i => i.type === 'property' && i.key === 'org.gradle.vfs.watch')) {
