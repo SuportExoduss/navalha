@@ -36,9 +36,8 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-# generated native folders
+# pasta iOS gerada (a android/ é versionada: o projeto abre direto no Android Studio)
 /ios
-/android
 
 # Worker
 worker/node_modules/

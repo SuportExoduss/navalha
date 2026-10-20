@@ -4,7 +4,7 @@
 import { DIAS_TESTE, LIMITE_TESTE, emDiaPeloPlay, planoPorProduto, type Plano } from '../../src/lib/planos';
 import type { Firestore } from './firestore';
 
-export const PACOTE = 'br.com.navalha.app';
+export const PACOTE = 'com.trevotec.navalha';
 
 export interface CompraPlay {
   subscriptionState?: string;

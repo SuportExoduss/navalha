@@ -1,8 +1,20 @@
 # Navalha — Status da execução
 
-Atualizado em 18/out/2026 (Sprint 4 concluído; Firebase, R2, Worker e web ligados nos serviços reais).
+Atualizado em 20/out/2026 (MVP completo; mensalidades adiantadas; pacote com.trevotec.navalha).
 
 Código no computador: `C:\Users\andre\AndroidStudioProjects\navalha` (no Android Studio: File › Open › pasta `android`).
+
+## Onde estamos (20/out/2026)
+| Fase | Calendário | Código | Falta |
+| --- | --- | --- | --- |
+| 0 · Fundação | 19/out – 1/nov | modelo de dados e contas técnicas prontos | dono: entrevistas, INPI/nome, termos/LGPD, landing, contador |
+| 1 · MVP | 2/nov – 27/dez | **100%** (adiantado ~2 semanas) + extras | portão: 3 barbearias amigas por 1 semana |
+| 2 · Piloto | jan – fev/2027 | quase nada é código | dono: conta Play, 12 testadores/14 dias, Segurança de Dados; código: AAB + chave própria, página de privacidade e de exclusão de conta na web |
+| 3 · Lançamento | fev – abr/2027 | mensalidades prontas (~25% da fase) | pagamento do corte no app (Pix/cartão), avaliações, nota Google, ranking, feed de fotos, iOS + Entrar com Apple |
+| 4 · Crescimento | mai – jul/2027 | 0% | clube de assinatura, lista de espera, fidelidade, relatórios, indicação |
+| 5 · Escala | ago – out/2027 | 0% | multiunidades, nota fiscal, loja, WhatsApp oficial, IA |
+
+Requisitos da Google Play: `docs/publicar-google-play.md`. Pacote definitivo `com.trevotec.navalha`; `android/` versionada (abre direto no Android Studio).
 
 ## Fase 0 — Fundação
 - [x] Desenhar o modelo de dados completo (inclui pagamentos, avaliações e assinaturas) — `docs/modelo-de-dados.md` no código

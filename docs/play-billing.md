@@ -27,7 +27,7 @@ Preços, limites e nomes ficam em `src/lib/planos.ts` (usado pelo app e pelo Wor
 ## O que falta (dono)
 
 1. **Conta de desenvolvedor no Google Play** (US$ 25, uma vez) e **chave de assinatura própria** (SEC-002).
-2. **Enviar o app (AAB) para o teste interno.** O Billing só funciona com o app instalado pela Play Store, com o mesmo pacote `br.com.navalha.app`.
+2. **Enviar o app (AAB) para o teste interno.** O Billing só funciona com o app instalado pela Play Store, com o mesmo pacote `com.trevotec.navalha`.
 3. **Criar as 4 assinaturas** em Monetizar › Produtos › Assinaturas, com os IDs da tabela acima.
    Em cada uma, um plano base com ID **`mensal`**, renovação automática mensal e o preço em BRL.
    Não crie avaliação gratuita na Play Console: os 60 dias grátis são controlados pelo próprio Navalha.

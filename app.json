@@ -10,7 +10,7 @@
     "backgroundColor": "#0E0F11",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "br.com.navalha.app",
+      "bundleIdentifier": "com.trevotec.navalha",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Usamos sua localização para mostrar as barbearias mais perto de você.",
         "NSCameraUsageDescription": "Usamos a câmera para fotografar os cortes realizados.",
@@ -18,7 +18,7 @@
       }
     },
     "android": {
-      "package": "br.com.navalha.app",
+      "package": "com.trevotec.navalha",
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#000000",
@@ -32,7 +32,11 @@
         "CAMERA"
       ],
       "predictiveBackGestureEnabled": false,
-      "allowBackup": false
+      "allowBackup": false,
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.SYSTEM_ALERT_WINDOW"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -45,6 +49,7 @@
     "plugins": [
       "./plugins/local-properties",
       "./plugins/modo-imersivo",
+      "./plugins/android-studio",
       "expo-router",
       [
         "expo-location",

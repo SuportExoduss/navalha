@@ -14,6 +14,8 @@ Leia também `AGENTS.md` (regras do Expo SDK 58: não confie na memória, consul
 
 ## Sem conta Expo (decisão do dono)
 Não use EAS (build, update, submit) nem Expo Push, mesmo que o AGENTS.md sugira. Build Android local (`npx expo prebuild` + Gradle/Android Studio); push pelo FCM direto do Worker.
+Pacote: `com.trevotec.navalha`. A pasta `android/` é versionada (abre direto no Android Studio): mudança nativa vai nela
+(e no plugin/app.json correspondente); `npx expo prebuild` só sem `--clean`.
 
 ## Regra do projeto
 Seguir o roadmap em ordem, garantir que cada item está concluído e testado, e então marcar como finalizado

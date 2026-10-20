@@ -88,12 +88,22 @@ Publicada em **https://navalha.web.app** (Firebase Hosting do projeto, site `nav
 Decisão do dono (18/out/2026): nada de EAS/conta Expo. O app é gerado no computador e o push vai direto pelo
 Firebase Cloud Messaging (o app guarda o token do FCM; o Worker manda pelo FCM HTTP v1 com a conta de serviço).
 
-- `android/` é **gerada** (`npx expo prebuild --platform android`) e fica fora do git. Mudanças nativas vão em
-  `app.json`/plugins; depois de mudar, rode o prebuild de novo (`--clean` recria do zero).
+- **Pacote:** `com.trevotec.navalha` (definitivo; desde 20/out/2026). O app antigo `br.com.navalha.app` é outro app no
+  celular: desinstale-o. No Firebase os dois apps Android estão cadastrados; o antigo pode ser apagado depois.
+- `android/` **está no git** (desde 20/out/2026): é um projeto Android comum. Ajustes nativos podem ser feitos direto
+  nele pelo Android Studio. Os plugins de `plugins/` e o `app.json` continuam valendo se um dia rodar
+  `npx expo prebuild` — **nunca com `--clean`**, que apaga a pasta e perde o que foi editado à mão.
 - **Modo imersivo** (`plugins/modo-imersivo.js`): barra de status e de navegação ocultas, voltam num arrasto da borda e somem sozinhas; reaplicado quando a tela recupera o foco. Mesma lógica do `WindowHelper` do Cronos e do LystSync, injetada no `MainActivity.kt` a cada prebuild.
 - `google-services.json` (raiz) liga o app ao Firebase `navalha-1a8f5`; o prebuild copia para `android/app/`.
-- **Android Studio:** File › Open › pasta `android/`. Para o JS embutido, gere o release; para desenvolver com
-  recarga ao vivo, rode `npx expo start` e o build debug.
+- **Android Studio** (como qualquer projeto Android):
+  1. Uma vez, na pasta do projeto: `npm install` (o Gradle usa o Node para achar os módulos e empacotar o JS).
+  2. File › Open › pasta **`android`** › aguarde o Gradle Sync (a primeira vez demora).
+  3. Escolha o celular/emulador e clique **Run ▶** (configuração `app`). O debug já leva o JS empacotado
+     (`plugins/android-studio.js`), então abre sem precisar de mais nada.
+  4. Recarga ao vivo enquanto edita o JS: com o app aberto, rode `npx expo start` na pasta do projeto.
+  5. APK/AAB: Build › Generate Signed App Bundle or APK (ou `gradlew assembleRelease` / `bundleRelease`).
+  Requisitos: Android Studio com SDK 36 (Android 16), NDK e CMake 4.x pelo SDK Manager; JDK 17+ (o embutido serve);
+  Node 20+ no PATH. Se o Gradle reclamar de cache, confira a variável `GRADLE_USER_HOME` (hoje `D:\gradle`).
 - **Windows (obrigatório):** caminhos longos ligados (`LongPathsEnabled=1`, PowerShell como administrador) e CMake 4.x do SDK Manager, com `cmake.dir` em `android/local.properties` (o plugin `plugins/local-properties.js` recria esse arquivo em todo `npx expo prebuild`, apontando o SDK e o CMake mais novo instalados). O CMake 3.22 traz um ninja que não aceita caminhos acima de 260 caracteres. Com isso o projeto pode ficar em `C:\Users\andre\AndroidStudioProjects\navalha` (a pasta padrão do Android Studio); sem caminhos longos ligados, o build só passa num caminho curto como `C:\dev\navalha`.
 - **APK pela linha de comando:** `cd android && .\gradlew.bat assembleRelease` →
   `android/app/build/outputs/apk/release/app-release.apk` (instalar com `adb install -r` ou copiar para o celular).

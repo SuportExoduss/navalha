@@ -1,7 +1,7 @@
 // Detecção do aparelho na versão web, só para ajustar a interface (nunca para segurança:
 // o navegador pode mentir o User-Agent).
 
-export const LINK_PLAY_STORE = 'https://play.google.com/store/apps/details?id=br.com.navalha.app';
+export const LINK_PLAY_STORE = 'https://play.google.com/store/apps/details?id=com.trevotec.navalha';
 
 /** Android no navegador, e não o site já aberto como app pela Tela de Início. */
 export function ehAndroidNoNavegador(userAgent: string, abertoComoApp: boolean): boolean {
