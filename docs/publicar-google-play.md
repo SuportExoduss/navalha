@@ -43,6 +43,43 @@ Legenda: ✅ o app já cumpre · 🔧 falta no código/projeto · 👤 só o don
 - 👤 Ícone 512×512 PNG (pode sair de `icones imgs/icone app com fundo.png`), imagem de destaque 1024×500,
   pelo menos 2 capturas de tela de celular (de preferência 4 a 8), categoria (Estilo de vida ou Beleza), e-mail de contato.
 
+## Prontos no código (20/out/2026)
+
+- **Assinatura com a chave de upload:** crie a chave no Android Studio (Build › Generate Signed App Bundle or APK ›
+  Create new..., alias `navalha-upload`, arquivo fora do projeto). Para gerar pelo terminal também, copie
+  `android/keystore.properties.exemplo` para `android/keystore.properties` (fora do git) e preencha.
+  Depois: `cd android && .\gradlew.bat bundleRelease` → `android/app/build/outputs/bundle/release/app-release.aab`.
+  Cadastrar no Firebase o SHA-1/SHA-256 da chave (`keytool -list -v -keystore <arquivo.jks> -alias navalha-upload`)
+  e, depois do primeiro envio, os da "chave de assinatura do app" (Play Console › Integridade do app).
+- **A cada envio:** aumentar `versionCode` (e `versionName`) em `android/app/build.gradle`.
+- **Política de privacidade:** https://navalha.web.app/privacidade
+- **Exclusão de conta sem o app (campo do formulário de Segurança de Dados):** https://navalha.web.app/excluir-conta
+- **Acesso para a revisão:** link "Acesso para revisão" na tela de entrada (e-mail e senha, só contas existentes).
+
+### Para o acesso da revisão funcionar (dono, uma vez)
+1. Firebase Console › Authentication › Sign-in method › **E-mail/senha** › Ativar (só o primeiro botão; sem "link de e-mail").
+2. Authentication › Users › **Add user**: um e-mail só para isso (ex.: `revisao.navalha@gmail.com`, não precisa existir caixa
+   de entrada) e uma senha forte. Não use a sua conta pessoal.
+3. Play Console › Conteúdo do app › **Acesso ao app** › "Todas ou algumas funcionalidades são restritas" › Adicionar instruções,
+   colando o texto abaixo com o e-mail e a senha criados.
+
+```
+Login: on the first screen tap "Acesso para revisão" (below the Google button) and sign in with:
+  E-mail: <REVIEW E-MAIL>
+  Password: <REVIEW PASSWORD>
+Then choose "Tenho uma barbearia" (I own a barbershop).
+
+Navalha is a barbershop booking app (Brazil, Portuguese UI). To see every feature from your location:
+1. Barbershop side: in the "Barbearia" tab, fill the name, tap "Usar minha localização atual", address and city,
+   then "Criar barbearia". Open "Cardápio de cortes" and add one service (name, price, duration).
+   Open the gear icon (Configurações): tap the cover area to add a cover photo, then turn on "Aparecendo na busca"
+   (publish; it needs the cover photo and one service). New shops get a 60-day free trial.
+2. Customer side: Perfil (profile) › Modo › "Cliente". The shop you created appears in "Início" (nearby list).
+   Open it, pick the service, pick a time and confirm. "Agendamentos" shows the booking; you can cancel it there.
+3. Subscriptions (Google Play Billing): barbershop side › Configurações › Plano.
+4. Account deletion: Perfil › "Excluir minha conta" (also documented at https://navalha.web.app/excluir-conta).
+```
+
 ## Fontes
 - [Requisitos de API alvo (Play Console Help)](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en-GB)
 - [12 testadores por 14 dias para contas pessoais novas](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)

@@ -82,6 +82,12 @@ def enableMinifyInReleaseBuilds = (findProperty('android.enableMinifyInReleaseBu
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
+// Chave de upload da Play Store (SEC-002): lida de android/keystore.properties, que fica FORA do git.
+// Sem esse arquivo o release cai na chave de debug (serve para testar, não para a loja).
+def chaveUpload = new Properties()
+def arquivoChave = rootProject.file('keystore.properties')
+if (arquivoChave.exists()) arquivoChave.withInputStream { chaveUpload.load(it) }
+
 android {
     ndkVersion = rootProject.ext.ndkVersion
     buildToolsVersion = rootProject.ext.buildToolsVersion
@@ -103,15 +109,22 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        if (arquivoChave.exists()) {
+            upload {
+                storeFile file(chaveUpload['storeFile'])
+                storePassword chaveUpload['storePassword']
+                keyAlias chaveUpload['keyAlias']
+                keyPassword chaveUpload['keyPassword']
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig = signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig = signingConfigs.debug
+            // Com android/keystore.properties: chave de upload (loja). Sem ele: chave de debug (só teste).
+            signingConfig = arquivoChave.exists() ? signingConfigs.upload : signingConfigs.debug
             def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
             shrinkResources = enableShrinkResources.toBoolean()
             minifyEnabled enableMinifyInReleaseBuilds

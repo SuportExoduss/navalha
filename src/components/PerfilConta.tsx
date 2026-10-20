@@ -97,6 +97,9 @@ export function PerfilConta() {
 
       <Botao titulo="Trocar conta Google" variante="secundario" onPress={sair} />
       <ExcluirConta />
+      <Pressable onPress={() => router.push('/privacidade')} hitSlop={8} accessibilityRole="link" style={{ alignSelf: 'center' }}>
+        <Text style={[type.caption, { color: colors.textMuted, textDecorationLine: 'underline' }]}>Política de privacidade</Text>
+      </Pressable>
     </Tela>
   );
 }
@@ -160,7 +163,8 @@ function ExcluirConta() {
     setErro(null);
     setExcluindo(true);
     try {
-      await reautenticarGoogle(); // o Firebase exige login recente para apagar a conta
+      // O Firebase exige login recente para apagar a conta. Conta de revisão (e-mail) acabou de entrar: dispensa.
+      if (user.providerData.some(p => p.providerId === 'google.com')) await reautenticarGoogle();
       await excluirConta(db, user);
       router.replace('/entrar');
     } catch (e) {
