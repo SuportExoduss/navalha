@@ -17,9 +17,10 @@ pelo número de telefone, seguindo a mesma ordem do app: **barbeiro → corte �
 
 ## Proposta em duas etapas
 
-### Etapa A — agora, custo zero (cabe no piloto)
+### Etapa A — agora, custo zero (cabe no piloto) ✅ feita em 20/out/2026
 O WhatsApp da barbearia vira a porta de entrada para o agendamento do Navalha:
-1. **Link curto por barbearia**, por exemplo `navalha.web.app/b/navalha-de-ouro`, abrindo direto na escolha do barbeiro.
+1. **Link da barbearia** `navalha.web.app/barbearia/{id}`, abrindo direto na escolha do barbeiro (Configurações › WhatsApp).
+   Link com nome (`/b/navalha-de-ouro`) ficou para depois: precisa de um apelido único por casa.
 2. **Texto pronto** em Configurações, para o dono colar na mensagem de saudação ou de ausência do WhatsApp Business e nas
    instruções da IA da Meta: "Para marcar, escolha barbeiro, corte e horário aqui: <link>".
 3. O barbeiro já recebe o push quando o cliente marca (feito em 20/out).

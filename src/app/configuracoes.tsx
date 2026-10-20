@@ -2,7 +2,7 @@
 // O que o dono mexe pouco fica aqui; a aba Barbearia mostra o dia a dia (resumo, cardápio, equipe).
 // As regras do Firestore já garantem: só o dono altera nome, fotos e expediente da casa.
 import { useEffect, useState } from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
+import { Image, Pressable, Share, Text, View } from 'react-native';
 import { Redirect, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Aviso, Botao, Campo, Carregando, Cartao, Interruptor, Linha, Secao, Tela, Titulo } from '../components/ui';
@@ -12,6 +12,7 @@ import { escolherEEnviar } from '../services/fotos';
 import { db } from '../services/firebase';
 import { colors, radius, space, type, sobreFoto } from '../theme';
 import { PLANOS } from '../lib/planos';
+import { SITE } from '../lib/legal';
 import type { Barbearia } from '../types/models';
 
 export default function Configuracoes() {
@@ -33,6 +34,7 @@ export default function Configuracoes() {
         <Linha icone="time-outline" titulo="Horário da casa" dica="Quando a barbearia abre. Nenhum barbeiro atende fora dele."
           onPress={() => router.push({ pathname: '/expediente', params: { alvo: 'casa' } })} />
       </Secao>
+      <WhatsApp b={b} />
       <PlaceIdGoogle b={b} />
       <ExcluirBarbearia b={b} />
     </Tela>
@@ -127,6 +129,28 @@ function Publicacao({ b }: { b: Barbearia }) {
       ))}
       {erro ? <Aviso texto={erro} tom="erro" /> : null}
     </Cartao>
+  );
+}
+
+/** Etapa A do WhatsApp: o dono cola o link na saudação do WhatsApp Business e o cliente marca sozinho. */
+function WhatsApp({ b }: { b: Barbearia }) {
+  const [msg, setMsg] = useState<string | null>(null);
+  const link = `${SITE}/barbearia/${b.id}`;
+  const texto = `Olá! Para marcar seu horário na ${b.nome}, escolha barbeiro, corte e horário por aqui: ${link}`;
+  async function compartilhar() {
+    setMsg(null);
+    // Na web sem navigator.share o Share falha: o texto fica selecionável para copiar à mão.
+    await Share.share({ message: texto }).catch(() => setMsg('Selecione o texto acima e copie.'));
+  }
+  return (
+    <Secao titulo="WhatsApp">
+      <Cartao style={{ gap: space(3) }}>
+        <Text style={type.caption}>Cole na mensagem de saudação ou de ausência do WhatsApp Business e nas instruções da IA da Meta. O cliente abre o link e marca direto com o barbeiro.</Text>
+        <Text selectable style={[type.body, { backgroundColor: colors.surfaceRaised, borderRadius: radius.card, padding: space(3) }]}>{texto}</Text>
+        {msg ? <Aviso texto={msg} tom="erro" /> : null}
+        <Botao titulo="Compartilhar texto" variante="secundario" onPress={compartilhar} />
+      </Cartao>
+    </Secao>
   );
 }
 
