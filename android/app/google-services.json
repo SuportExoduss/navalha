@@ -59,6 +59,14 @@
           }
         },
         {
+          "client_id": "1082941771818-h1pl0rsg0bfrk9gsd7kei9h4a4nqgcro.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.trevotec.navalha",
+            "certificate_hash": "4e1e294b288c3215596152872caf23884a7bf305"
+          }
+        },
+        {
           "client_id": "1082941771818-cn17lt4hdmjd2h2e24rd8qaf79qsqe11.apps.googleusercontent.com",
           "client_type": 3
         }

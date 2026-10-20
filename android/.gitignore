@@ -22,3 +22,6 @@ app/src/main/java/inline/
 # Chave de upload da Play Store: senhas e caminho do .jks (nunca no git)
 keystore.properties
 *.jks
+
+# Saída do Build › Generate Signed App Bundle (o .aab/.apk vai para a loja, não para o git)
+app/release/
