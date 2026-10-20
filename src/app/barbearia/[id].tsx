@@ -1,9 +1,12 @@
 // Página pública da barbearia: o que o cliente vê antes de agendar.
+// Agendar é sempre em 3 etapas, nesta ordem: 1) barbeiro, 2) corte (só os daquele barbeiro), 3) horário (tela /agendar).
+// Casa com um barbeiro só: a etapa 1 já vem escolhida. "Agendar de novo" chega aqui com ?barbeiro= preenchido.
 import { useEffect, useMemo, useState } from 'react';
 import { Image, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Aviso, Botao, Carregando, Cartao, Chip, FalhaAoCarregar, Tela, Titulo } from '../../components/ui';
+import { Aviso, Botao, Carregando, Cartao, FalhaAoCarregar, Tela, Titulo } from '../../components/ui';
+import { Etapa } from '../../components/agenda/Etapa';
 import { dadosDaCasa, linksDeRota } from '../../services/barbearias';
 import { db } from '../../services/firebase';
 import { registrarEvento } from '../../services/agendamentos';
@@ -12,16 +15,13 @@ import { formatarPreco } from '../../lib/agenda';
 import { colors, radius, space, type, sobreFoto } from '../../theme';
 import type { Barbearia, Barbeiro, Servico } from '../../types/models';
 
-const ABAS = ['Cortes', 'Barbeiros', 'Fotos'] as const;
-
 export default function PaginaBarbearia() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, barbeiro: barbeiroInicial } = useLocalSearchParams<{ id: string; barbeiro?: string }>();
   const { perfil } = useAuth();
   const [b, setB] = useState<Barbearia | null | undefined>(undefined);
   const [equipe, setEquipe] = useState<Barbeiro[]>([]);
   const [servicos, setServicos] = useState<Servico[]>([]);
-  const [aba, setAba] = useState<(typeof ABAS)[number]>('Cortes');
-  const [barbeiro, setBarbeiro] = useState<string | null>(null);
+  const [barbeiro, setBarbeiro] = useState<string | null>(barbeiroInicial ?? null);
   const [falhou, setFalhou] = useState(false);
   const [tentativa, setTentativa] = useState(0);
 
@@ -31,12 +31,17 @@ export default function PaginaBarbearia() {
     setFalhou(false);
     // Uma leitura guardada por 5 min, reaproveitada pelo agendar (ir e voltar não relê).
     dadosDaCasa(db, id, { forcar: tentativa > 0 })
-      .then(d => { setB(d.barbearia); setEquipe(d.equipe); setServicos(d.servicos); })
+      .then(d => {
+        setB(d.barbearia); setEquipe(d.equipe); setServicos(d.servicos);
+        if (d.equipe.length === 1) setBarbeiro(d.equipe[0].uid); // um barbeiro só: etapa 1 já resolvida
+      })
       .catch(() => { setFalhou(true); setB(null); });
   }, [id, tentativa]);
 
-  const visiveis = useMemo(() => servicos.filter(s => !barbeiro || s.barbeiroId === barbeiro), [servicos, barbeiro]);
-  const nomeDe = (uid: string) => equipe.find(e => e.uid === uid)?.apelido || equipe.find(e => e.uid === uid)?.nome || '';
+  // Etapa 2 só mostra os cortes do barbeiro escolhido na etapa 1.
+  const cortes = useMemo(() => (barbeiro ? servicos.filter(s => s.barbeiroId === barbeiro) : []), [servicos, barbeiro]);
+  const escolhido = equipe.find(e => e.uid === barbeiro);
+  const fotos = [...(b?.fotos ?? []), ...servicos.flatMap(s => s.fotos)].slice(0, 24);
 
   if (b === undefined) return <Carregando />;
   if (b === null && falhou) {
@@ -87,60 +92,68 @@ export default function PaginaBarbearia() {
         ) : null}
       </View>
 
-      <View style={{ flexDirection: 'row', gap: space(2) }}>
-        {ABAS.map(a => <Chip key={a} rotulo={a} ativo={a === aba} onPress={() => setAba(a)} />)}
-      </View>
+      <Etapa numero={1} titulo="Escolha o barbeiro" feito={!!escolhido} />
+      {equipe.length === 0 ? <Cartao><Text style={type.caption}>Esta barbearia ainda não tem barbeiros na agenda.</Text></Cartao> : (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space(3) }} accessibilityRole="radiogroup">
+          {equipe.map(e => {
+            const ativo = barbeiro === e.uid;
+            const qtd = servicos.filter(s => s.barbeiroId === e.uid).length;
+            return (
+              <Pressable key={e.uid} onPress={() => setBarbeiro(e.uid)} accessibilityRole="radio" accessibilityState={{ checked: ativo }}
+                accessibilityLabel={`Barbeiro ${e.apelido || e.nome}`}
+                style={{ width: 112, alignItems: 'center', gap: space(2), padding: space(3), borderRadius: radius.card, borderWidth: 1,
+                  borderColor: ativo ? colors.accent : colors.border, backgroundColor: ativo ? colors.surfaceRaised : colors.surface }}>
+                {e.fotoUrl ? <Image source={{ uri: e.fotoUrl }} style={{ width: 56, height: 56, borderRadius: 28 }} />
+                  : <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: colors.surfaceRaised, alignItems: 'center', justifyContent: 'center' }}>
+                      <Ionicons name="person-outline" size={24} color={colors.textMuted} />
+                    </View>}
+                <Text style={[type.body, { fontWeight: ativo ? '700' : '400', textAlign: 'center' }]} numberOfLines={1}>{e.apelido || e.nome.split(' ')[0]}</Text>
+                <Text style={[type.caption, { textAlign: 'center' }]} numberOfLines={1}>
+                  {e.nota.total ? `★ ${e.nota.media.toFixed(1).replace('.', ',')} · ` : ''}{qtd} {qtd === 1 ? 'corte' : 'cortes'}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      )}
 
-      {aba === 'Cortes' ? (
-        <>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space(2) }}>
-            <Chip rotulo="Todos" ativo={!barbeiro} onPress={() => setBarbeiro(null)} />
-            {equipe.map(e => <Chip key={e.uid} rotulo={e.apelido || e.nome.split(' ')[0]} ativo={barbeiro === e.uid} onPress={() => setBarbeiro(e.uid)} />)}
-          </ScrollView>
-          {visiveis.length === 0 ? <Cartao><Text style={type.caption}>Nenhum corte cadastrado ainda.</Text></Cartao> : (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space(3) }}>
-              {visiveis.map(s => (
-                <Pressable key={s.id} accessibilityRole="button" onPress={() => router.push({ pathname: '/agendar/[id]', params: { id: b.id, servico: s.id } })}
-                  style={{ width: '47.5%', borderRadius: radius.card, overflow: 'hidden', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
-                  <View style={{ aspectRatio: 4 / 5, backgroundColor: colors.surfaceRaised, alignItems: 'center', justifyContent: 'center' }}>
-                    {s.fotos[0] ? <Image source={{ uri: s.fotos[0] }} style={{ width: '100%', height: '100%' }} />
-                      : <Ionicons name="cut-outline" size={28} color={colors.textMuted} />}
-                  </View>
-                  <View style={{ padding: space(3), gap: 2 }}>
-                    <Text style={[type.body, { fontWeight: '600' }]} numberOfLines={1}>{s.nome}</Text>
-                    <Text style={type.caption} numberOfLines={1}>com {nomeDe(s.barbeiroId)}</Text>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                      <Text style={type.caption}>{s.duracaoMin} min</Text>
-                      <Text style={[type.caption, { color: colors.accent, fontWeight: '600' }]}>{formatarPreco(s.precoCentavos)}</Text>
-                    </View>
-                  </View>
-                </Pressable>
-              ))}
-            </View>
-          )}
-        </>
-      ) : aba === 'Barbeiros' ? (
-        equipe.map(e => (
-          <Pressable key={e.uid} onPress={() => { setBarbeiro(e.uid); setAba('Cortes'); }} accessibilityRole="button"
-            style={{ flexDirection: 'row', alignItems: 'center', gap: space(3) }}>
-            {e.fotoUrl ? <Image source={{ uri: e.fotoUrl }} style={{ width: 52, height: 52, borderRadius: 26 }} />
-              : <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: colors.surfaceRaised }} />}
-            <View style={{ flex: 1 }}>
-              <Text style={type.body}>{e.apelido || e.nome}</Text>
-              <Text style={type.caption}>
-                {e.nota.total ? `★ ${e.nota.media.toFixed(1).replace('.', ',')} · ` : ''}{servicos.filter(s => s.barbeiroId === e.uid).length} cortes
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-          </Pressable>
-        ))
-      ) : (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space(2) }}>
-          {[...b.fotos, ...servicos.flatMap(s => s.fotos)].slice(0, 24).map(f => (
-            <Image key={f} source={{ uri: f }} accessibilityLabel="Foto de corte da barbearia" style={{ width: '31.5%', aspectRatio: 4 / 5, borderRadius: radius.input }} />
+      <Etapa numero={2} titulo={escolhido ? `Escolha o corte com ${escolhido.apelido || escolhido.nome.split(' ')[0]}` : 'Escolha o corte'} />
+      {!escolhido ? <Text style={type.caption}>Escolha o barbeiro primeiro para ver os cortes dele.</Text>
+        : cortes.length === 0 ? <Cartao><Text style={type.caption}>Este barbeiro ainda não cadastrou cortes.</Text></Cartao> : (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space(3) }}>
+          {cortes.map(s => (
+            <Pressable key={s.id} accessibilityRole="button" accessibilityLabel={`${s.nome}, ${s.duracaoMin} minutos, ${formatarPreco(s.precoCentavos)}`}
+              onPress={() => router.push({ pathname: '/agendar/[id]', params: { id: b.id, barbeiro: s.barbeiroId, servico: s.id } })}
+              style={{ width: '47.5%', borderRadius: radius.card, overflow: 'hidden', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
+              <View style={{ aspectRatio: 4 / 5, backgroundColor: colors.surfaceRaised, alignItems: 'center', justifyContent: 'center' }}>
+                {s.fotos[0] ? <Image source={{ uri: s.fotos[0] }} style={{ width: '100%', height: '100%' }} />
+                  : <Ionicons name="cut-outline" size={28} color={colors.textMuted} />}
+              </View>
+              <View style={{ padding: space(3), gap: 2 }}>
+                <Text style={[type.body, { fontWeight: '600' }]} numberOfLines={1}>{s.nome}</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={type.caption}>{s.duracaoMin} min</Text>
+                  <Text style={[type.caption, { color: colors.accent, fontWeight: '600' }]}>{formatarPreco(s.precoCentavos)}</Text>
+                </View>
+              </View>
+            </Pressable>
           ))}
         </View>
       )}
+
+      <Etapa numero={3} titulo="Escolha o horário" dica="Toque no corte para ver os horários livres." />
+
+      {/* Fotos da casa e dos cortes: referência, fora do fluxo de agendar. */}
+      {fotos.length ? (
+        <View style={{ gap: space(3), marginTop: space(4) }}>
+          <Text accessibilityRole="header" style={type.heading}>Fotos</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space(2) }}>
+            {fotos.map(f => (
+              <Image key={f} source={{ uri: f }} accessibilityLabel="Foto de corte da barbearia" style={{ width: '31.5%', aspectRatio: 4 / 5, borderRadius: radius.input }} />
+            ))}
+          </View>
+        </View>
+      ) : null}
     </Tela>
   );
 }

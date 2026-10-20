@@ -45,7 +45,7 @@ const shot = (p, n) => p.screenshot({ path: `shots/${n}.png`, fullPage: true });
   const A = await entrar(b, 'ana', 'Ana Souza');
   const B = await entrar(b, 'beto', 'Beto Lima');
 
-  // 1) Página da barbearia → tocar no corte abre a reserva
+  // 1) Página da barbearia → (barbeiro único já vem escolhido na etapa 1) tocar no corte abre a etapa 3, o horário
   await A.p.goto('http://127.0.0.1:8099/barbearia/b1'); await A.p.waitForTimeout(2500);
   await A.p.getByText('Degradê').first().click(); await A.p.waitForTimeout(2500);
   assert.match(A.p.url(), /agendar\/b1/);

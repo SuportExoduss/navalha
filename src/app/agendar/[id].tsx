@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Aviso, Botao, Carregando, Cartao, FalhaAoCarregar, Secao, Tela, Titulo } from '../../components/ui';
 import { SeletorDia } from '../../components/agenda/SeletorDia';
+import { Etapa } from '../../components/agenda/Etapa';
 import { GradeHorarios } from '../../components/agenda/GradeHorarios';
 import { useAuth } from '../../auth/AuthProvider';
 import { db } from '../../services/firebase';
@@ -21,7 +22,8 @@ import type { Barbearia, Barbeiro, ISODate, Millis, Servico } from '../../types/
 const DIAS_VISIVEIS = 14;
 
 export default function Agendar() {
-  const { id, servico: servicoId } = useLocalSearchParams<{ id: string; servico: string }>();
+  // Etapa 3 de 3: só chega aqui quem escolheu o barbeiro (etapa 1) e o corte dele (etapa 2).
+  const { id, barbeiro: barbeiroId, servico: servicoId } = useLocalSearchParams<{ id: string; barbeiro?: string; servico: string }>();
   const { carregando: carregandoAuth, user, perfil } = useAuth();
   const [b, setB] = useState<Barbearia | null | undefined>(undefined);
   const [barbeiro, setBarbeiro] = useState<Barbeiro | null>(null);
@@ -71,6 +73,10 @@ export default function Agendar() {
   }, [horarios]);
 
   if (!carregandoAuth && !user) return <Redirect href="/entrar" />;
+  // Sem barbeiro escolhido, ou corte de outro barbeiro: volta para a etapa 1/2 na página da casa.
+  if (id && (!barbeiroId || (servico && servico.barbeiroId !== barbeiroId))) {
+    return <Redirect href={{ pathname: '/barbearia/[id]', params: { id, ...(barbeiroId ? { barbeiro: barbeiroId } : {}) } }} />;
+  }
   if (b === undefined || !perfil) return <Carregando />;
   if (falhou) return <Tela><Voltar /><FalhaAoCarregar onTentar={() => { setB(undefined); setTentativa(n => n + 1); }} /></Tela>;
   if (!b || !servico || !barbeiro) {
@@ -147,6 +153,14 @@ export default function Agendar() {
   return (
     <Tela rodape={rodape}>
       <Voltar />
+      {/* Etapas 1 e 2 já feitas (com atalho para trocar); esta tela é a etapa 3. */}
+      <Etapa numero={1} titulo={`Barbeiro: ${nomeBarbeiro}`} feito />
+      <Etapa numero={2} titulo={`Corte: ${servico.nome}`} feito />
+      <Pressable onPress={() => router.replace({ pathname: '/barbearia/[id]', params: { id: b.id, barbeiro: barbeiro.uid } })}
+        hitSlop={8} accessibilityRole="button" style={{ alignSelf: 'flex-start' }}>
+        <Text style={[type.caption, { color: colors.accent }]}>Trocar barbeiro ou corte</Text>
+      </Pressable>
+      <Etapa numero={3} titulo="Escolha o dia e o horário" feito={!!escolhido} />
       <Cartao style={{ flexDirection: 'row', gap: space(3), alignItems: 'center' }}>
         {servico.fotos[0]
           ? <Image source={{ uri: servico.fotos[0] }} style={{ width: 64, height: 80, borderRadius: radius.input }} />
