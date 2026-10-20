@@ -4,7 +4,8 @@ import { OFFSET_BRASILIA_MIN, dataLocal, diaDaSemana, hhmmParaMin } from './agen
 import type { Barbearia, Millis, Servico } from '../types/models';
 
 export type FaixaPreco = 'ate40' | '40a70' | '70mais';
-export const RAIOS = [1, 3, 5, 10] as const;
+/** Opções do filtro de distância; null = todas, da mais perto para a mais longe. */
+export const RAIOS = [null, 1, 3, 5, 10, 50] as const;
 
 export interface Filtros {
   raioKm: (typeof RAIOS)[number];
@@ -16,7 +17,7 @@ export interface Filtros {
   aindaHoje: boolean;
 }
 
-export const FILTROS_PADRAO: Filtros = { raioKm: 10, texto: '', categoria: null, preco: null, abertoAgora: false, aindaHoje: false };
+export const FILTROS_PADRAO: Filtros = { raioKm: null, texto: '', categoria: null, preco: null, abertoAgora: false, aindaHoje: false };
 
 const FAIXAS: Record<FaixaPreco, [number, number]> = { ate40: [0, 4000], '40a70': [4000, 7000], '70mais': [7000, Infinity] };
 
@@ -43,7 +44,7 @@ const semAcento = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLo
 export function filtrarBarbearias<T extends Barbearia & { distanciaKm: number }>(lista: T[], f: Filtros, agora: Millis): T[] {
   const texto = semAcento(f.texto.trim());
   return lista.filter(b => {
-    if (b.distanciaKm > f.raioKm) return false;
+    if (f.raioKm !== null && b.distanciaKm > f.raioKm) return false;
     if (texto && !semAcento(`${b.nome} ${b.endereco} ${b.cidade}`).includes(texto)) return false;
     if (f.categoria && !(b.resumo.categorias ?? []).includes(f.categoria)) return false;
     if (f.preco) {
@@ -58,5 +59,5 @@ export function filtrarBarbearias<T extends Barbearia & { distanciaKm: number }>
 }
 
 export function contarFiltros(f: Filtros): number {
-  return [f.raioKm !== 10, !!f.categoria, !!f.preco, f.abertoAgora, f.aindaHoje].filter(Boolean).length;
+  return [f.raioKm !== null, !!f.categoria, !!f.preco, f.abertoAgora, f.aindaHoje].filter(Boolean).length;
 }

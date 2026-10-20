@@ -23,6 +23,8 @@ const quinta10h = paraMillis('2026-11-05', 10 * 60);
 
 test('raio e texto (sem acento)', () => {
   assert.deepEqual(ids(filtrarBarbearias(lista, { ...FILTROS_PADRAO, raioKm: 3 }, quinta10h)), ['barata', 'media']);
+  // Sem filtro de distância, a mais longe também aparece.
+  assert.ok(filtrarBarbearias([{ ...lista[0], id: 'longe', distanciaKm: 250 }], FILTROS_PADRAO, quinta10h).length === 1);
   assert.deepEqual(ids(filtrarBarbearias(lista, { ...FILTROS_PADRAO, texto: 'sao joao' }, quinta10h)), ['media']);
 });
 

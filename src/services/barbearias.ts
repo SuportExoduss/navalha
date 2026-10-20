@@ -1,7 +1,8 @@
 // Barbearias, equipe, convites e cardápio.
 // Busca por perto com geohash (sem API paga): consulta as faixas de geohash
-// que cobrem o raio e filtra pela distância real.
+// que cobrem o raio e filtra pela distância real. O raio cresce até juntar barbearias suficientes.
 import {
+  limit,
   arrayRemove, arrayUnion, collection, increment, serverTimestamp, deleteDoc, doc, endAt, getDoc, getDocs, onSnapshot, orderBy, query,
   setDoc, startAt, updateDoc, where, writeBatch, type Firestore, type Unsubscribe,
 } from 'firebase/firestore';
@@ -17,18 +18,35 @@ export interface BarbeariaPerto extends Barbearia { distanciaKm: number }
  * Lista "Perto de você". Cacheada por ~1 km (2 casas decimais): a posição rápida e a precisa,
  * que chegam uma logo depois da outra, caem na mesma chave e custam uma consulta só.
  */
-export function buscarPerto(db: Firestore, lat: number, lng: number, raioKm = 10, { forcar = false } = {}): Promise<BarbeariaPerto[]> {
-  return lembrar(`perto:${lat.toFixed(2)},${lng.toFixed(2)},${raioKm}`, () => buscarPertoServidor(db, lat, lng, raioKm), { forcar });
+export function buscarPerto(db: Firestore, lat: number, lng: number, { forcar = false } = {}): Promise<BarbeariaPerto[]> {
+  return lembrar(`perto:${lat.toFixed(2)},${lng.toFixed(2)}`, () => buscarPertoServidor(db, lat, lng), { forcar });
 }
 
-async function buscarPertoServidor(db: Firestore, lat: number, lng: number, raioKm: number): Promise<BarbeariaPerto[]> {
-  const bounds = geohashQueryBounds([lat, lng], raioKm * 1000);
-  const snaps = await Promise.all(bounds.map(([ini, fim]) => getDocs(query(
-    collection(db, 'barbearias'),
+/** Anéis da busca: para no primeiro que junta MINIMO_PERTO casas; null = todas (sem limite de distância). */
+const ANEIS_KM = [10, 50, 300, null] as const;
+const MINIMO_PERTO = 20;
+// ponytail: o último anel lê até 100 casas sem ordem de distância; com milhares de casas no país, trocar por mais anéis.
+const LIMITE_TODAS = 100;
+
+async function buscarPertoServidor(db: Firestore, lat: number, lng: number): Promise<BarbeariaPerto[]> {
+  let res: BarbeariaPerto[] = [];
+  for (const raio of ANEIS_KM) {
+    res = await buscarNoRaio(db, lat, lng, raio);
+    if (res.length >= MINIMO_PERTO) break;
+  }
+  return res;
+}
+
+async function buscarNoRaio(db: Firestore, lat: number, lng: number, raioKm: number | null): Promise<BarbeariaPerto[]> {
+  const base = [
     where('publicada', '==', true),
     where('emDia', '==', true), // teste ou mensalidade em dia; as regras também exigem
-    orderBy('geo.geohash'), startAt(ini), endAt(fim),
-  ))));
+  ];
+  const consultas = raioKm === null
+    ? [query(collection(db, 'barbearias'), ...base, limit(LIMITE_TODAS))]
+    : geohashQueryBounds([lat, lng], raioKm * 1000).map(([ini, fim]) =>
+      query(collection(db, 'barbearias'), ...base, orderBy('geo.geohash'), startAt(ini), endAt(fim)));
+  const snaps = await Promise.all(consultas.map(q => getDocs(q)));
   const vistos = new Set<string>();
   const res: BarbeariaPerto[] = [];
   for (const s of snaps) for (const d of s.docs) {
@@ -36,7 +54,7 @@ async function buscarPertoServidor(db: Firestore, lat: number, lng: number, raio
     vistos.add(d.id);
     const b = d.data() as Barbearia;
     const km = distanceBetween([b.geo.lat, b.geo.lng], [lat, lng]);
-    if (km <= raioKm) res.push({ ...b, distanciaKm: km });
+    if (raioKm === null || km <= raioKm) res.push({ ...b, distanciaKm: km });
   }
   return res.sort((a, b) => a.distanciaKm - b.distanciaKm);
 }

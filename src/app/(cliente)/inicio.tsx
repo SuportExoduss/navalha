@@ -73,7 +73,7 @@ export default function Inicio() {
       ) : lista === null ? (
         <ActivityIndicator color={colors.accent} />
       ) : filtrada.length === 0 ? (
-        <Cartao><Text style={type.caption}>{lista.length ? 'Nenhuma barbearia com esse filtro.' : 'Nenhuma barbearia publicada num raio de 10 km ainda.'}</Text></Cartao>
+        <Cartao><Text style={type.caption}>{lista.length ? 'Nenhuma barbearia com esse filtro.' : 'Nenhuma barbearia publicada ainda.'}</Text></Cartao>
       ) : filtrada.map(b => <CardBarbearia key={b.id} b={b} />)}
     </Tela>
   );

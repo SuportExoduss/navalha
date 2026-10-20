@@ -33,8 +33,8 @@ export default function Explorar() {
       </View>
 
       <Secao titulo="Distância">
-        <View style={{ flexDirection: 'row', gap: space(2) }}>
-          {RAIOS.map(r => <Chip key={r} rotulo={`${r} km`} ativo={f.raioKm === r} onPress={() => mudar({ raioKm: r })} />)}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space(2) }}>
+          {RAIOS.map(r => <Chip key={r ?? 'todas'} rotulo={r === null ? 'Todas' : `Até ${r} km`} ativo={f.raioKm === r} onPress={() => mudar({ raioKm: r })} />)}
         </View>
       </Secao>
       <Secao titulo="Preço">
@@ -61,7 +61,7 @@ export default function Explorar() {
         : semSinal ? <SemSinal onTentar={tentarDeNovo} />
         : erro ? <FalhaAoCarregar texto={erro} onTentar={recarregar} />
         : lista === null ? <ActivityIndicator color={colors.accent} />
-        : resultado.length === 0 ? <Cartao><Text style={type.caption}>Nenhuma barbearia com esses filtros. Tente aumentar a distância.</Text></Cartao>
+        : resultado.length === 0 ? <Cartao><Text style={type.caption}>Nenhuma barbearia com esses filtros. Tente outra distância ou limpe os filtros.</Text></Cartao>
         : resultado.map(b => <CardBarbearia key={b.id} b={b} />)}
     </Tela>
   );
