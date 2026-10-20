@@ -1,12 +1,13 @@
 // Exclusão de conta e dados (pública): a Google Play exige um caminho fora do app, para quem já desinstalou.
 // O que está escrito aqui tem que bater com excluirConta (src/services/usuarios.ts).
 import { Documento, Item, Link, Paragrafo, Topico } from '../components/Documento';
-import { CONTATO, PRAZO_RESPOSTA_DIAS, SITE } from '../lib/legal';
+import { CONTATO, PRAZO_RESPOSTA_DIAS, RESPONSAVEL, SITE } from '../lib/legal';
 
 export default function ExcluirConta() {
   const assunto = encodeURIComponent('Excluir minha conta do Navalha');
   return (
-    <Documento titulo="Excluir conta e dados" resumo="Como apagar a sua conta do Navalha e o que acontece com os seus dados.">
+    <Documento titulo="Excluir conta e dados"
+      resumo={`Como apagar a sua conta do Navalha (app da ${RESPONSAVEL}) e o que acontece com os seus dados.`}>
       <Topico titulo="Pelo app (na hora)">
         <Item>Abra o Navalha e vá em Perfil.</Item>
         <Item>Toque em "Excluir minha conta" e confirme com o Google.</Item>
