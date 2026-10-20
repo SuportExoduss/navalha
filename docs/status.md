@@ -94,7 +94,7 @@ Requisitos da Google Play: `docs/publicar-google-play.md`. Pacote definitivo `co
 - [ ] Play Console (dono): conta, AAB no teste interno, 4 assinaturas, API e acesso do Worker — passo a passo em `docs/play-billing.md`
 - [ ] Nomes dos planos de R$ 100 e R$ 150 (hoje provisórios: Casa e Casa cheia)
 
-## Agendar pelo WhatsApp (ideia em `docs/whatsapp-agendamento.md`)
+## Agendar pelo WhatsApp (plano A em `docs/whatsapp-agendamento.md`)
 - [x] Etapa A (custo zero): em Configurações, link da casa (`navalha.web.app/barbearia/{id}`) e texto pronto para a saudação do WhatsApp Business / IA da Meta, com botão Compartilhar
 - [ ] Etapa B (IA marca pelo número via Cloud API): depois do piloto, com CNPJ e plano pago
 
