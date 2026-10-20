@@ -6,7 +6,8 @@ import { db } from '../../services/firebase';
 import { space, type } from '../../theme';
 import type { UserProfile } from '../../types/models';
 
-export function AceitarConvite({ perfil }: { perfil: UserProfile }) {
+/** `compacto`: dentro do Perfil, sem o título grande; `aoEntrar` roda depois de entrar na casa. */
+export function AceitarConvite({ perfil, compacto, aoEntrar }: { perfil: UserProfile; compacto?: boolean; aoEntrar?: () => Promise<void> | void }) {
   const [codigo, setCodigo] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -16,6 +17,7 @@ export function AceitarConvite({ perfil }: { perfil: UserProfile }) {
     setEnviando(true);
     try {
       await aceitarConvite(db, codigo, { uid: perfil.uid, nome: perfil.apelido || perfil.nome, fotoUrl: perfil.fotoUrl });
+      await aoEntrar?.();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não foi possível entrar na barbearia.');
       setEnviando(false);
@@ -24,8 +26,8 @@ export function AceitarConvite({ perfil }: { perfil: UserProfile }) {
 
   return (
     <>
-      <Titulo destaque="sua equipe.">{'Entre para\n'}</Titulo>
-      <Text style={type.caption}>Peça ao dono da barbearia o código de convite de 6 letras (válido por 7 dias).</Text>
+      {compacto ? null : <Titulo destaque="sua equipe.">{'Entre para\n'}</Titulo>}
+      {compacto ? null : <Text style={type.caption}>Peça ao dono da barbearia o código de convite de 6 letras (válido por 7 dias).</Text>}
       <Cartao style={{ gap: space(4) }}>
         <Campo
           rotulo="Código do convite"

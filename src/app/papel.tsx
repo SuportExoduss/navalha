@@ -30,13 +30,14 @@ export default function Papel() {
     // Android nega sem mostrar o diálogo. Aqui o app está em primeiro plano, por um toque da pessoa.
     if (!perfil.pushToken) registrarPush(perfil.uid).catch(() => undefined);
     await escolherPapel(db, perfil, papel);
-    router.replace(papel === 'cliente' ? '/inicio' : '/agenda');
+    // Dono e barbeiro caem direto na aba Barbearia: lá está o cadastro da casa ou o campo do convite.
+    router.replace(papel === 'cliente' ? '/inicio' : '/casa');
   }
 
   return (
     <Tela>
       <Titulo destaque="o app?">Como você vai usar </Titulo>
-      <Text style={type.caption}>Dá para trocar depois no seu perfil, sem sair da conta.</Text>
+      <Text style={type.caption}>Quem tem barbearia também marca o próprio corte como cliente. Dá para trocar no Perfil, sem sair da conta.</Text>
       <View style={{ gap: space(3) }}>
         {OPCOES.map(o => (
           <Pressable

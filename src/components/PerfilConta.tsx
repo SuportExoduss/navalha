@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { Image, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Aviso, Botao, Cartao, Chip, Tela, Titulo } from './ui';
+import { Aviso, Botao, Cartao, Chip, Linha, Secao, Tela, Titulo } from './ui';
+import { AceitarConvite } from './casa/AceitarConvite';
 import { useAuth } from '../auth/AuthProvider';
 import { auth, db } from '../services/firebase';
 import { atualizarPerfil, escolherPapel, excluirConta } from '../services/usuarios';
@@ -16,6 +17,7 @@ import { ativarLembretesWeb, estadoLembretesWeb, type EstadoLembretesWeb } from 
 import type { Role } from '../types/models';
 
 const NOMES: Record<Role, string> = { cliente: 'Cliente', barbeiro: 'Barbeiro', dono: 'Dono' };
+const ORDEM_MODOS: Role[] = ['cliente', 'barbeiro', 'dono'];
 
 export function PerfilConta() {
   const { perfil } = useAuth();
@@ -54,11 +56,6 @@ export function PerfilConta() {
     finally { setEnviandoFoto(false); }
   }
 
-  async function trocarModo(p: Role) {
-    await escolherPapel(db, perfil!, p);
-    router.replace(p === 'cliente' ? '/inicio' : '/agenda');
-  }
-
   async function sair() { await sairDoGoogle(); router.replace('/entrar'); }
 
   const campo = { minHeight: 48, color: colors.text, fontSize: 15, backgroundColor: colors.surfaceRaised, borderRadius: radius.input, paddingHorizontal: space(4), borderWidth: 1, borderColor: colors.border };
@@ -92,14 +89,8 @@ export function PerfilConta() {
         <Botao titulo={salvo ? 'Salvo' : 'Salvar'} onPress={salvar} carregando={salvando} />
       </Cartao>
 
-      <Cartao style={{ gap: space(3) }}>
-        <Text style={type.heading}>Modo</Text>
-        <View style={{ flexDirection: 'row', gap: space(2), flexWrap: 'wrap' }}>
-          {(['cliente', 'barbeiro', 'dono'] as Role[]).map(p => (
-            <Chip key={p} rotulo={NOMES[p]} ativo={perfil.papelAtivo === p} onPress={() => trocarModo(p)} />
-          ))}
-        </View>
-      </Cartao>
+      <Modo />
+
 
       <SeletorTema />
       {Platform.OS === 'web' ? <LembretesWeb uid={perfil.uid} /> : null}
@@ -107,6 +98,51 @@ export function PerfilConta() {
       <Botao titulo="Trocar conta Google" variante="secundario" onPress={sair} />
       <ExcluirConta />
     </Tela>
+  );
+}
+
+/**
+ * Troca de modo e entrada no lado da barbearia. Mostra só os modos que a conta tem de verdade
+ * (barbeiro/dono só com barbearia). Sem barbearia: abrir uma ou entrar com o código de convite, aqui mesmo.
+ */
+function Modo() {
+  const { perfil } = useAuth();
+  const [codigoAberto, setCodigoAberto] = useState(false);
+  const [trocando, setTrocando] = useState<Role | null>(null);
+  if (!perfil) return null;
+  const temCasa = perfil.barbearias.length > 0;
+  // O modo atual sempre aparece: quem está como dono sem casa (ex.: acabou de excluí-la) precisa achar a volta para cliente.
+  const modos = ORDEM_MODOS.filter(p => p === 'cliente' || p === perfil.papelAtivo || (temCasa && perfil.papeis.includes(p)));
+
+  async function ir(p: Role, destino: '/inicio' | '/agenda' | '/casa') {
+    setTrocando(p);
+    try { await escolherPapel(db, perfil!, p); router.replace(destino); }
+    finally { setTrocando(null); }
+  }
+
+  return (
+    <>
+      {modos.length > 1 ? (
+        <Cartao style={{ gap: space(3) }}>
+          <Text style={type.heading}>Modo</Text>
+          <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', gap: space(2), flexWrap: 'wrap' }}>
+            {modos.map(p => (
+              <Chip key={p} rotulo={trocando === p ? 'Trocando…' : NOMES[p]} ativo={perfil.papelAtivo === p}
+                onPress={() => perfil.papelAtivo !== p && ir(p, p === 'cliente' ? '/inicio' : '/agenda')} />
+            ))}
+          </View>
+        </Cartao>
+      ) : null}
+      {temCasa ? null : (
+        <Secao titulo="Barbearia">
+          <Linha icone="storefront-outline" titulo="Abrir uma barbearia" dica="Cadastre a casa, o cardápio e receba agendamentos"
+            onPress={() => ir('dono', '/casa')} />
+          <Linha icone="key-outline" titulo="Tenho um código de convite" dica="Para barbeiro entrar na equipe de uma casa"
+            onPress={() => setCodigoAberto(a => !a)} />
+          {codigoAberto ? <AceitarConvite perfil={perfil} compacto aoEntrar={() => ir('barbeiro', '/agenda')} /> : null}
+        </Secao>
+      )}
+    </>
   );
 }
 

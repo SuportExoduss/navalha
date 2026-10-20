@@ -35,9 +35,12 @@ export function ouvirPerfil(db: Firestore, uid: string, cb: (p: UserProfile | nu
   }, erro);
 }
 
-/** Ativa um papel (primeira escolha) ou troca o modo ativo. */
+/**
+ * Ativa um papel (primeira escolha) ou troca o modo ativo. Todo mundo também é cliente:
+ * quem abre a conta para ter uma barbearia (ou entra como barbeiro) já pode marcar o próprio corte.
+ */
 export async function escolherPapel(db: Firestore, perfil: UserProfile, papel: Role) {
-  const papeis = perfil.papeis.includes(papel) ? perfil.papeis : [...perfil.papeis, papel];
+  const papeis = [...new Set<Role>([...perfil.papeis, 'cliente', papel])];
   await updateDoc(doc(db, 'users', perfil.uid), { papeis, papelAtivo: papel });
 }
 

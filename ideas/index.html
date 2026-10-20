@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101114">
+  <meta name="robots" content="noindex, follow">
+  <meta name="description" content="Página não encontrada — NAVALHA.">
+  <title>404 — NAVALHA</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101114;
+      --wall: #191b20;
+      --floor: #24262c;
+      --cream: #f7f3eb;
+      --muted: #a9abb3;
+      --red: #e6323d;
+      --red-dark: #ad1723;
+      --amber: #e5b45b;
+      --line: #32343b;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--cream);
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-width: 320px; min-height: 100%; background: var(--bg); }
+    body { min-height: 100vh; min-height: 100svh; }
+    a, button { font: inherit; }
+    .page { min-height: 100vh; min-height: 100svh; overflow: hidden; background: radial-gradient(ellipse at 50% 52%, #1b1b20 0%, var(--bg) 70%); }
+    .topbar { width: min(1120px, calc(100% - 48px)); margin: 0 auto; min-height: 76px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid rgba(255,255,255,.08); }
+    .brand { display: inline-flex; align-items: center; gap: 11px; color: var(--cream); text-decoration: none; font-weight: 850; font-size: .98rem; letter-spacing: .2em; }
+    .brand-mark { width: 28px; height: 28px; flex: none; }
+    .brand small { display: block; color: #9698a1; margin-top: 3px; font-weight: 600; font-size: .55rem; letter-spacing: .21em; }
+    .top-note { color: #888b94; font-size: .68rem; letter-spacing: .16em; text-transform: uppercase; }
+    main { width: min(1080px, calc(100% - 40px)); margin: 0 auto; padding: clamp(28px, 5vh, 54px) 0 26px; text-align: center; }
+    .eyebrow { margin: 0 0 10px; color: var(--amber); font-size: .72rem; font-weight: 750; letter-spacing: .2em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(4.2rem, 11vw, 7.5rem); font-weight: 900; letter-spacing: -.075em; line-height: .9; }
+    h1 .zero { color: var(--red); }
+    .headline { margin: 17px 0 0; font-size: clamp(1.35rem, 3.4vw, 2.05rem); font-weight: 800; letter-spacing: -.035em; }
+    .description { max-width: 480px; margin: 10px auto 0; color: var(--muted); font-size: clamp(.95rem, 1.8vw, 1.05rem); line-height: 1.6; }
+    .actions { display: flex; justify-content: center; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 22px; }
+    .home-button, .replay-button { min-height: 46px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; padding: 0 18px; border-radius: 11px; cursor: pointer; text-decoration: none; font-weight: 800; font-size: .82rem; transition: transform .18s ease, background .18s ease, border-color .18s ease; }
+    .home-button { border: 1px solid var(--amber); background: var(--amber); color: #201706; }
+    .home-button:hover { background: #f1c975; transform: translateY(-2px); }
+    .replay-button { border: 1px solid #3e4048; background: #1a1c21; color: var(--cream); }
+    .replay-button:hover { border-color: var(--amber); transform: translateY(-2px); }
+    .home-button:focus-visible, .replay-button:focus-visible, .brand:focus-visible, .scene-switch:focus-visible { outline: 3px solid #ffe3a0; outline-offset: 4px; }
+    .btn-icon { width: 16px; height: 16px; }
+    .status { min-height: 1.2em; margin: 10px 0 0; color: #c9b47f; font-size: .75rem; }
+
+    /* O cenário é uma ilustração 2D em SVG, sem imagens ou bibliotecas externas. */
+    .stage { position: relative; width: 100%; margin: 24px auto 0; max-width: 1050px; height: clamp(250px, 31vw, 360px); overflow: hidden; border: 1px solid #33343a; border-radius: 17px; background: var(--wall); box-shadow: 0 22px 60px rgba(0,0,0,.22); }
+    .stage svg { display: block; width: 100%; height: 100%; }
+    .scene-switch { cursor: pointer; outline: none; }
+    .scene-switch .switch-hit { fill: transparent; }
+    .scene-switch:hover .switch-case { stroke: var(--amber); }
+    .scene-switch:focus-visible .switch-case { stroke: #fff0bd; stroke-width: 4; }
+    .switch-face { transition: fill .2s ease; }
+    .is-lit .switch-face { fill: var(--red); }
+    .pole-glow { opacity: 0; transition: opacity .45s ease; }
+    .is-lit .pole-glow { opacity: .32; }
+    .pole-stripe-flow { transform-box: fill-box; transform-origin: center; }
+    .is-lit .pole-stripe-flow { animation: barber-roll .75s linear infinite; }
+    .spark-flash { opacity: 0; transform-box: fill-box; transform-origin: center; }
+    .sparks-on .spark-flash { animation: spark-flash .38s ease-out both; }
+    .scissor-upper, .scissor-lower { transform-box: view-box; transform-origin: 50px 0; }
+    @keyframes barber-roll { to { transform: translateY(49px); } }
+    @keyframes spark-flash { 0% { opacity: 0; transform: scale(.2); } 24% { opacity: 1; transform: scale(1.1); } 100% { opacity: 0; transform: scale(.6); } }
+    .microcopy { margin: 10px 0 0; color: #777a83; font-size: .72rem; letter-spacing: .07em; }
+    .microcopy strong { color: #b7b8bf; font-weight: 650; }
+    @media (min-width: 900px) { main { padding-top: 36px; } .stage { margin-top: 22px; } }
+    @media (max-width: 600px) {
+      .topbar { width: calc(100% - 32px); min-height: 65px; }
+      .top-note { max-width: 130px; text-align: right; font-size: .56rem; line-height: 1.5; letter-spacing: .1em; }
+      main { width: calc(100% - 28px); padding-top: 30px; }
+      .eyebrow { font-size: .62rem; }
+      h1 { font-size: clamp(4.2rem, 21vw, 6.1rem); }
+      .headline { margin-top: 13px; font-size: clamp(1.25rem, 5.8vw, 1.65rem); }
+      .description { max-width: 340px; font-size: .91rem; }
+      .actions { gap: 8px; margin-top: 18px; }
+      .home-button, .replay-button { min-height: 44px; padding: 0 13px; font-size: .74rem; }
+      .stage { height: 230px; margin-top: 18px; border-radius: 13px; }
+      .stage svg { min-width: 0; width: 100%; position: static; transform: none; }
+      .microcopy { font-size: .66rem; line-height: 1.5; padding: 0 5px; }
+      @keyframes barber-roll { to { transform: translateY(19px); } }
+    }
+    @media (max-width: 360px) {
+      .top-note { display: none; }
+      .actions { flex-direction: column; align-items: stretch; width: min(100%, 270px); margin-left: auto; margin-right: auto; }
+      .home-button, .replay-button { width: 100%; }
+      .stage { height: 205px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+      .is-lit .pole-stripe-flow { animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page" id="pageRoot">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="NAVALHA — voltar ao início">
+        <svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true"><path d="M7 7 33 33M7 33 33 7" stroke="#f7f3eb" stroke-width="4.5" stroke-linecap="round"/><circle cx="7" cy="7" r="4" fill="#e6323d"/><circle cx="33" cy="33" r="4" fill="#e5b45b"/><circle cx="7" cy="33" r="4" fill="#e6323d"/><circle cx="33" cy="7" r="4" fill="#e5b45b"/></svg>
+        <span>NAVALHA<small>BARBEARIA NA SUA ROTINA</small></span>
+      </a>
+      <span class="top-note">ESTILO · PRATICIDADE · SEMPRE COM VOCÊ</span>
+    </header>
+
+    <main>
+      <p class="eyebrow">Página não encontrada</p>
+      <h1 aria-label="Erro 404">4<span class="zero">0</span>4</h1>
+      <p class="headline">OPA! VOCÊ SE PERDEU.</p>
+      <p class="description">Esse caminho saiu do corte. Vamos voltar para o lugar certo?</p>
+      <div class="actions">
+        <a class="home-button" href="/">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m3 10 9-7 9 7M5.5 9v11h5v-6h3v6h5V9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          VOLTAR AO INÍCIO
+        </a>
+        <button class="replay-button" id="replayButton" type="button">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 11a8 8 0 1 1 2.2 5.5M4 5v6h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          TENTAR DE NOVO
+        </button>
+      </div>
+      <p class="status" id="statusMessage" role="status" aria-live="polite"></p>
+
+      <section class="stage" aria-label="Animação 2D da tesoura e da luminária de barbearia">
+        <svg id="scene" viewBox="0 0 960 330" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="sceneTitle sceneDesc">
+          <title id="sceneTitle">A tesoura que errou o caminho</title>
+          <desc id="sceneDesc">Uma tesoura clássica voa da esquerda para a direita, tenta cortar o fio, leva um choque e desliza para fora da cena. Clique no interruptor para acender o poste vermelho e branco e reiniciar a animação.</desc>
+          <defs>
+            <clipPath id="poleClip"><rect x="727" y="59" width="48" height="124" rx="22"/></clipPath>
+            <radialGradient id="warmHalo"><stop offset="0" stop-color="#e5b45b" stop-opacity=".85"/><stop offset="1" stop-color="#e5b45b" stop-opacity="0"/></radialGradient>
+            <linearGradient id="bladeFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffdf6"/><stop offset=".55" stop-color="#d7d9dd"/><stop offset="1" stop-color="#9297a1"/></linearGradient>
+          </defs>
+
+          <!-- Parede e piso: formas simples, sem cenário 3D. -->
+          <rect width="960" height="330" fill="#191b20"/>
+          <path d="M0 38H960M34 0V267M476 0V267M923 0V267" stroke="#292b32" stroke-width="2"/>
+          <rect x="0" y="268" width="960" height="62" fill="#24262c"/>
+          <path d="M0 268H960M0 314H960" stroke="#3a3c44" stroke-width="2"/>
+          <path d="M95 269 120 330M330 269 355 330M700 269 730 330" stroke="#34363d" stroke-width="1.5"/>
+          <ellipse class="pole-glow" cx="751" cy="129" rx="112" ry="140" fill="url(#warmHalo)"/>
+
+          <!-- Fio no caminho da tesoura. -->
+          <path d="M764 165 C778 198 764 232 750 265 C732 286 694 287 661 288 L590 288" fill="none" stroke="#090a0c" stroke-width="9" stroke-linecap="round"/>
+          <path d="M764 165 C778 198 764 232 750 265 C732 286 694 287 661 288 L590 288" fill="none" stroke="#686a70" stroke-width="3" stroke-linecap="round"/>
+          <path d="M764 165 C778 198 764 232 750 265 C732 286 694 287 661 288 L590 288" fill="none" stroke="#e5b45b" stroke-width="1" opacity=".5"/>
+
+          <!-- Poste clássico de barbearia, desenhado em 2D. -->
+          <g id="barberPole">
+            <path d="M720 54V38H782V54" fill="#101115" stroke="#51535b" stroke-width="3"/>
+            <rect x="714" y="48" width="74" height="151" rx="17" fill="#0e0f12" stroke="#4a4d55" stroke-width="4"/>
+            <g clip-path="url(#poleClip)">
+              <rect x="727" y="59" width="48" height="124" fill="#f7f3eb"/>
+              <g class="pole-stripe-flow" fill="#e6323d">
+                <path d="M704 52H729L801 124V149Z"/>
+                <path d="M704 97H729L801 169V194Z"/>
+                <path d="M704 142H729L801 214V239Z"/>
+                <path d="M704 187H729L801 259V284Z"/>
+                <path d="M704 232H729L801 304V329Z"/>
+                <path d="M704 277H729L801 349V374Z"/>
+              </g>
+            </g>
+            <rect x="710" y="47" width="82" height="19" rx="8" fill="#101115" stroke="#64666d" stroke-width="3"/>
+            <rect x="710" y="181" width="82" height="20" rx="8" fill="#101115" stroke="#64666d" stroke-width="3"/>
+            <path d="M722 56H780M722 191H780" stroke="#e5b45b" stroke-width="2" opacity=".8"/>
+            <circle cx="751" cy="38" r="6" fill="#e5b45b"/>
+          </g>
+
+          <!-- Tomada e plugue simplificados. -->
+          <g transform="translate(552 258)">
+            <rect width="48" height="51" rx="7" fill="#111216" stroke="#41434b" stroke-width="3"/>
+            <rect x="8" y="8" width="32" height="35" rx="5" fill="#202229"/>
+            <circle cx="18" cy="22" r="2.2" fill="#888b94"/><circle cx="30" cy="22" r="2.2" fill="#888b94"/>
+            <path d="M27 37V44" stroke="#888b94" stroke-width="2"/>
+          </g>
+          <path d="M590 288 C607 288 613 288 631 288" fill="none" stroke="#111216" stroke-width="9" stroke-linecap="round"/>
+          <path d="M590 288 C607 288 613 288 631 288" fill="none" stroke="#686a70" stroke-width="3" stroke-linecap="round"/>
+
+          <!-- Interruptor clicável. -->
+          <g id="wallSwitch" class="scene-switch" role="button" tabindex="0" aria-pressed="false" aria-label="Acender a luminária e reiniciar a animação">
+            <rect class="switch-hit" x="834" y="104" width="80" height="105" rx="10"/>
+            <rect class="switch-case" x="845" y="115" width="58" height="82" rx="8" fill="#0c0d10" stroke="#555761" stroke-width="3"/>
+            <rect x="853" y="123" width="42" height="66" rx="5" fill="#272930" stroke="#41434a" stroke-width="1.5"/>
+            <rect class="switch-face" x="864" y="133" width="20" height="45" rx="5" fill="#b81f2a" stroke="#f05259" stroke-width="2"/>
+            <path d="M868 140H880" stroke="#ff9ca0" stroke-width="2"/>
+            <circle cx="874" cy="127" r="2" fill="#e5b45b"/>
+          </g>
+          <text x="824" y="225" fill="#c2c0c0" font-size="11" font-family="system-ui, sans-serif">TOQUE PARA</text>
+          <text x="824" y="239" fill="#c2c0c0" font-size="11" font-family="system-ui, sans-serif">ACENDER</text>
+          <path d="M871 244v10m0 0-4-4m4 4 4-4" fill="none" stroke="#e5b45b" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+
+          <!-- Faíscas cartoon 2D no ponto onde a tesoura bate no fio. -->
+          <g id="sparks" class="spark-flash" transform="translate(650 286)" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M0 -30 5 -9 20 -18 11 -3 29 2 8 7 15 23 2 12 -7 31 -9 10 -26 17 -13 2 -28 -8 -8 -7Z" fill="#e5b45b" stroke="#fff0bd" stroke-width="2"/>
+            <path d="M-36 -15 -22 -7M29 -21 18 -7M32 17 16 10M-21 27 -9 13" stroke="#fff0bd" stroke-width="3"/>
+            <circle r="5" fill="#fff8df"/>
+          </g>
+
+          <!-- Tesoura clássica: sem olhos, pernas ou rosto; lâminas abrem e fecham enquanto voa. -->
+          <g id="scissors" opacity="0" transform="translate(-180 235)">
+            <g class="motion-streaks" stroke="#e5b45b" stroke-width="2.5" stroke-linecap="round" opacity=".8">
+              <path d="M-38 -14H-10M-47 0H-12M-34 14H-8"/>
+            </g>
+            <g id="upperBlade" fill="url(#bladeFill)" stroke="#777b84" stroke-width="1.3" stroke-linejoin="round">
+              <path d="M49 0 145 -20Q151 -20 146 -14L58 5Z"/>
+              <path d="M59 1 139 -16" fill="none" stroke="#fffdf7" stroke-width="1.6"/>
+            </g>
+            <g id="lowerBlade" fill="url(#bladeFill)" stroke="#777b84" stroke-width="1.3" stroke-linejoin="round">
+              <path d="M49 0 145 20Q151 20 146 14L58 -5Z"/>
+              <path d="M59 -1 139 16" fill="none" stroke="#fffdf7" stroke-width="1.6"/>
+            </g>
+            <g fill="#15161a" stroke="#e6323d" stroke-width="7">
+              <ellipse cx="19" cy="-22" rx="17" ry="13" transform="rotate(-17 19 -22)"/>
+              <ellipse cx="19" cy="22" rx="17" ry="13" transform="rotate(17 19 22)"/>
+            </g>
+            <g fill="none" stroke="#f7f3eb" stroke-width="1.6" opacity=".9">
+              <ellipse cx="19" cy="-22" rx="11" ry="7" transform="rotate(-17 19 -22)"/>
+              <ellipse cx="19" cy="22" rx="11" ry="7" transform="rotate(17 19 22)"/>
+            </g>
+            <path d="M34 -18 49 0 34 18" fill="none" stroke="#e5b45b" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="49" cy="0" r="6" fill="#25272d" stroke="#e5b45b" stroke-width="2.5"/>
+            <circle cx="49" cy="0" r="1.7" fill="#f7f3eb"/>
+          </g>
+          <!-- Pequenos indicadores de movimento, ativados apenas no impacto. -->
+          <g id="impactLines" opacity="0" stroke="#e5b45b" stroke-width="3" stroke-linecap="round">
+            <path d="M622 260l-10-9M676 265l10-11M621 305l-12 5"/>
+          </g>
+        </svg>
+      </section>
+      <p class="microcopy">A tesoura tentou resolver sozinha. <strong>Acenda a luz para começar de novo.</strong></p>
+    </main>
+  </div>
+
+  <script>
+    (() => {
+      'use strict';
+      const root = document.getElementById('pageRoot');
+      const scene = document.getElementById('scene');
+      const scissors = document.getElementById('scissors');
+      const upperBlade = document.getElementById('upperBlade');
+      const lowerBlade = document.getElementById('lowerBlade');
+      const sparks = document.getElementById('sparks');
+      const impactLines = document.getElementById('impactLines');
+      const switchButton = document.getElementById('wallSwitch');
+      const replayButton = document.getElementById('replayButton');
+      const status = document.getElementById('statusMessage');
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+      const narrowScreen = window.matchMedia('(max-width: 600px)');
+      const cycleMs = 6300;
+      let cycleStart = performance.now();
+      let lastImpactCycle = -1;
+      let lit = false;
+      let frameId;
+
+      const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+      const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      const lerp = (a, b, t) => a + (b - a) * t;
+
+      function fitScene() {
+        if (narrowScreen.matches) {
+          scene.setAttribute('viewBox', '0 -110 960 550');
+          scene.setAttribute('preserveAspectRatio', 'none');
+        } else {
+          scene.setAttribute('viewBox', '0 0 960 330');
+          scene.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+        }
+      }
+
+      function setLight() {
+        lit = true;
+        root.classList.add('is-lit');
+        switchButton.setAttribute('aria-pressed', 'true');
+        switchButton.setAttribute('aria-label', 'Luminária acesa. Acionar novamente para reiniciar a animação');
+      }
+
+      function restart() {
+        cycleStart = performance.now();
+        lastImpactCycle = -1;
+        setLight();
+        if (reduceMotion.matches) {
+          status.textContent = 'Luminária acesa. As animações estão reduzidas nas configurações do dispositivo.';
+        } else {
+          status.textContent = 'Luz acesa! A tesoura está voando de novo…';
+        }
+        paint(performance.now());
+      }
+
+      function paint(now) {
+        if (reduceMotion.matches) {
+          scissors.setAttribute('opacity', '1');
+          scissors.setAttribute('transform', 'translate(505 260) rotate(3)');
+          upperBlade.setAttribute('transform', 'rotate(-4 49 0)');
+          lowerBlade.setAttribute('transform', 'rotate(4 49 0)');
+          sparks.setAttribute('opacity', lit ? '.5' : '0');
+          impactLines.setAttribute('opacity', '0');
+          return;
+        }
+
+        const elapsed = Math.max(0, now - cycleStart);
+        const cycle = Math.floor(elapsed / cycleMs);
+        const t = (elapsed % cycleMs) / cycleMs;
+        let x = -190, y = 230, angle = -10, alpha = 0;
+        const flightStart = .045;
+        const impactAt = .37;
+        const fallEnd = .46;
+        const settleEnd = .51;
+        const dragEnd = .73;
+
+        if (t < flightStart) {
+          alpha = 0;
+        } else if (t < impactAt) {
+          const p = (t - flightStart) / (impactAt - flightStart);
+          const e = ease(clamp(p, 0, 1));
+          x = lerp(-180, 505, e);
+          y = 260 - Math.sin(p * Math.PI) * 36 + p * 8;
+          angle = lerp(-14, 2, p) + Math.sin(p * Math.PI * 3) * 2.5;
+          alpha = 1;
+        } else if (t < .43) {
+          const p = (t - impactAt) / .06;
+          x = 505 + Math.sin(p * Math.PI * 7) * 3;
+          y = 268 + Math.cos(p * Math.PI * 6) * 2;
+          angle = Math.sin(p * Math.PI * 8) * 7;
+          alpha = 1;
+        } else if (t < fallEnd) {
+          const p = (t - .43) / (fallEnd - .43);
+          x = lerp(505, 520, ease(p));
+          y = lerp(268, 272, ease(p));
+          angle = lerp(3, 50, ease(p));
+          alpha = 1;
+        } else if (t < settleEnd) {
+          const p = (t - fallEnd) / (settleEnd - fallEnd);
+          x = 520;
+          y = lerp(272, 265, ease(p));
+          angle = lerp(50, 9, ease(p));
+          alpha = 1;
+        } else if (t < dragEnd) {
+          const p = (t - settleEnd) / (dragEnd - settleEnd);
+          x = lerp(520, 1030, ease(p));
+          y = 265 + Math.sin(p * Math.PI * 5) * (4 * (1 - p));
+          angle = 9 + Math.sin(p * Math.PI * 4) * 4;
+          alpha = p > .82 ? 1 - (p - .82) / .18 : 1;
+        } else {
+          x = 1030; y = 265; angle = 9; alpha = 0;
+        }
+
+        // O corte abre e fecha as lâminas durante o voo; após o choque, elas ficam trêmulas.
+        const snip = Math.sin(now / 68) * (t >= impactAt && t < fallEnd ? 10 : 6);
+        upperBlade.setAttribute('transform', `rotate(${-snip} 49 0)`);
+        lowerBlade.setAttribute('transform', `rotate(${snip} 49 0)`);
+        scissors.setAttribute('transform', `translate(${x.toFixed(2)} ${y.toFixed(2)}) rotate(${angle.toFixed(2)})`);
+        scissors.setAttribute('opacity', alpha.toFixed(3));
+
+        const impactActive = t >= impactAt && t < .43;
+        sparks.setAttribute('opacity', impactActive ? Math.max(0, Math.sin(((t - impactAt) / .06) * Math.PI)).toFixed(3) : '0');
+        impactLines.setAttribute('opacity', impactActive ? '1' : '0');
+        if (impactActive && cycle !== lastImpactCycle) {
+          lastImpactCycle = cycle;
+          root.classList.remove('sparks-on');
+          // reflow para reiniciar o pequeno clarão em cada volta
+          void sparks.getBoundingClientRect();
+          root.classList.add('sparks-on');
+        } else if (!impactActive) {
+          root.classList.remove('sparks-on');
+        }
+      }
+
+      function animate(now) {
+        paint(now);
+        frameId = window.requestAnimationFrame(animate);
+      }
+      function onReducedMotionChange() {
+        if (reduceMotion.matches) {
+          if (frameId) window.cancelAnimationFrame(frameId);
+          paint(performance.now());
+          status.textContent = 'Animações reduzidas conforme a preferência de movimento do dispositivo.';
+        } else {
+          cycleStart = performance.now();
+          frameId = window.requestAnimationFrame(animate);
+        }
+      }
+
+      fitScene();
+      if (typeof narrowScreen.addEventListener === 'function') narrowScreen.addEventListener('change', fitScene);
+      else if (typeof narrowScreen.addListener === 'function') narrowScreen.addListener(fitScene);
+
+      switchButton.addEventListener('click', restart);
+      switchButton.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); restart(); }
+      });
+      replayButton.addEventListener('click', restart);
+      if (reduceMotion.matches) paint(performance.now());
+      else frameId = window.requestAnimationFrame(animate);
+      if (typeof reduceMotion.addEventListener === 'function') reduceMotion.addEventListener('change', onReducedMotionChange);
+      else if (typeof reduceMotion.addListener === 'function') reduceMotion.addListener(onReducedMotionChange);
+    })();
+  </script>
+</body>
+</html>
