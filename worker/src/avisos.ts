@@ -1,4 +1,4 @@
-// Notificações da casa: aviso na hora (marcado/cancelado) e resumo do mês no dia 1.
+// Notificações: aviso na hora (marcado/cancelado) e resumo do mês no dia 1.
 // Sem Cloud Functions: o app avisa o Worker logo depois de reservar/cancelar; o Worker confere o agendamento
 // no Firestore (nunca confia no que o app manda), grava a notificação com id fixo (sem duplicar) e manda o push.
 import {
@@ -17,19 +17,21 @@ async function enviarPush(projectId: string, tokenSA: string, m: { token: string
   if (!r.ok) console.error('FCM falhou', m.agendamentoId, r.status, await r.text());
 }
 
-/** POST /avisos/agendamento — o cliente acabou de marcar ou cancelar: avisa o barbeiro e o dono. */
+/** POST /avisos/agendamento — alguém acabou de marcar ou cancelar: avisa os outros lados (cliente, barbeiro, dono). */
 export async function avisarAgendamento(db: Firestore, tokenSA: string, projectId: string, uid: string, agendamentoId: string, agora = Date.now()) {
   const ag = (await db.varios([`agendamentos/${agendamentoId}`])).get(`agendamentos/${agendamentoId}`);
   if (!ag) return { status: 404, corpo: { erro: 'Agendamento não encontrado.' } };
-  // Só quem marcou/cancelou avisa, e só logo depois (um aviso velho reenviado não vira notificação).
-  if (ag.clienteUid !== uid) return { status: 403, corpo: { erro: 'Sem permissão.' } };
+  const casa = (await db.varios([`barbearias/${ag.barbeariaId as string}`])).get(`barbearias/${ag.barbeariaId as string}`);
+  const donoUid = casa?.donoUid as string | undefined;
+  const clienteUid = (ag.clienteUid as string | null) ?? undefined; // balcão: sem cliente no app
+  // Só quem faz parte do agendamento avisa, e só logo depois (um aviso velho reenviado não vira notificação).
+  if (![clienteUid, ag.barbeiroId, donoUid].includes(uid)) return { status: 403, corpo: { erro: 'Sem permissão.' } };
   const tipo = ag.status === 'cancelado' ? 'cancelado' : ['reservado', 'confirmado'].includes(ag.status as string) ? 'agendado' : null;
   const quando = Number(tipo === 'cancelado' ? ag.atualizadoEm : ag.criadoEm);
   if (!tipo || !(agora - quando < RECENTE_MS)) return { status: 409, corpo: { erro: 'Nada a avisar.' } };
 
-  const casa = (await db.varios([`barbearias/${ag.barbeariaId as string}`])).get(`barbearias/${ag.barbeariaId as string}`);
-  const donoUid = casa?.donoUid as string | undefined;
-  const para = [...new Set([ag.barbeiroId as string, donoUid].filter((x): x is string => !!x && x !== uid))];
+  const para = [...new Set([clienteUid, ag.barbeiroId as string, donoUid].filter((x): x is string => !!x && x !== uid))];
+  const papel = (p: string) => (p === clienteUid ? 'cliente' : p === ag.barbeiroId ? 'barbeiro' : 'dono');
   const ids = para.map(p => idAviso(agendamentoId, tipo, p));
   const ja = await db.varios(ids.map(id => `notificacoes/${id}`));
   const novos = para.filter((_, i) => !ja.has(`notificacoes/${ids[i]}`));
@@ -37,14 +39,15 @@ export async function avisarAgendamento(db: Firestore, tokenSA: string, projectI
 
   const dados = ag as Parameters<typeof textoAviso>[1];
   const notifs = novos.map(p => {
-    const t = textoAviso(tipo, dados, agora, p === donoUid && p !== ag.barbeiroId);
+    const t = textoAviso(tipo, dados, agora, papel(p));
     return { id: idAviso(agendamentoId, tipo, p), paraUid: p, barbeariaId: ag.barbeariaId as string, tipo, ...t, agendamentoId, em: agora, lida: false };
   });
   await db.escrever(notifs.map(n => ({ caminho: `notificacoes/${n.id}`, criar: true, campos: n })));
   const perfis = await db.varios(novos.map(p => `users/${p}`));
   for (const n of notifs) {
     const token = perfis.get(`users/${n.paraUid}`)?.pushToken as string | undefined;
-    if (token) await enviarPush(projectId, tokenSA, { token, title: n.titulo, body: n.corpo, agendamentoId, link: 'https://navalha.web.app/agenda' });
+    const link = `https://navalha.web.app/${papel(n.paraUid) === 'cliente' ? 'agendamentos' : 'agenda'}`;
+    if (token) await enviarPush(projectId, tokenSA, { token, title: n.titulo, body: n.corpo, agendamentoId, link });
   }
   return { status: 200, corpo: { enviados: notifs.length } };
 }

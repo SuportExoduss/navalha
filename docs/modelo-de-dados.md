@@ -11,12 +11,12 @@ Tipos completos em `src/types/models.ts`; permissões em `firestore.rules`.
 | `convites/{código}` | dono | 1 | Código de 6 letras (sem 0/O/1/I), válido 7 dias, uso único; aponta para a barbearia |
 | `barbearias/{id}/servicos/{id}` | barbeiro (o próprio) ou dono | 1 | Cardápio: nome, preço em centavos, duração, até 6 fotos |
 | `barbearias/{id}/bloqueios/{id}` | barbeiro ou dono | 1 | Folgas, férias, pausas pontuais |
-| `agendamentos/{id}` | cliente (app) ou casa (balcão) | 1 | Status: reservado, confirmado, pago, concluído, faltou, cancelado |
+| `agendamentos/{id}` | cliente (app) ou casa (balcão) | 1 | Status: reservado, confirmado, pago, concluído, faltou, cancelado. O barbeiro lê e mexe só nos próprios; o dono, em todos da casa |
 
 > `cancelamento: { por: 'cliente' | 'casa', motivo, em }` — gravado junto com o status `cancelado`; a regra só aceita o motivo assinado por quem cancela (até 200 caracteres). O outro lado vê o motivo na agenda ou no histórico.
 | `ocupacao/{barbeiro_data_HHMM}` | junto com o agendamento | 1 | **Trava contra horário duplo** (abaixo) |
 | `eventos/{id}` | app | 1 | Métricas do piloto: agendou, cancelou, faltou, tempo até agendar |
-| `notificacoes/{id}` | Worker | 1 | Painel do sino na Agenda: marcado e cancelado (id `agendamento_tipo_uid`, nunca duplica) e resumo do mês no dia 1 (`resumo_AAAA-MM_casa`). O destinatário só lê e marca como lida |
+| `notificacoes/{id}` | Worker | 1 | Sino na Agenda (casa) e em Agendamentos (cliente): marcado e cancelado avisam os outros lados (cliente, barbeiro, dono), nunca quem fez (id `agendamento_tipo_uid`, nunca duplica) e resumo do mês no dia 1 (`resumo_AAAA-MM_casa`). O destinatário só lê e marca como lida |
 | `pagamentos/{id}` | Worker (webhook Asaas) | 3 | Pix, cartão, split, assinatura |
 | `avaliacoes/{id}` | cliente/barbeiro cria oculta; Worker revela | 3 | Avaliação mútua dupla-cega |
 | `clubes/{id}`, `assinaturasClube/{id}` | dono / Worker | 4 | Clube de assinatura do cliente |

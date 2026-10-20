@@ -1,4 +1,4 @@
-// Notificações da casa (barbeiro e dono): textos e resumo do mês. Lógica pura, usada pelo Worker (que grava
+// Notificações (cliente, barbeiro e dono): textos e resumo do mês. Lógica pura, usada pelo Worker (que grava
 // e manda o push) e testada aqui. Fuso fixo de Brasília (UTC−3).
 import { formatarHora, formatarPreco, rotuloDia, dataLocal } from './agenda';
 import type { Agendamento, Millis } from '../types/models';
@@ -18,16 +18,27 @@ export interface Notificacao {
   lida: boolean;
 }
 
-type AgParaAviso = Pick<Agendamento, 'clienteNome' | 'servicoNome' | 'barbeiroNome' | 'inicio' | 'cancelamento'>;
+type AgParaAviso = Pick<Agendamento, 'clienteNome' | 'servicoNome' | 'barbeiroNome' | 'inicio' | 'cancelamento'>
+  & Partial<Pick<Agendamento, 'barbeariaNome' | 'origem'>>;
+export type Destinatario = 'cliente' | 'barbeiro' | 'dono';
 
-/** Texto do aviso de marcado/cancelado. `paraDono`: o dono vê de qual barbeiro é. */
-export function textoAviso(tipo: 'agendado' | 'cancelado', a: AgParaAviso, agora: Millis, paraDono: boolean) {
+/** Texto do aviso de marcado/cancelado. O dono vê de qual barbeiro é; o cliente vê qual barbearia. */
+export function textoAviso(tipo: 'agendado' | 'cancelado', a: AgParaAviso, agora: Millis, para: Destinatario) {
   const quando = `${rotuloDia(dataLocal(a.inicio), dataLocal(agora)).toLowerCase()} às ${formatarHora(a.inicio)}`;
-  const com = paraDono && a.barbeiroNome ? ` com ${a.barbeiroNome}` : '';
-  if (tipo === 'agendado') {
-    return { titulo: 'Novo horário marcado', corpo: `${a.clienteNome}: ${a.servicoNome}${com}, ${quando}.` };
-  }
   const motivo = a.cancelamento?.motivo ? ` Motivo: ${a.cancelamento.motivo}.` : '';
+  if (para === 'cliente') {
+    const casa = a.barbeariaNome ?? 'A barbearia';
+    return tipo === 'agendado'
+      ? { titulo: 'Horário marcado', corpo: `${a.servicoNome} na ${casa}, ${quando}.` }
+      : { titulo: 'Seu horário foi cancelado', corpo: `${casa} cancelou ${a.servicoNome} de ${quando}.${motivo}` };
+  }
+  const com = para === 'dono' && a.barbeiroNome ? ` com ${a.barbeiroNome}` : '';
+  if (tipo === 'agendado') {
+    return { titulo: a.origem === 'balcao' ? 'Encaixe marcado' : 'Novo horário marcado', corpo: `${a.clienteNome}: ${a.servicoNome}${com}, ${quando}.` };
+  }
+  if (a.cancelamento?.por === 'casa') {
+    return { titulo: 'Horário cancelado', corpo: `A casa cancelou ${a.servicoNome} de ${a.clienteNome}${com}, ${quando}.${motivo}` };
+  }
   return { titulo: 'Horário cancelado', corpo: `${a.clienteNome} cancelou ${a.servicoNome}${com} de ${quando}.${motivo}` };
 }
 

@@ -10,7 +10,8 @@ import { db } from '../../services/firebase';
 import { cancelar, ouvirMeusAgendamentos, registrarEvento } from '../../services/agendamentos';
 import { lerBarbearia } from '../../services/barbearias';
 import { cancelamentoGratis, dataLocal, formatarHora, formatarPreco, rotuloDia } from '../../lib/agenda';
-import { avisarCasa } from '../../services/avisos';
+import { avisarAgendamento } from '../../services/avisos';
+import { PainelNotificacoes } from '../../components/agenda/PainelNotificacoes';
 import { colors, space, type } from '../../theme';
 import type { Agendamento } from '../../types/models';
 
@@ -31,7 +32,10 @@ export default function Agendamentos() {
 
   return (
     <Tela>
-      <Titulo>Agendamentos</Titulo>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Titulo>Agendamentos</Titulo>
+        <PainelNotificacoes uid={perfil.uid} vazio="Se a barbearia cancelar ou mudar algo no seu horário, avisamos aqui e no celular." />
+      </View>
       {erro ? <Aviso texto={erro} tom="erro" /> : null}
       <Secao titulo="Próximos">
         {proximos.length === 0 ? (
@@ -72,7 +76,7 @@ function ItemAgendamento({ a, uid, podeCancelar }: { a: Agendamento; uid: string
     try {
       await cancelar(db, a, { por: 'cliente', motivo });
       registrarEvento(db, { tipo: 'cancelou', uid, barbeariaId: a.barbeariaId, em: Date.now() });
-      avisarCasa(a.id); // barbeiro e dono ficam sabendo do cancelamento na hora
+      avisarAgendamento(a.id); // barbeiro e dono ficam sabendo do cancelamento na hora
     } catch { setErro('Não foi possível cancelar. Tente de novo.'); setCancelando(false); }
   }
 

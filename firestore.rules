@@ -196,7 +196,9 @@ service cloud.firestore {
         return getAfter(perfil).data.get('ultimaReserva', null) == request.time
           && (antes == null || request.time > antes + duration.value(20, 's'));
       }
-      allow read: if logado() && (ag().clienteUid == eu() || ehDaCasa(ag().barbeariaId));
+      // Barbeiro vê só os próprios horários; o dono, a casa toda (clientes e faturamento dos colegas são do dono).
+      function daCasaParaEste(a) { return ehDono(a.barbeariaId) || (ehBarbeiro(a.barbeariaId) && a.barbeiroId == eu()); }
+      allow read: if logado() && (ag().clienteUid == eu() || ag().barbeiroId == eu() || ehDono(ag().barbeariaId));
 
       allow create: if logado()
         && request.resource.data.id == aid
@@ -205,7 +207,7 @@ service cloud.firestore {
         && (
           (request.resource.data.origem == 'app' && request.resource.data.clienteUid == eu()
              && request.resource.data.status == 'reservado' && intervaloEntreReservasOk())
-          || (request.resource.data.origem == 'balcao' && ehDaCasa(request.resource.data.barbeariaId)
+          || (request.resource.data.origem == 'balcao' && daCasaParaEste(request.resource.data)
              && request.resource.data.clienteUid == null && request.resource.data.status == 'confirmado')
         )
         // O barbeiro é da casa, e os blocos travados são dele (ninguém trava a agenda com chaves falsas).
@@ -231,7 +233,7 @@ service cloud.firestore {
           // Exclusão de conta (LGPD): o cliente apaga o próprio nome do histórico da barbearia.
           || (ag().clienteUid == eu() && request.resource.data.clienteNome == 'Cliente removido'
              && request.resource.data.diff(ag()).affectedKeys().hasOnly(['clienteNome', 'atualizadoEm']))
-          || (ehDaCasa(ag().barbeariaId) && ag().status != 'cancelado'
+          || (daCasaParaEste(ag()) && ag().status != 'cancelado'
              && request.resource.data.status in ['confirmado', 'concluido', 'faltou', 'cancelado']
              && cancelamentoOk('casa'))
         );

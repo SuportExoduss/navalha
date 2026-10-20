@@ -181,15 +181,13 @@ export function ouvirHorariosLivres(
 }
 
 /** Agenda da casa num dia, em tempo real (escuta só o dia aberto na tela). */
+/** Agenda do dia: o dono vê a casa toda (barbeiroId null); o barbeiro, só os próprios horários (as regras exigem). */
 export function ouvirAgendaDoDia(
-  db: Firestore, barbeariaId: string, data: ISODate, cb: (l: Agendamento[]) => void, erro?: (e: Error) => void,
+  db: Firestore, barbeariaId: string, data: ISODate, barbeiroId: string | null, cb: (l: Agendamento[]) => void, erro?: (e: Error) => void,
 ): Unsubscribe {
-  const q = query(
-    collection(db, 'agendamentos'),
-    where('barbeariaId', '==', barbeariaId),
-    where('data', '==', data),
-    orderBy('inicio'),
-  );
+  const q = barbeiroId
+    ? query(collection(db, 'agendamentos'), where('barbeiroId', '==', barbeiroId), where('data', '==', data), orderBy('inicio'))
+    : query(collection(db, 'agendamentos'), where('barbeariaId', '==', barbeariaId), where('data', '==', data), orderBy('inicio'));
   return onSnapshot(q, s => cb(s.docs.map(d => d.data() as Agendamento)), erro);
 }
 

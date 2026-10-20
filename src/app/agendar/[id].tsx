@@ -11,7 +11,7 @@ import { Aviso, Botao, Carregando, Cartao, FalhaAoCarregar, Secao, Tela, Titulo 
 import { SeletorDia } from '../../components/agenda/SeletorDia';
 import { Etapa } from '../../components/agenda/Etapa';
 import { avisarReserva } from '../../components/agenda/avisoReserva';
-import { avisarCasa } from '../../services/avisos';
+import { avisarAgendamento } from '../../services/avisos';
 import { GradeHorarios } from '../../components/agenda/GradeHorarios';
 import { useAuth } from '../../auth/AuthProvider';
 import { db } from '../../services/firebase';
@@ -105,7 +105,7 @@ export default function Agendar() {
         inicio: escolhido, passoMin: b.passoMin, origem: 'app',
       });
       registrarEvento(db, { tipo: 'agendou', uid: perfil.uid, barbeariaId: b.id, duracaoMs: Date.now() - abriuEm.current, em: Date.now() });
-      avisarCasa(agendamentoId); // barbeiro e dono recebem o aviso na hora
+      avisarAgendamento(agendamentoId); // barbeiro e dono recebem o aviso na hora
       // Vibração curta de sucesso: o momento de valor do app (na web não faz nada).
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       avisarReserva(`${servico.nome} com ${nomeBarbeiro}, ${rotuloDia(dataLocal(escolhido), hoje).toLowerCase()} às ${formatarHora(escolhido)}. `

@@ -1,4 +1,4 @@
-// Sino da Agenda (dono e barbeiro) com o número de não lidas; abre um painel lateral (estilo menu hambúrguer)
+// Sino (Agenda da casa e Agendamentos do cliente) com o número de não lidas; abre um painel lateral (estilo menu hambúrguer)
 // com os horários marcados, os cancelados e, no dia 1, o resumo do mês. Abrir o painel marca tudo como lido.
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
@@ -13,7 +13,9 @@ const ICONE: Record<TipoNotificacao, keyof typeof Ionicons.glyphMap> = {
   agendado: 'calendar-outline', cancelado: 'close-circle-outline', resumo_mes: 'stats-chart-outline',
 };
 
-export function PainelNotificacoes({ uid }: { uid: string }) {
+const VAZIO_CASA = 'Quando um cliente marcar ou cancelar, avisamos aqui e no celular. No dia 1 chega o resumo do mês.';
+
+export function PainelNotificacoes({ uid, vazio = VAZIO_CASA }: { uid: string; vazio?: string }) {
   const [lista, setLista] = useState<Notificacao[]>([]);
   const [aberto, setAberto] = useState(false);
   // As que estavam não lidas quando o painel abriu continuam destacadas até fechar.
@@ -57,7 +59,7 @@ export function PainelNotificacoes({ uid }: { uid: string }) {
             {lista.length === 0 ? (
               <View style={{ padding: space(4), gap: space(2) }}>
                 <Text style={type.body}>Nada por aqui ainda.</Text>
-                <Text style={type.caption}>Quando um cliente marcar ou cancelar, avisamos aqui e no celular. No dia 1 chega o resumo do mês.</Text>
+                <Text style={type.caption}>{vazio}</Text>
               </View>
             ) : (
               <ScrollView contentContainerStyle={{ paddingHorizontal: space(4), paddingBottom: space(6), gap: space(2) }}>

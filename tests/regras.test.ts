@@ -238,14 +238,34 @@ test('ninguém trava a agenda de um barbeiro com chaves de outro', async () => {
   }));
 });
 
-test('agenda do dia: a casa lê, quem é de fora não', async () => {
+test('agenda do dia: o dono lê a casa toda; o barbeiro só a dele; quem é de fora não', async () => {
   await reservar(dbDe('ana'), novaReserva('ana', inicio));
-  const agenda = (uid: string) => getDocs(query(collection(dbDe(uid), 'agendamentos'),
+  await env.withSecurityRulesDisabled(async ctx => { await setDoc(doc(ctx.firestore(), 'barbearias/b1/barbeiros/rafael'), { uid: 'rafael', ativo: true }); });
+  const daCasa = (uid: string) => getDocs(query(collection(dbDe(uid), 'agendamentos'),
     where('barbeariaId', '==', 'b1'), where('data', '==', '2030-01-10'), orderBy('inicio')));
-  const s = await assertSucceeds(agenda('lucas'));
-  assert.equal(s.size, 1);
-  await assertSucceeds(agenda('dono'));
-  await assertFails(agenda('beto'));
+  const doBarbeiro = (uid: string, barbeiroId: string) => getDocs(query(collection(dbDe(uid), 'agendamentos'),
+    where('barbeiroId', '==', barbeiroId), where('data', '==', '2030-01-10'), orderBy('inicio')));
+  assert.equal((await assertSucceeds(daCasa('dono'))).size, 1);
+  assert.equal((await assertSucceeds(doBarbeiro('lucas', 'lucas'))).size, 1);
+  await assertFails(daCasa('lucas')); // barbeiro não vê os clientes dos colegas
+  await assertFails(doBarbeiro('rafael', 'lucas'));
+  await assertFails(daCasa('beto'));
+});
+
+test('poderes: barbeiro só mexe nos próprios horários; o dono, em todos', async () => {
+  await env.withSecurityRulesDisabled(async ctx => { await setDoc(doc(ctx.firestore(), 'barbearias/b1/barbeiros/rafael'), { uid: 'rafael', ativo: true }); });
+  const id = await reservar(dbDe('ana'), novaReserva('ana', inicio));
+  await assertFails(definirStatus(dbDe('rafael'), id, 'confirmado'));
+  await assertFails(cancelar(dbDe('rafael'), { id, slots: chavesOcupacao('lucas', inicio, 45, 15) }, { por: 'casa', motivo: 'x' }));
+  await assertFails(getDoc(doc(dbDe('rafael'), 'agendamentos', id)));
+  // Encaixe na agenda de outro barbeiro: só o dono.
+  await assertFails(reservar(dbDe('rafael'), novaReserva(null, inicio + 3_600_000)));
+  await assertSucceeds(reservar(dbDe('dono'), novaReserva(null, inicio + 3_600_000)));
+  await assertSucceeds(cancelar(dbDe('dono'), { id, slots: chavesOcupacao('lucas', inicio, 45, 15) }, { por: 'casa', motivo: 'Chuva' }));
+  // Convite de barbeiro novo: só o dono.
+  const convite = (uid: string) => setDoc(doc(dbDe(uid), 'convites/ABCDEF'), { codigo: 'ABCDEF', barbeariaId: 'b1', criadoPor: uid, expiraEm: Date.now() + 86400e3 });
+  await assertFails(convite('lucas'));
+  await assertSucceeds(convite('dono'));
 });
 
 test('a casa conclui ou marca falta; o cliente não', async () => {

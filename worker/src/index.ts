@@ -4,7 +4,7 @@
 //  GET  /saude                 → verificação simples
 //  POST /assinatura/verificar → confere no Google Play a compra do plano e libera a casa
 //  POST /admin/migrar-assinaturas → migração única das casas antigas (exige ADMIN_TOKEN)
-//  POST /avisos/agendamento    → avisa barbeiro e dono (push + painel) quando o cliente marca ou cancela
+//  POST /avisos/agendamento    → avisa cliente, barbeiro e dono (push + painel) quando alguém marca ou cancela
 //  cron a cada hora            → lembretes de 24 h e 2 h, casas com plano/teste vencido e, no dia 1, resumo do mês
 import { verificarIdToken } from './auth';
 import { conferirVencimentos, migrarAssinaturas, verificarCompra } from './assinatura';

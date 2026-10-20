@@ -9,6 +9,7 @@ import { GradeHorarios } from './GradeHorarios';
 import { db } from '../../services/firebase';
 import { listarServicos } from '../../services/barbearias';
 import { HorarioOcupadoError, ouvirHorariosLivres, reservar } from '../../services/agendamentos';
+import { avisarAgendamento } from '../../services/avisos';
 import { formatarHora, formatarPreco, rotuloDia, dataLocal } from '../../lib/agenda';
 import { colors, space, type } from '../../theme';
 import type { Barbearia, Barbeiro, ISODate, Millis, Servico } from '../../types/models';
@@ -51,11 +52,12 @@ export function Encaixe({ barbearia, barbeiro, dia, aoSair }: { barbearia: Barbe
     setErro(null);
     setSalvando(true);
     try {
-      await reservar(db, {
+      const id = await reservar(db, {
         barbeariaId: barbearia.id, barbeariaNome: barbearia.nome, barbeiroId: barbeiro.uid,
         barbeiroNome: barbeiro.apelido || barbeiro.nome.split(' ')[0],
         servico, cliente: { uid: null, nome: nome.trim() }, inicio, passoMin: barbearia.passoMin, origem: 'balcao',
       });
+      avisarAgendamento(id); // encaixe do dono na agenda de outro barbeiro: ele fica sabendo
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       aoSair();
     } catch (e) {

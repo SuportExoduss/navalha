@@ -10,6 +10,7 @@ import { EtiquetaStatus, ATIVOS } from '../../components/agenda/StatusAgendament
 import { MotivoCancelamento, textoCancelamento } from '../../components/agenda/MotivoCancelamento';
 import { Encaixe } from '../../components/agenda/Encaixe';
 import { PainelNotificacoes } from '../../components/agenda/PainelNotificacoes';
+import { avisarAgendamento } from '../../services/avisos';
 import { useAuth } from '../../auth/AuthProvider';
 import { useMinhaBarbearia } from '../../hooks/useMinhaBarbearia';
 import { db } from '../../services/firebase';
@@ -32,10 +33,10 @@ export default function AgendaBarbeiro() {
   useEffect(() => { if (!ehDono && uid) setFiltro(uid); }, [ehDono, uid]);
 
   useEffect(() => {
-    if (!barbearia) return;
+    if (!barbearia || !uid) return;
     setLista(null);
-    return ouvirAgendaDoDia(db, barbearia.id, dia, setLista, () => { setLista([]); setErro('Não foi possível carregar a agenda.'); });
-  }, [barbearia?.id, dia]);
+    return ouvirAgendaDoDia(db, barbearia.id, dia, ehDono ? null : uid, setLista, () => { setLista([]); setErro('Não foi possível carregar a agenda.'); });
+  }, [barbearia?.id, dia, ehDono, uid]);
 
   const dias = useMemo(() => [somarDias(hoje, -1), ...proximosDias(Date.now(), 14)], [hoje]);
 
@@ -185,6 +186,7 @@ function ItemAgenda({ a, barbeiro, uid }: { a: Agendamento; barbeiro?: string; u
             <Botao titulo="Manter" variante="secundario" style={{ flex: 1 }} onPress={() => { setConfirmarCancelamento(false); setMotivo(''); }} />
             <Botao titulo="Cancelar" style={{ flex: 1 }} carregando={ocupado} disabled={!motivo} onPress={() => agir(async () => {
               await cancelar(db, a, { por: 'casa', motivo });
+              avisarAgendamento(a.id); // o cliente (e o barbeiro, se foi o dono) fica sabendo na hora
               registrarEvento(db, { tipo: 'cancelou', uid, barbeariaId: a.barbeariaId, em: Date.now() });
             })} />
           </View>

@@ -121,7 +121,7 @@ test('Firestore REST: campos com ponto viram mapa e se juntam numa gravação', 
   } finally { globalThis.fetch = original; }
 });
 
-test('avisos: só o cliente avisa; barbeiro e dono recebem uma vez; aviso velho é ignorado', async () => {
+test('avisos: só quem é do agendamento avisa; os outros lados recebem uma vez; aviso velho é ignorado', async () => {
   const { avisarAgendamento } = await import('./avisos');
   const agora = 1_800_000_000_000;
   const docs = new Map<string, Record<string, unknown>>([
@@ -145,5 +145,15 @@ test('avisos: só o cliente avisa; barbeiro e dono recebem uma vez; aviso velho 
     assert.deepEqual(pushes, ['tk-lucas']); // o dono não tem token: fica só no painel
     assert.deepEqual((await avisarAgendamento(db, 't', 'p', 'ana', 'a1', agora)).corpo, { enviados: 0 }); // não repete
     assert.equal((await avisarAgendamento(db, 't', 'p', 'ana', 'a1', agora + 60 * 60_000)).status, 409); // velho demais
+
+    // A casa cancela: o cliente e o barbeiro ficam sabendo; quem cancelou (o dono) não recebe.
+    docs.set('agendamentos/a2', { ...docs.get('agendamentos/a1'), barbeariaNome: 'Navalha de Ouro', status: 'cancelado', atualizadoEm: agora - 1000,
+      cancelamento: { por: 'casa', motivo: 'Chuva', em: agora } });
+    docs.set('users/ana', { pushToken: 'tk-ana' });
+    pushes.length = 0;
+    assert.deepEqual((await avisarAgendamento(db, 't', 'p', 'dono', 'a2', agora)).corpo, { enviados: 2 });
+    assert.equal((docs.get('notificacoes/a2_cancelado_ana') as { titulo: string }).titulo, 'Seu horário foi cancelado');
+    assert.equal(docs.has('notificacoes/a2_cancelado_dono'), false);
+    assert.deepEqual(pushes.sort(), ['tk-ana', 'tk-lucas']);
   } finally { globalThis.fetch = original; }
 });

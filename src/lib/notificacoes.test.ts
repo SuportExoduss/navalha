@@ -7,10 +7,16 @@ const agora = paraMillis('2026-11-03', 9 * 60);
 const ag = { clienteNome: 'Ana', servicoNome: 'Degradê', barbeiroNome: 'Lucas', inicio: paraMillis('2026-11-04', 10 * 60) };
 
 test('aviso de marcado e cancelado: o barbeiro vê o cliente; o dono vê também o barbeiro', () => {
-  assert.deepEqual(textoAviso('agendado', ag, agora, false), { titulo: 'Novo horário marcado', corpo: 'Ana: Degradê, amanhã às 10:00.' });
-  assert.equal(textoAviso('agendado', ag, agora, true).corpo, 'Ana: Degradê com Lucas, amanhã às 10:00.');
-  const c = textoAviso('cancelado', { ...ag, cancelamento: { por: 'cliente', motivo: 'Dia errado', em: agora } }, agora, false);
+  assert.deepEqual(textoAviso('agendado', ag, agora, 'barbeiro'), { titulo: 'Novo horário marcado', corpo: 'Ana: Degradê, amanhã às 10:00.' });
+  assert.equal(textoAviso('agendado', ag, agora, 'dono').corpo, 'Ana: Degradê com Lucas, amanhã às 10:00.');
+  assert.equal(textoAviso('agendado', { ...ag, origem: 'balcao' }, agora, 'barbeiro').titulo, 'Encaixe marcado');
+  const c = textoAviso('cancelado', { ...ag, cancelamento: { por: 'cliente', motivo: 'Dia errado', em: agora } }, agora, 'barbeiro');
   assert.equal(c.corpo, 'Ana cancelou Degradê de amanhã às 10:00. Motivo: Dia errado.');
+  // A casa cancelou: o cliente sabe qual barbearia e o motivo; o barbeiro sabe que foi a casa.
+  const casa = { ...ag, barbeariaNome: 'Navalha de Ouro', cancelamento: { por: 'casa' as const, motivo: 'Barbeiro doente', em: agora } };
+  assert.deepEqual(textoAviso('cancelado', casa, agora, 'cliente'),
+    { titulo: 'Seu horário foi cancelado', corpo: 'Navalha de Ouro cancelou Degradê de amanhã às 10:00. Motivo: Barbeiro doente.' });
+  assert.equal(textoAviso('cancelado', casa, agora, 'barbeiro').corpo, 'A casa cancelou Degradê de Ana, amanhã às 10:00. Motivo: Barbeiro doente.');
   assert.equal(idAviso('a1', 'agendado', 'lucas'), 'a1_agendado_lucas');
 });
 
