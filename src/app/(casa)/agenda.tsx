@@ -9,6 +9,7 @@ import { SeletorDia } from '../../components/agenda/SeletorDia';
 import { EtiquetaStatus, ATIVOS } from '../../components/agenda/StatusAgendamento';
 import { MotivoCancelamento, textoCancelamento } from '../../components/agenda/MotivoCancelamento';
 import { Encaixe } from '../../components/agenda/Encaixe';
+import { PainelNotificacoes } from '../../components/agenda/PainelNotificacoes';
 import { useAuth } from '../../auth/AuthProvider';
 import { useMinhaBarbearia } from '../../hooks/useMinhaBarbearia';
 import { db } from '../../services/firebase';
@@ -65,7 +66,11 @@ export default function AgendaBarbeiro() {
 
   return (
     <Tela>
-      <Text style={type.caption}>Modo {perfil?.papelAtivo === 'dono' ? 'dono' : 'barbeiro'} · {barbearia.nome}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Text style={[type.caption, { flex: 1 }]}>Modo {perfil?.papelAtivo === 'dono' ? 'dono' : 'barbeiro'} · {barbearia.nome}</Text>
+        {/* Marcados, cancelados e o resumo do mês: o sino abre o painel lateral. */}
+        <PainelNotificacoes uid={uid} />
+      </View>
       <Titulo destaque={dia === hoje ? 'hoje' : undefined}>{dia === hoje ? 'Sua agenda de ' : 'Sua agenda'}</Titulo>
       <SeletorDia dias={dias} hoje={hoje} valor={dia} onChange={setDia} />
 

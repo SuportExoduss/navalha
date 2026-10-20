@@ -137,6 +137,20 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "notificacoes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "paraUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "em",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

@@ -120,3 +120,30 @@ test('Firestore REST: campos com ponto viram mapa e se juntam numa gravação', 
     assert.deepEqual(w.currentDocument, { exists: true });
   } finally { globalThis.fetch = original; }
 });
+
+test('avisos: só o cliente avisa; barbeiro e dono recebem uma vez; aviso velho é ignorado', async () => {
+  const { avisarAgendamento } = await import('./avisos');
+  const agora = 1_800_000_000_000;
+  const docs = new Map<string, Record<string, unknown>>([
+    ['agendamentos/a1', { clienteUid: 'ana', clienteNome: 'Ana', status: 'reservado', criadoEm: agora - 60_000, barbeariaId: 'b1',
+      barbeiroId: 'lucas', barbeiroNome: 'Lucas', servicoNome: 'Degradê', inicio: agora + 86_400_000 }],
+    ['barbearias/b1', { donoUid: 'dono' }],
+    ['users/lucas', { pushToken: 'tk-lucas' }],
+  ]);
+  const db = {
+    varios: async (cs: string[]) => new Map(cs.filter(c => docs.has(c)).map(c => [c, docs.get(c)!])),
+    escrever: async (l: { caminho: string; campos: Record<string, unknown> }[]) => { for (const w of l) docs.set(w.caminho, w.campos); },
+  } as never;
+  const pushes: string[] = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (_u: string, init?: RequestInit) => { pushes.push(JSON.parse(String(init?.body)).message.token); return new Response('{}'); }) as typeof fetch;
+  try {
+    assert.equal((await avisarAgendamento(db, 't', 'p', 'intruso', 'a1', agora)).status, 403);
+    const r = await avisarAgendamento(db, 't', 'p', 'ana', 'a1', agora);
+    assert.deepEqual(r.corpo, { enviados: 2 });
+    assert.equal((docs.get('notificacoes/a1_agendado_dono') as { corpo: string }).corpo.includes('com Lucas'), true);
+    assert.deepEqual(pushes, ['tk-lucas']); // o dono não tem token: fica só no painel
+    assert.deepEqual((await avisarAgendamento(db, 't', 'p', 'ana', 'a1', agora)).corpo, { enviados: 0 }); // não repete
+    assert.equal((await avisarAgendamento(db, 't', 'p', 'ana', 'a1', agora + 60 * 60_000)).status, 409); // velho demais
+  } finally { globalThis.fetch = original; }
+});

@@ -10,6 +10,7 @@ import { db } from '../../services/firebase';
 import { cancelar, ouvirMeusAgendamentos, registrarEvento } from '../../services/agendamentos';
 import { lerBarbearia } from '../../services/barbearias';
 import { cancelamentoGratis, dataLocal, formatarHora, formatarPreco, rotuloDia } from '../../lib/agenda';
+import { avisarCasa } from '../../services/avisos';
 import { colors, space, type } from '../../theme';
 import type { Agendamento } from '../../types/models';
 
@@ -71,6 +72,7 @@ function ItemAgendamento({ a, uid, podeCancelar }: { a: Agendamento; uid: string
     try {
       await cancelar(db, a, { por: 'cliente', motivo });
       registrarEvento(db, { tipo: 'cancelou', uid, barbeariaId: a.barbeariaId, em: Date.now() });
+      avisarCasa(a.id); // barbeiro e dono ficam sabendo do cancelamento na hora
     } catch { setErro('Não foi possível cancelar. Tente de novo.'); setCancelando(false); }
   }
 

@@ -144,6 +144,16 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ---------- Notificações da casa (marcado, cancelado, resumo do mês) ----------
+    // O Worker grava depois de conferir o agendamento; o destinatário só lê e marca como lida.
+    match /notificacoes/{id} {
+      allow read: if logado() && resource.data.paraUid == eu();
+      allow update: if logado() && resource.data.paraUid == eu()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lida'])
+        && request.resource.data.lida == true;
+      allow create, delete: if false;
+    }
+
     // ---------- Convites (código curto, coleção raiz para o barbeiro achar a casa) ----------
     match /convites/{codigo} {
       allow get: if logado();

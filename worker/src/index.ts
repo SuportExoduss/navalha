@@ -4,9 +4,11 @@
 //  GET  /saude                 → verificação simples
 //  POST /assinatura/verificar → confere no Google Play a compra do plano e libera a casa
 //  POST /admin/migrar-assinaturas → migração única das casas antigas (exige ADMIN_TOKEN)
-//  cron a cada hora            → lembretes push de 24 h e 2 h pelo FCM + casas com plano/teste vencido
+//  POST /avisos/agendamento    → avisa barbeiro e dono (push + painel) quando o cliente marca ou cancela
+//  cron a cada hora            → lembretes de 24 h e 2 h, casas com plano/teste vencido e, no dia 1, resumo do mês
 import { verificarIdToken } from './auth';
 import { conferirVencimentos, migrarAssinaturas, verificarCompra } from './assinatura';
+import { avisarAgendamento, resumoDoMes } from './avisos';
 import { Firestore, tokenGoogle } from './firestore';
 import { chaveFoto, janelasLembrete, mensagemFcm, mensagemLembrete, tipoDaImagem, TIPOS } from './util';
 
@@ -100,6 +102,19 @@ export default {
       return json(r.corpo, r.status, h);
     }
 
+    if (url.pathname === '/avisos/agendamento' && req.method === 'POST') {
+      const token = req.headers.get('Authorization')?.replace(/^Bearer /, '') ?? '';
+      const uid = token ? await verificarIdToken(token, env.FIREBASE_PROJECT_ID) : null;
+      if (!uid) return json({ erro: 'Entre na sua conta.' }, 401, h);
+      const corpo = (await req.json().catch(() => null)) as { agendamentoId?: unknown } | null;
+      const agendamentoId = typeof corpo?.agendamentoId === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(corpo.agendamentoId) ? corpo.agendamentoId : '';
+      if (!agendamentoId) return json({ erro: 'Agendamento inválido.' }, 400, h);
+      if (!env.GOOGLE_SA_EMAIL || !env.GOOGLE_SA_PRIVATE_KEY) return json({ erro: 'Servidor sem credenciais.' }, 503, h);
+      const tokenSA = await tokenGoogle(env.GOOGLE_SA_EMAIL, env.GOOGLE_SA_PRIVATE_KEY);
+      const r = await avisarAgendamento(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA), tokenSA, env.FIREBASE_PROJECT_ID, uid, agendamentoId);
+      return json(r.corpo, r.status, h);
+    }
+
     if (url.pathname === '/admin/migrar-assinaturas' && req.method === 'POST') {
       const chave = req.headers.get('Authorization')?.replace(/^Bearer /, '') ?? '';
       if (!env.ADMIN_TOKEN || chave !== env.ADMIN_TOKEN) return json({ erro: 'Não autorizado.' }, 401, h);
@@ -122,6 +137,8 @@ async function vencimentos(env: Env) {
   if (!env.GOOGLE_SA_EMAIL || !env.GOOGLE_SA_PRIVATE_KEY) return;
   const tokenSA = await tokenGoogle(env.GOOGLE_SA_EMAIL, env.GOOGLE_SA_PRIVATE_KEY);
   await conferirVencimentos(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA), tokenSA).catch(e => console.error('Vencimentos falhou', e));
+  // Dia 1: resumo do mês anterior para cada dono (só faz as casas que ainda não receberam).
+  await resumoDoMes(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA), tokenSA, env.FIREBASE_PROJECT_ID).catch(e => console.error('Resumo do mês falhou', e));
 }
 
 /** Lembretes de 24 h e 2 h. Roda a cada hora (cron "5 * * * *"). */

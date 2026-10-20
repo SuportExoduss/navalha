@@ -322,6 +322,19 @@ test('excluir barbearia: só o dono; cancela o futuro, libera os horários e apa
   });
 });
 
+test('notificações: só o destinatário lê; só marca como lida; ninguém cria pelo app', async () => {
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'notificacoes/n1'), {
+    id: 'n1', paraUid: 'lucas', barbeariaId: 'b1', tipo: 'agendado', titulo: 't', corpo: 'c', em: 1, lida: false,
+  }));
+  await assertSucceeds(getDoc(doc(dbDe('lucas'), 'notificacoes/n1')));
+  await assertFails(getDoc(doc(dbDe('ana'), 'notificacoes/n1')));
+  await assertFails(updateDoc(doc(dbDe('lucas'), 'notificacoes/n1'), { corpo: 'outro' }));
+  await assertFails(updateDoc(doc(dbDe('ana'), 'notificacoes/n1'), { lida: true }));
+  await assertSucceeds(updateDoc(doc(dbDe('lucas'), 'notificacoes/n1'), { lida: true }));
+  await assertFails(setDoc(doc(dbDe('lucas'), 'notificacoes/n2'), { paraUid: 'lucas', lida: false }));
+  await assertFails(deleteDoc(doc(dbDe('lucas'), 'notificacoes/n1')));
+});
+
 // ---------- Sprint 4: cliente ----------
 
 test('barbeiro atualiza só o resumo do cardápio da casa', async () => {
