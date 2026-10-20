@@ -103,7 +103,8 @@ Firebase Cloud Messaging (o app guarda o token do FCM; o Worker manda pelo FCM H
   4. Recarga ao vivo enquanto edita o JS: com o app aberto, rode `npx expo start` na pasta do projeto.
   5. APK/AAB: Build › Generate Signed App Bundle or APK (ou `gradlew assembleRelease` / `bundleRelease`).
   Requisitos: Android Studio com SDK 36 (Android 16), NDK e CMake 4.x pelo SDK Manager; JDK 17+ (o embutido serve);
-  Node 20+ no PATH. Se o Gradle reclamar de cache, confira a variável `GRADLE_USER_HOME` (hoje `D:\gradle`).
+  Node 20+ no PATH. Cache do Gradle: `GRADLE_USER_HOME=C:\Users\andre\.gradle` (SSD interno). Não use o HD externo (D:): o Windows
+  desliga o disco parado e o Sync falha com "dispositivo não está pronto".
 - **Windows (obrigatório):** caminhos longos ligados (`LongPathsEnabled=1`, PowerShell como administrador) e CMake 4.x do SDK Manager, com `cmake.dir` em `android/local.properties` (o plugin `plugins/local-properties.js` recria esse arquivo em todo `npx expo prebuild`, apontando o SDK e o CMake mais novo instalados). O CMake 3.22 traz um ninja que não aceita caminhos acima de 260 caracteres. Com isso o projeto pode ficar em `C:\Users\andre\AndroidStudioProjects\navalha` (a pasta padrão do Android Studio); sem caminhos longos ligados, o build só passa num caminho curto como `C:\dev\navalha`.
 - **APK pela linha de comando:** `cd android && .\gradlew.bat assembleRelease` →
   `android/app/build/outputs/apk/release/app-release.apk` (instalar com `adb install -r` ou copiar para o celular).

@@ -15,8 +15,8 @@ const comJsEmbutido = config => withAppBuildGradle(config, cfg => {
   return cfg;
 });
 
-// A vigilância de arquivos do Gradle falha nesta máquina (Windows, cache em D:\gradle): sem isto o Sync
-// do Android Studio falha com "Foi especificado um dispositivo inexistente".
+// Vigilância de arquivos do Gradle desligada: com o cache num HD externo USB (D:) o Sync falhava com
+// "Foi especificado um dispositivo inexistente". O cache agora fica no C:, mas o HD pode voltar a ser usado.
 const semVigiarArquivos = config => withGradleProperties(config, cfg => {
   if (!cfg.modResults.some(i => i.type === 'property' && i.key === 'org.gradle.vfs.watch')) {
     cfg.modResults.push({ type: 'property', key: 'org.gradle.vfs.watch', value: 'false' });
