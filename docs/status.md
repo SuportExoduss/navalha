@@ -1,18 +1,18 @@
 # Navalha — Status da execução
 
-Atualizado em 20/out/2026 (MVP completo; mensalidades adiantadas; pacote com.trevotec.navalha).
+Atualizado em 20/out/2026, noite (roadmap validado: MVP completo e testado no celular; mensalidades, notificações e poderes separados no ar).
 
 Código no computador: `C:\Users\andre\AndroidStudioProjects\navalha` (no Android Studio: File › Open › pasta `android`).
 
-## Onde estamos (20/out/2026)
+## Onde estamos (20/out/2026, validado contra o código)
 | Fase | Calendário | Código | Falta |
 | --- | --- | --- | --- |
 | 0 · Fundação | 19/out – 1/nov | modelo de dados e contas técnicas prontos | dono: entrevistas, INPI/nome, termos/LGPD, landing, contador |
-| 1 · MVP | 2/nov – 27/dez | **100%** (adiantado ~2 semanas) + extras | portão: 3 barbearias amigas por 1 semana |
-| 2 · Piloto | jan – fev/2027 | quase nada é código | dono: conta Play, 12 testadores/14 dias, Segurança de Dados; código: AAB + chave própria, página de privacidade e de exclusão de conta na web |
+| 1 · MVP | 2/nov – 27/dez | **100%** (adiantado ~6 semanas) + extras | portão: 3 barbearias amigas por 1 semana; cronometrar um dono montando a casa |
+| 2 · Piloto | jan – fev/2027 | código pronto (AAB assinado, privacidade, exclusão de conta, acesso de revisão) | dono: teste fechado com 12 testadores/14 dias, onboarding das 10 barbearias, cartaz com QR |
 | 3 · Lançamento | fev – abr/2027 | mensalidades prontas (~25% da fase) | pagamento do corte no app (Pix/cartão), avaliações, nota Google, ranking, feed de fotos, iOS + Entrar com Apple |
 | 4 · Crescimento | mai – jul/2027 | 0% | clube de assinatura, lista de espera, fidelidade, relatórios, indicação |
-| 5 · Escala | ago – out/2027 | 0% | multiunidades, nota fiscal, loja, WhatsApp oficial, IA |
+| 5 · Escala | ago – out/2027 | 0% | multiunidades, nota fiscal, loja, lembretes por WhatsApp oficial, IA |
 
 Requisitos da Google Play: `docs/publicar-google-play.md`. Pacote definitivo `com.trevotec.navalha`; `android/` versionada (abre direto no Android Studio).
 
@@ -31,7 +31,7 @@ Requisitos da Google Play: `docs/publicar-google-play.md`. Pacote definitivo `co
 - [x] Lógica de horários e trava contra horário duplo (adiantado do Sprint 3)
 - [x] Testes das regras no emulador: 9 de 9 passando (17/out); conferido que uma regra enfraquecida faz o teste falhar
 - [x] Ligar o projeto Firebase real e o bucket R2 (18/out: `navalha-1a8f5`, bucket `navalha-fotos`)
-- [ ] Testar o login num celular Android real (development build)
+- [x] Testar o login num celular Android real (18/out, Redmi Note 13, APK local)
 
 ## Fase 1 · Sprint 2 — Barbearia (código concluído)
 - [x] Cadastro da barbearia com localização pelo GPS do celular do dono (sem mapa pago)
@@ -49,16 +49,16 @@ Requisitos da Google Play: `docs/publicar-google-play.md`. Pacote definitivo `co
 - [x] Tela de horários livres por dia (Manhã/Tarde/Noite), respeitando antecedência e janela da casa
 - [x] Reservar com trava contra horário duplo; aviso "acabou de ser ocupado" e grade recarregada
 - [x] Meus agendamentos do cliente (próximos e histórico) com cancelamento e aviso da política de 2 h
-- [x] Agenda do dia do barbeiro/dono: confirmar, concluído, faltou, cancelar; filtro por barbeiro para o dono
+- [x] Agenda do dia do barbeiro/dono: concluído, faltou, cancelar ("Confirmar" removido em 20/out); filtro por barbeiro para o dono
 - [x] Encaixe manual de cliente de balcão, usando a mesma trava
 - [x] Regras endurecidas: ninguém trava a agenda de um barbeiro com chaves de outro; folgas só do próprio barbeiro
 - [x] **Portão do sprint:** dois celulares no mesmo horário, só um consegue — provado no emulador (teste de regras) e no navegador (2 sessões confirmando ao mesmo tempo)
 - [x] Testes: 20 de lógica, 19 de regras no emulador, 4 do Worker, typecheck e bundle web ok
 - [x] Corrigido: o cardápio (Sprint 2) não abria na web; virou tela própria, como o expediente
-- [ ] Testar num celular Android real (junto com o login, item do Sprint 1)
+- [x] Testar num celular Android real (18–19/out: reserva, cancelamento, encaixe, roteiro docs/teste-manual.md)
 
 ## Fase 1 · Sprint 4 — Cliente ✅ FINALIZADO (código)
-- [x] Busca por perto com filtros: distância (1/3/5/10 km), preço, tipo de corte, aberta agora, atende ainda hoje; atalhos no Início
+- [x] Busca por perto com filtros: distância (Todas, 1/3/5/10/50 km; desde 20/out todas as casas aparecem, da mais perto para a mais longe), preço, tipo de corte, aberta agora, atende ainda hoje; atalhos no Início
 - [x] Perfil do cliente: foto, apelido, WhatsApp e exclusão de conta dentro do app (cancela horários futuros, tira o nome do histórico, apaga perfil e login)
 - [x] Histórico do cliente com as fotos do corte
 - [x] Push de lembrete: o app registra o token do FCM no login (sem Expo Push desde 18/out); o Worker (cron de hora em hora) manda 24 h e 2 h antes
@@ -68,7 +68,7 @@ Requisitos da Google Play: `docs/publicar-google-play.md`. Pacote definitivo `co
 - [x] Corrigido: barbeiro não conseguia atualizar o resumo do cardápio da casa (regra de segurança)
 - [x] Testes: 26 de lógica, 22 de regras, 5 do Worker, typecheck e 2 roteiros no navegador (tests/e2e)
 - [x] Portão "fluxo inteiro em 3 toques": na página da barbearia, corte → horário → confirmar = 3 toques (medido no navegador)
-- [ ] O mesmo fluxo num celular Android real (precisa do Firebase real e de um development build)
+- [x] O mesmo fluxo num celular Android real (18/out; desde 20/out são 3 telas: barbeiro → corte → horário + confirmação)
 - [ ] Push real: testar no celular com o APK local (o envio pelo FCM já está publicado no Worker)
 
 ## Segurança (auditoria /codesec de 18/out/2026)
@@ -82,7 +82,8 @@ Requisitos da Google Play: `docs/publicar-google-play.md`. Pacote definitivo `co
 - [x] Monitoramento de erros: falhas do app vão para a coleção `erros` (só gravação, 10 por sessão, só logado) + tela "Algo deu errado"
 - [x] Lembrete na web/iPhone: PWA (manifesto + service worker do FCM); no iPhone exige o Navalha na Tela de Início e o toque em Perfil › Lembretes
 - [x] Identidade: títulos em Barlow Condensed; vibração curta ao confirmar reserva/encaixe
-- [ ] SEC-002: chave de assinatura própria (dono) · App Check: API ligada, **não** ativar a obrigatoriedade antes de integrar no app (depende da SEC-002)
+- [x] SEC-002: chave de upload própria (`navalha-upload`, fora do git; SHA-1/256 no Firebase)
+- [ ] App Check: API ligada, **não** ativar a obrigatoriedade antes de integrar no app
 - [ ] `npm audit`: avisos restantes vêm de dependências do Expo; resolver na próxima atualização do SDK
 
 ## Adiantado da Fase 3: mensalidades (decisão do dono, 20/out/2026)
@@ -95,8 +96,14 @@ Requisitos da Google Play: `docs/publicar-google-play.md`. Pacote definitivo `co
 - [ ] Nomes dos planos de R$ 100 e R$ 150 (hoje provisórios: Casa e Casa cheia)
 
 ## Agendar pelo WhatsApp (plano A em `docs/whatsapp-agendamento.md`)
-- [x] Etapa A (custo zero): em Configurações, link da casa (`navalha.web.app/barbearia/{id}`) e texto pronto para a saudação do WhatsApp Business / IA da Meta, com botão Compartilhar
-- [ ] Etapa B (IA marca pelo número via Cloud API): depois do piloto, com CNPJ e plano pago
+- [x] Plano A (custo zero): em Configurações, link da casa (`navalha.web.app/barbearia/{id}`) e texto pronto para a saudação do WhatsApp Business / IA da Meta, com botão Compartilhar (decisão do dono: só o plano A)
+
+## Extras de 20/out/2026 (fora do roadmap original, no ar)
+- [x] Notificações: sino com painel lateral na Agenda (dono e barbeiro) e em Agendamentos (cliente); push na hora de marcado/cancelado para os outros lados (cliente, barbeiro, dono); resumo do mês no dia 1 para o dono
+- [x] Poderes separados nas regras: barbeiro lê e mexe só nos próprios horários; convites, equipe, Configurações, plano, exclusão e números da casa só do dono (testado em tests/regras.test.ts)
+- [x] Ícone monocromático nas notificações do Android
+- [x] Testes: lógica 40, regras 38, Worker 11; regras, índices, Worker e web publicados
+- [ ] Testar no celular com 3 contas (cliente, barbeiro, dono): push de marcado/cancelado e agenda do barbeiro só com os horários dele
 
 ## Fase 1 — o que falta para o portão da Fase 2
 O código do MVP está completo. O portão é "3 barbearias amigas usando por 1 semana sem erro grave e nenhum horário duplicado".
@@ -113,4 +120,6 @@ Para isso, nesta ordem:
 5. Colocar 3 barbearias amigas para usar de 28/dez a 3/jan.
 
 ## Próximo no roadmap: Fase 2 — Piloto fechado (4/jan – 7/fev 2027)
-Conta Google Play (US$ 25), teste fechado com 12+ testadores, onboarding presencial de 10 barbearias, correções por nova versão no Play (sem EAS Update), e preparar a Fase 3 (CNPJ, Asaas, faturamento Google Cloud).
+Teste fechado com 12+ testadores por 14 dias (conta Play e fichas já em andamento), onboarding presencial de 10 barbearias,
+correções por nova versão no Play (sem EAS Update; subir `versionCode` a cada AAB — hoje 1 em `android/app/build.gradle`),
+e preparar a Fase 3 (CNPJ, Asaas para o pagamento do corte, faturamento Google Cloud).

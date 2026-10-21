@@ -90,7 +90,7 @@ Duas semanas para provar que barbeiros e clientes querem o app antes de escrever
 **Técnico**
 
 - [ ] Criar contas gratuitas: GitHub, Firebase (plano Spark) e Cloudflare (R2 + Workers) — sem conta Expo
-- [ ] Desenhar o modelo de dados completo, já incluindo pagamentos, avaliações e assinaturas (mesmo que vazios no MVP)
+- [x] Desenhar o modelo de dados completo, já incluindo pagamentos, avaliações e assinaturas (mesmo que vazios no MVP)
 - [ ] Montar o quadro de tarefas no GitHub Projects com o backlog da Fase 1
 
 **Prepara a próxima com:** telas aprovadas por usuários reais, modelo de dados fechado e backlog priorizado — a Fase 1 começa codando no primeiro dia.
@@ -137,7 +137,7 @@ Cinco semanas com 10 barbearias reais usando o app de graça, em troca de feedba
 - [ ] Visita ou ligação semanal: o que travou, o que faltou
 - [ ] Corrigir bugs em ciclos de 2–3 dias publicando nova versão no teste fechado do Google Play (sem atualização pelo ar: o app não usa conta Expo)
 - [ ] **Preparar a Fase 3 em paralelo:** abrir o CNPJ, criar a conta Asaas e testar Pix e cartão no ambiente de testes; criar a conta de faturamento do Google Cloud com alerta de orçamento (a Places API exige cartão mesmo dentro da franquia gratuita); se a Apple for em nome da empresa, pedir o número D-U-N-S
-- [ ] Na última semana, perguntar a cada dono: "Você pagaria R$ 29,90 / R$ 49,90 para continuar?"
+- [ ] Na última semana, perguntar a cada dono se pagaria o plano do tamanho da casa (R$ 25 / 70 / 100 / 150, decididos em 20/out/2026)
 
 **Métricas que decidem o lançamento**
 
@@ -162,8 +162,9 @@ O app passa a cobrar a mensalidade, aceita Pix e cartão, entra na App Store e l
 
 - [ ] Integrar o Asaas (conta aberta na Fase 2): cobrança Pix (QR + copia-e-cola), cartão tokenizado, subconta por barbearia e split
 - [ ] Configuração do dono: "pagar no app" ligado/desligado, sinal opcional via Pix
-- [ ] Assinatura da barbearia vendida no painel web (cartão recorrente, boleto ou Pix Automático), com 30 dias grátis e preço de fundador para os 100 primeiros
-- [ ] Regras de inadimplência: aviso em 3 dias, some da busca em 10
+- [x] Assinatura da barbearia: **adiantada em 20/out/2026** pelo Google Play Billing (4 planos por nº de barbeiros, 60 dias grátis na primeira casa), no lugar da venda pelo painel web
+- [ ] Assinatura pelo site para iPhone/web (Asaas), se a Apple exigir fora do app
+- [ ] Regras de inadimplência: aviso em 3 dias, some da busca em 10 (hoje some no vencimento, pelo cron do Worker)
 
 **Confiança e descoberta (mar)**
 
