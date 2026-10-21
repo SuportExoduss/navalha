@@ -1,4 +1,4 @@
-// Explorar: busca por perto com todos os filtros (raio, preço, tipo de corte, horário).
+// Explorar: busca por perto com todos os filtros (ordem, raio, preço, tipo de corte, horário).
 import { useState } from 'react';
 import { ActivityIndicator, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,6 +32,12 @@ export default function Explorar() {
           placeholderTextColor={colors.textMuted} style={{ flex: 1, minHeight: 48, color: colors.text, fontSize: 15 }} />
       </View>
 
+      <Secao titulo="Ordem">
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space(2) }}>
+          <Chip rotulo="Mais perto" ativo={f.ordem === 'perto'} onPress={() => mudar({ ordem: 'perto' })} />
+          <Chip rotulo="Mais bem avaliadas" ativo={f.ordem === 'nota'} onPress={() => mudar({ ordem: 'nota' })} />
+        </View>
+      </Secao>
       <Secao titulo="Distância">
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space(2) }}>
           {RAIOS.map(r => <Chip key={r ?? 'todas'} rotulo={r === null ? 'Todas' : `Até ${r} km`} ativo={f.raioKm === r} onPress={() => mudar({ raioKm: r })} />)}

@@ -157,6 +157,7 @@ Cinco semanas com 10 barbearias reais usando o app de graça, em troca de feedba
 ## Fase 3 — Lançamento público (fev – abr 2027)
 
 **Fora do plano por enquanto** (decisão do dono, 20/out/2026): não faz parte da ideia atual do app. Fica registrado só como referência; nada desta fase é construído sem nova decisão.
+Exceções já feitas: mensalidades pelo Google Play e avaliações + nota Google + ranking (marcados abaixo).
 
 O app passa a cobrar a mensalidade, aceita Pix e cartão, entra na App Store e liga as avaliações — a fase que transforma o piloto em negócio. Custo novo: conta Apple (US$ 99/ano) e taxas do Asaas só sobre o que entrar.
 
@@ -170,9 +171,9 @@ O app passa a cobrar a mensalidade, aceita Pix e cartão, entra na App Store e l
 
 **Confiança e descoberta (mar)**
 
-- [ ] Avaliação mútua (cliente ↔ barbeiro), dupla-cega, só para atendimento concluído
-- [ ] Nota do Google no card e no ranking (Places API, no máximo 1 consulta por dia por barbearia; guardar de forma permanente só o Place ID, conforme as regras do Google)
-- [ ] Ranking "Mais bem avaliadas" com média bayesiana Google + app, e o botão "Ver mapa" da tela inicial
+- [x] Avaliação do cliente, só para atendimento concluído (**trazida de volta e feita em 20/out/2026**; a do barbeiro sobre o cliente, mútua/dupla-cega, ficou de fora)
+- [x] Nota do Google no card e no ranking (Places API, no máximo 1 consulta por dia por barbearia; guardar de forma permanente só o Place ID, conforme as regras do Google) — 20/out/2026
+- [x] Ranking "Mais bem avaliadas" com média bayesiana Google + app — 20/out/2026 (o botão "Ver mapa" ficou de fora)
 - [ ] Fotos do dia com aprovação do cliente e feed da barbearia
 
 **Lojas e lançamento (abr)**

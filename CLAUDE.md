@@ -11,7 +11,8 @@ Leia também `AGENTS.md` (regras do Expo SDK 58: não confie na memória, consul
   (entrevistas, nome no INPI, termos/LGPD, contas) seguem abertos.
 - Próxima fase: **Fase 2 (piloto)**, código pronto; o resto é do dono (teste fechado no Play, barbearias).
 - **Fases 3, 4 e 5 estão fora do plano** (decisão do dono, 20/out/2026): não proponha nem construa pagamento do corte,
-  avaliações, nota Google, iOS, clube, fidelidade, multiunidades etc. sem o dono pedir. As mensalidades pelo Google Play ficam.
+  iOS, clube, fidelidade, multiunidades etc. sem o dono pedir. Ficam (feitos): mensalidades pelo Google Play e
+  **avaliações + nota Google + ranking** (o dono trouxe de volta em 20/out). Notas só o Worker grava (`worker/src/avaliacoes.ts`).
 
 ## Sem conta Expo (decisão do dono)
 Não use EAS (build, update, submit) nem Expo Push, mesmo que o AGENTS.md sugira. Build Android local (`npx expo prebuild` + Gradle/Android Studio); push pelo FCM direto do Worker.

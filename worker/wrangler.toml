@@ -21,6 +21,7 @@ crons = ["5 * * * *"]
 # Segredos (não versionar):
 #   npx wrangler secret put GOOGLE_SA_EMAIL
 #   npx wrangler secret put GOOGLE_SA_PRIVATE_KEY
+#   npx wrangler secret put GOOGLE_PLACES_KEY   (opcional: nota do Google; Places API (New) com faturamento ativo)
 
 # SEC-006: no máximo 20 fotos por minuto por conta (limitador nativo do Workers, gratuito).
 [[ratelimits]]

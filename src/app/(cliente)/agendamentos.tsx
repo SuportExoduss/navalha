@@ -12,6 +12,7 @@ import { lerBarbearia } from '../../services/barbearias';
 import { cancelamentoGratis, dataLocal, formatarHora, formatarPreco, rotuloDia } from '../../lib/agenda';
 import { avisarAgendamento } from '../../services/avisos';
 import { PainelNotificacoes } from '../../components/agenda/PainelNotificacoes';
+import { AvaliarAtendimento } from '../../components/agenda/Avaliar';
 import { colors, space, type } from '../../theme';
 import type { Agendamento } from '../../types/models';
 
@@ -96,6 +97,7 @@ function ItemAgendamento({ a, uid, podeCancelar }: { a: Agendamento; uid: string
           {a.fotos.map(f => <Image key={f} source={{ uri: f }} accessibilityLabel="Foto do corte" style={{ width: 96, height: 120, borderRadius: 12 }} />)}
         </ScrollView>
       ) : null}
+      <AvaliarAtendimento a={a} />
       {/* Agendar de novo começa na casa, pela etapa 1 (barbeiro): agendar é sempre barbeiro → corte → horário. */}
       <Pressable onPress={() => router.push({ pathname: '/barbearia/[id]', params: { id: a.barbeariaId } })} hitSlop={8}>
         <Text style={[type.caption, { color: colors.accent }]}>{podeCancelar ? 'Ver barbearia' : 'Agendar de novo'}</Text>

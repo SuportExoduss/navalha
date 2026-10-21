@@ -12,6 +12,7 @@ import { escolherEEnviar } from '../services/fotos';
 import { db } from '../services/firebase';
 import { colors, radius, space, type, sobreFoto } from '../theme';
 import { PLANOS } from '../lib/planos';
+import { placeIdValido } from '../lib/avaliacoes';
 import { SITE } from '../lib/legal';
 import type { Barbearia } from '../types/models';
 
@@ -154,13 +155,14 @@ function WhatsApp({ b }: { b: Barbearia }) {
   );
 }
 
-/** Place ID do Google: preenchido já no MVP, usado na Fase 3 para mostrar a nota do Google. */
+/** Place ID do Google: o Worker busca a nota do Google 1 vez por dia e ela entra no card e no ranking. */
 function PlaceIdGoogle({ b }: { b: Barbearia }) {
   const [valor, setValor] = useState(b.googlePlaceId ?? '');
   const [msg, setMsg] = useState<string | null>(null);
   async function salvar() {
     const id = valor.trim();
-    if (id && !/^[A-Za-z0-9_-]{10,}$/.test(id)) return setMsg('Cole só o código, ex.: ChIJN1t_tDeuEmsRUsoyG83frY4.');
+    if (id && !placeIdValido(id)) return setMsg('Cole só o código, ex.: ChIJN1t_tDeuEmsRUsoyG83frY4.');
+    // ponytail: trocar ou apagar o código não zera a nota do Google já gravada (a nova chega em até 1 dia; apagada, fica a última).
     await atualizarBarbearia(db, b.id, { googlePlaceId: id });
     setMsg('Salvo.');
   }
@@ -169,7 +171,7 @@ function PlaceIdGoogle({ b }: { b: Barbearia }) {
       <Cartao style={{ gap: space(3) }}>
         <Campo rotulo="Código da barbearia no Google (opcional)" value={valor} onChangeText={t => { setMsg(null); setValor(t); }}
           placeholder="ChIJ…" autoCapitalize="none"
-          dica="Em breve a nota do Google aparece no seu card. Ache o código pesquisando sua barbearia em developers.google.com/maps/documentation/places/web-service/place-id." />
+          dica="Com o código, a nota do Google aparece na sua página e conta no ranking (atualiza 1 vez por dia). Ache o código pesquisando sua barbearia em developers.google.com/maps/documentation/places/web-service/place-id." />
         {msg ? <Aviso texto={msg} tom={msg === 'Salvo.' ? 'ok' : 'erro'} /> : null}
         <Botao titulo="Salvar código" variante="secundario" onPress={salvar} />
       </Cartao>

@@ -12,6 +12,7 @@ import { colors, radius, space, type } from '../../theme';
 // Atalhos rápidos; os filtros completos ficam na aba Explorar.
 const ATALHOS: { rotulo: string; filtro: Partial<Filtros> }[] = [
   { rotulo: 'Todos', filtro: {} },
+  { rotulo: 'Mais bem avaliadas', filtro: { ordem: 'nota' } },
   { rotulo: 'Aberto agora', filtro: { abertoAgora: true } },
   { rotulo: 'Ainda hoje', filtro: { aindaHoje: true } },
   { rotulo: 'Cabelo', filtro: { categoria: 'cabelo' } },

@@ -6,6 +6,19 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "5055", "--directory", "dist"],
       "port": 5055
+    },
+    {
+      "name": "emuladores",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "emulators"],
+      "port": 8080
+    },
+    {
+      "name": "web-e2e",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["tests/e2e/servidor.cjs"],
+      "env": { "WEB_DIR": "dist-e2e" },
+      "port": 8099
     }
   ]
 }

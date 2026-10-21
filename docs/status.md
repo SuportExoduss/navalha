@@ -10,7 +10,7 @@ Código no computador: `C:\Users\andre\AndroidStudioProjects\navalha` (no Androi
 | 0 · Fundação | 19/out – 1/nov | modelo de dados e contas técnicas prontos | dono: entrevistas, INPI/nome, termos/LGPD, landing, contador |
 | 1 · MVP | 2/nov – 27/dez | **100%** (adiantado ~6 semanas) + extras | portão: 3 barbearias amigas por 1 semana; cronometrar um dono montando a casa |
 | 2 · Piloto | jan – fev/2027 | código pronto (AAB assinado, privacidade, exclusão de conta, acesso de revisão) | dono: teste fechado com 12 testadores/14 dias, onboarding das 10 barbearias, cartaz com QR |
-| 3 · Lançamento | — | **fora do plano** (decisão do dono, 20/out) | só as mensalidades pelo Google Play foram feitas (adiantadas) e ficam |
+| 3 · Lançamento | — | **fora do plano** (decisão do dono, 20/out) | ficam, já feitos: mensalidades pelo Google Play e avaliações + nota Google + ranking |
 | 4 · Crescimento | — | **fora do plano** | — |
 | 5 · Escala | — | **fora do plano** | — |
 
@@ -97,6 +97,16 @@ Requisitos da Google Play: `docs/publicar-google-play.md`. Pacote definitivo `co
 
 ## Agendar pelo WhatsApp (plano A em `docs/whatsapp-agendamento.md`)
 - [x] Plano A (custo zero): em Configurações, link da casa (`navalha.web.app/barbearia/{id}`) e texto pronto para a saudação do WhatsApp Business / IA da Meta, com botão Compartilhar (decisão do dono: só o plano A)
+
+## Avaliações, nota Google e ranking (da Fase 3, trazidos de volta pelo dono em 20/out/2026)
+- [x] Cliente avalia o atendimento concluído (1–5 estrelas + comentário opcional, até 30 dias, uma vez) no histórico; o Worker (`POST /avaliacoes`) confere e soma as notas da casa e do barbeiro
+- [x] Página da casa: nota do Navalha e do Google, nota de cada barbeiro e as 5 avaliações mais recentes (primeiro nome do cliente)
+- [x] Nota do Google: o cron do Worker consulta a Places API (New) 1 vez por dia por casa com o código do Google em Configurações (5 casas por hora)
+- [x] Ranking "Mais bem avaliadas" (Início e Explorar): média bayesiana app + Google, calculada pelo Worker
+- [x] Regras: notas, total de avaliações, nota do Google e ranking só o servidor grava; casa não nasce com nota; ninguém cria avaliação pelo app
+- [x] Testes: lógica 45, regras 39, Worker 13; conferido no navegador (avaliar, página da casa, ranking)
+- Avaliação do cliente pelo barbeiro (mútua, dupla-cega) ficou de fora: só se o dono pedir
+- [ ] Dono: chave da Places API (Google Cloud com faturamento ativo + `npx wrangler secret put GOOGLE_PLACES_KEY` em `worker/`); sem ela, só a nota do Navalha aparece
 
 ## Extras de 20/out/2026 (fora do roadmap original, no ar)
 - [x] Notificações: sino com painel lateral na Agenda (dono e barbeiro) e em Agendamentos (cliente); push na hora de marcado/cancelado para os outros lados (cliente, barbeiro, dono); resumo do mês no dia 1 para o dono

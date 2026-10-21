@@ -157,3 +157,63 @@ test('avisos: só quem é do agendamento avisa; os outros lados recebem uma vez;
     assert.deepEqual(pushes.sort(), ['tk-ana', 'tk-lucas']);
   } finally { globalThis.fetch = original; }
 });
+
+test('avaliar: só o cliente de um atendimento concluído, uma vez; notas da casa e do barbeiro somam', async () => {
+  const { avaliar } = await import('./avaliacoes');
+  const agora = 1_800_000_000_000;
+  const docs = new Map<string, Record<string, unknown>>([
+    ['agendamentos/a1', { clienteUid: 'ana', clienteNome: 'Ana Souza', status: 'concluido', fim: agora - 3_600_000, barbeariaId: 'b1', barbeiroId: 'lucas' }],
+    ['agendamentos/a2', { clienteUid: 'ana', status: 'reservado', fim: agora + 3_600_000, barbeariaId: 'b1', barbeiroId: 'lucas' }],
+    ['barbearias/b1', { resumo: { notaApp: 4, totalAvaliacoesApp: 1, notaGoogle: 4.8, totalAvaliacoesGoogle: 100 } }],
+    ['barbearias/b1/barbeiros/lucas', { nota: { media: 0, total: 0 } }],
+  ]);
+  const db = {
+    varios: async (cs: string[]) => new Map(cs.filter(c => docs.has(c)).map(c => [c, docs.get(c)!])),
+    escrever: async (l: { caminho: string; campos: Record<string, unknown> }[]) => {
+      for (const w of l) {
+        const d = { ...(docs.get(w.caminho) ?? {}) } as Record<string, unknown>;
+        for (const [k, v] of Object.entries(w.campos)) {
+          const [a, b] = k.split('.');
+          if (b) d[a] = { ...(d[a] as object), [b]: v }; else d[a] = v;
+        }
+        docs.set(w.caminho, d);
+      }
+    },
+  } as never;
+  assert.equal((await avaliar(db, 'beto', 'a1', 5, '', agora)).status, 403);
+  assert.equal((await avaliar(db, 'ana', 'a2', 5, '', agora)).status, 409); // ainda não concluído
+  assert.equal((await avaliar(db, 'ana', 'a1', 9, '', agora)).status, 400);
+  assert.equal((await avaliar(db, 'ana', 'a1', 5, '  Ótimo degradê  ', agora)).status, 200);
+  const r = docs.get('barbearias/b1')!.resumo as Record<string, number>;
+  assert.deepEqual([r.notaApp, r.totalAvaliacoesApp], [4.5, 2]);
+  assert.ok(r.notaRanking > 4 && r.notaRanking < 5);
+  assert.deepEqual(docs.get('barbearias/b1/barbeiros/lucas')!.nota, { media: 5, total: 1 });
+  const av = docs.get('avaliacoes/a1') as Record<string, unknown>;
+  assert.deepEqual([av.clienteNome, av.comentario, av.visivel], ['Ana', 'Ótimo degradê', true]);
+  assert.equal((await avaliar(db, 'ana', 'a1', 1, '', agora)).status, 409); // não avalia duas vezes
+});
+
+test('nota do Google: no máximo 1 vez por dia por casa, gravada numa chamada só', async () => {
+  const { atualizarNotasGoogle } = await import('./avaliacoes');
+  const agora = 1_800_000_000_000;
+  const casas = [
+    { id: 'b1', dados: { googlePlaceId: 'ChIJN1t_tDeuEmsRUsoyG83frY4', resumo: { notaApp: 5, totalAvaliacoesApp: 1 } } },
+    { id: 'b2', dados: { googlePlaceId: 'ChIJxxxxxxxxxxxxxxxxxxxx', googleAtualizadoEm: agora - 3_600_000 } }, // já foi hoje
+    { id: 'b3', dados: { googlePlaceId: '../nao?x=1' } }, // inválido: não chama o Google
+  ];
+  const gravados: { caminho: string; campos: Record<string, unknown> }[][] = [];
+  const db = { query: async () => casas, escrever: async (l: never[]) => { gravados.push(l); } } as never;
+  const chamadas: string[] = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (u: string) => { chamadas.push(u); return new Response(JSON.stringify({ rating: 4.7, userRatingCount: 120 })); }) as typeof fetch;
+  try {
+    await atualizarNotasGoogle(db, undefined, agora);
+    assert.equal(gravados.length, 0); // sem chave, nada
+    await atualizarNotasGoogle(db, 'chave', agora);
+    assert.deepEqual(chamadas, ['https://places.googleapis.com/v1/places/ChIJN1t_tDeuEmsRUsoyG83frY4']);
+    assert.equal(gravados.length, 1);
+    const [b1, b3] = gravados[0];
+    assert.deepEqual([b1.caminho, b1.campos['resumo.notaGoogle'], b1.campos['resumo.totalAvaliacoesGoogle']], ['barbearias/b1', 4.7, 120]);
+    assert.deepEqual(b3.campos, { googleAtualizadoEm: agora });
+  } finally { globalThis.fetch = original; }
+});

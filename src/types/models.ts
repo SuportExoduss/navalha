@@ -76,8 +76,10 @@ export interface Barbearia {
   passoMin: 10 | 15 | 20 | 30;
   antecedenciaMin: number;
   janelaDias: number;
-  /** Place ID do Google: preenchido no MVP, usado na Fase 3. */
+  /** Place ID do Google: o Worker busca a nota do Google 1 vez por dia. */
   googlePlaceId?: string;
+  /** Última consulta da nota do Google (só o Worker grava). */
+  googleAtualizadoEm?: Millis;
   /** Resumo desnormalizado: a lista "Perto de você" custa 1 leitura por card. */
   resumo: {
     notaApp: number;
@@ -184,7 +186,8 @@ export interface Agendamento {
   fotosAprovadas?: boolean;
   /** Quem cancelou e por quê: a barbearia vê o motivo do cliente e o cliente vê o da barbearia. */
   cancelamento?: { por: 'cliente' | 'casa'; motivo: string; em: Millis };
-  avaliado?: { cliente: boolean; barbeiro: boolean };
+  /** Avaliação do cliente (gravada só pelo Worker): o card mostra as estrelas no lugar do botão Avaliar. */
+  avaliacao?: { estrelas: number; em: Millis };
   criadoEm: Millis;
   atualizadoEm: Millis;
 }
@@ -216,9 +219,12 @@ export interface Pagamento {
   criadoEm: Millis;
 }
 
-/** avaliacoes/{avaliacaoId} — Fase 3, dupla-cega */
+/** avaliacoes/{agendamentoId} — gravada só pelo Worker (POST /avaliacoes), visível na página da casa. */
 export interface Avaliacao {
   id: string;
+  /** Só o primeiro nome do cliente. */
+  clienteNome?: string;
+  barbeiroNome?: string;
   agendamentoId: string;
   barbeariaId: string;
   barbeiroId: string;

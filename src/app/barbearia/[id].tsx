@@ -11,10 +11,14 @@ import { pegarAvisoReserva } from '../../components/agenda/avisoReserva';
 import { dadosDaCasa, linksDeRota } from '../../services/barbearias';
 import { db } from '../../services/firebase';
 import { registrarEvento } from '../../services/agendamentos';
+import { ultimasAvaliacoes } from '../../services/avaliacoes';
+import { Estrelas } from '../../components/agenda/Avaliar';
 import { useAuth } from '../../auth/AuthProvider';
 import { formatarPreco } from '../../lib/agenda';
 import { colors, radius, space, type, sobreFoto } from '../../theme';
-import type { Barbearia, Barbeiro, Servico } from '../../types/models';
+import type { Avaliacao, Barbearia, Barbeiro, Servico } from '../../types/models';
+
+const virgula = (n: number) => n.toFixed(1).replace('.', ',');
 
 export default function PaginaBarbearia() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -22,6 +26,7 @@ export default function PaginaBarbearia() {
   const [b, setB] = useState<Barbearia | null | undefined>(undefined);
   const [equipe, setEquipe] = useState<Barbeiro[]>([]);
   const [servicos, setServicos] = useState<Servico[]>([]);
+  const [avaliacoes, setAvaliacoes] = useState<Avaliacao[]>([]);
   const [reservado, setReservado] = useState<string | null>(null);
   const [falhou, setFalhou] = useState(false);
   const [tentativa, setTentativa] = useState(0);
@@ -34,6 +39,8 @@ export default function PaginaBarbearia() {
     dadosDaCasa(db, id, { forcar: tentativa > 0 })
       .then(d => { setB(d.barbearia); setEquipe(d.equipe); setServicos(d.servicos); })
       .catch(() => { setFalhou(true); setB(null); });
+    // Opinião é complemento: se falhar, a página segue sem ela.
+    ultimasAvaliacoes(db, id).then(setAvaliacoes).catch(() => setAvaliacoes([]));
   }, [id, tentativa]);
 
   // Voltou da confirmação (dismissTo): mostra o aviso da reserva uma vez.
@@ -71,9 +78,17 @@ export default function PaginaBarbearia() {
         </View>
         <Text style={type.caption}>
           <Text style={{ color: colors.accent }}>★ </Text>
-          {nota > 0 ? `${nota.toFixed(1).replace('.', ',')} · ` : 'Nova no Navalha · '}
+          {nota > 0 ? `${virgula(nota)} · ` : 'Nova no Navalha · '}
           {b.resumo.precoMin ? `${formatarPreco(b.resumo.precoMin)} a ${formatarPreco(b.resumo.precoMax ?? b.resumo.precoMin)}` : 'Cardápio em montagem'}
         </Text>
+        {b.resumo.totalAvaliacoesApp || b.resumo.totalAvaliacoesGoogle ? (
+          <Text style={type.caption}>
+            {[
+              b.resumo.totalAvaliacoesApp ? `${virgula(b.resumo.notaApp)} no Navalha (${b.resumo.totalAvaliacoesApp})` : '',
+              b.resumo.notaGoogle && b.resumo.totalAvaliacoesGoogle ? `${virgula(b.resumo.notaGoogle)} no Google (${b.resumo.totalAvaliacoesGoogle})` : '',
+            ].filter(Boolean).join(' · ')}
+          </Text>
+        ) : null}
         <Text style={type.caption}>{b.endereco} · {b.cidade}</Text>
       </View>
 
@@ -119,7 +134,7 @@ export default function PaginaBarbearia() {
                 <View style={{ flex: 1, gap: 2 }}>
                   <Text style={[type.body, { fontWeight: '600' }]} numberOfLines={1}>{e.apelido || e.nome}</Text>
                   <Text style={type.caption}>
-                    {e.nota.total ? `★ ${e.nota.media.toFixed(1).replace('.', ',')} · ` : ''}{qtd} {qtd === 1 ? 'corte' : 'cortes'}
+                    {e.nota.total ? `★ ${virgula(e.nota.media)} (${e.nota.total}) · ` : ''}{qtd} {qtd === 1 ? 'corte' : 'cortes'}
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
@@ -128,6 +143,23 @@ export default function PaginaBarbearia() {
           })}
         </View>
       )}
+
+      {avaliacoes.length ? (
+        <View style={{ gap: space(3), marginTop: space(4) }}>
+          <Text accessibilityRole="header" style={type.heading}>Avaliações</Text>
+          {avaliacoes.map(a => (
+            <Cartao key={a.id} style={{ gap: space(1) }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space(2) }}>
+                <Text style={[type.body, { fontWeight: '600', flexShrink: 1 }]} numberOfLines={1}>
+                  {a.clienteNome ?? 'Cliente'}{a.barbeiroNome ? ` · com ${a.barbeiroNome}` : ''}
+                </Text>
+                <Estrelas valor={a.estrelas} tamanho={14} />
+              </View>
+              {a.comentario ? <Text style={[type.caption, { color: colors.text }]}>{a.comentario}</Text> : null}
+            </Cartao>
+          ))}
+        </View>
+      ) : null}
 
       {/* Fotos da casa e dos cortes: referência, fora do fluxo de agendar. */}
       {fotos.length ? (

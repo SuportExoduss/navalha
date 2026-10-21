@@ -71,16 +71,29 @@ service cloud.firestore {
         return d.assinatura.keys().hasOnly(['status', 'limiteBarbeiros'])
           && d.assinatura.status == 'rascunho' && d.assinatura.limiteBarbeiros == 1 && d.emDia == false;
       }
+      // Notas (app, Google e ranking) só o Worker grava: ninguém cria a casa já com nota nem mexe na própria.
+      function notasZeradas(d) {
+        return d.resumo.get('notaApp', 0) == 0 && d.resumo.get('totalAvaliacoesApp', 0) == 0
+          && !d.resumo.keys().hasAny(['notaGoogle', 'totalAvaliacoesGoogle', 'notaRanking']) && !('googleAtualizadoEm' in d);
+      }
+      function notasIntactas(antes, depois) {
+        return depois.resumo.get('notaApp', 0) == antes.resumo.get('notaApp', 0)
+          && depois.resumo.get('totalAvaliacoesApp', 0) == antes.resumo.get('totalAvaliacoesApp', 0)
+          && depois.resumo.get('notaGoogle', null) == antes.resumo.get('notaGoogle', null)
+          && depois.resumo.get('totalAvaliacoesGoogle', null) == antes.resumo.get('totalAvaliacoesGoogle', null)
+          && depois.resumo.get('notaRanking', null) == antes.resumo.get('notaRanking', null)
+          && depois.get('googleAtualizadoEm', null) == antes.get('googleAtualizadoEm', null);
+      }
       // Na busca só aparece casa publicada E em dia (teste ou mensalidade); a equipe sempre vê a sua.
       allow read: if (resource.data.publicada == true && resource.data.get('emDia', false) == true) || ehDaCasa(bid);
       allow create: if logado()
-        && request.resource.data.donoUid == eu() && fotosDaCasaOk(request.resource.data)
+        && request.resource.data.donoUid == eu() && fotosDaCasaOk(request.resource.data) && notasZeradas(request.resource.data)
         && request.resource.data.barbeirosAtivos == 1 && request.resource.data.mudouBarbeiro == eu()
         && (testeOk(request.resource.data) || rascunhoOk(request.resource.data));
       // O dono edita tudo, menos assinatura e "em dia" (só o Worker, depois de conferir no Google Play),
-      // as notas Google e o contador (que só anda junto com a equipe).
+      // as notas (só o Worker, a partir de avaliações conferidas) e o contador (que só anda junto com a equipe).
       allow update: if fotosDaCasaOk(request.resource.data) && ((ehDono(bid) && !mudou(['donoUid', 'assinatura', 'emDia', 'criadoEm'])
-        && request.resource.data.resumo.get('notaGoogle', null) == resource.data.resumo.get('notaGoogle', null)
+        && notasIntactas(resource.data, request.resource.data)
         && (!mudou(['barbeirosAtivos', 'mudouBarbeiro']) || contadorOk(resource.data, request.resource.data)))
         // O barbeiro, ao salvar o próprio cardápio, só atualiza a parte do resumo que vem do cardápio.
         || (ehBarbeiro(bid)
@@ -102,6 +115,7 @@ service cloud.firestore {
             && getAfter(casa()).data.barbeirosAtivos == (exists(casa()) ? get(casa()).data.get('barbeirosAtivos', 0) : 0) + depois - antes;
         }
         allow create: if logado() && perfilBarbeiroOk(request.resource.data)
+          && request.resource.data.get('nota', {'media': 0, 'total': 0}) == {'media': 0, 'total': 0}
           && contadorDaCasa(0, request.resource.data.ativo == true ? 1 : 0) && (
           ehDono(bid)
           || getAfter(/databases/$(database)/documents/barbearias/$(bid)).data.donoUid == eu()
@@ -110,7 +124,8 @@ service cloud.firestore {
               && getAfter(/databases/$(database)/documents/convites/$(request.resource.data.conviteCodigo)).data.barbeariaId == bid)
         );
         allow update: if perfilBarbeiroOk(request.resource.data)
-          && (ehDono(bid) || (logado() && eu() == uid && !mudou(['ativo', 'nota', 'barbeariaId', 'conviteCodigo'])))
+          && !mudou(['nota']) // nota do barbeiro: só o Worker, a partir das avaliações
+          && (ehDono(bid) || (logado() && eu() == uid && !mudou(['ativo', 'barbeariaId', 'conviteCodigo'])))
           && (!mudou(['ativo']) || contadorDaCasa(resource.data.ativo == true ? 1 : 0, request.resource.data.ativo == true ? 1 : 0));
         allow delete: if ehDono(bid) && contadorDaCasa(resource.data.ativo == true ? 1 : 0, 0);
       }
@@ -260,14 +275,8 @@ service cloud.firestore {
     match /avaliacoes/{id} {
       allow read: if resource.data.visivel == true
         && resource.data.direcao == 'cliente_para_barbeiro';
-      // A avaliação é criada oculta; o Worker revela quando os dois lados avaliam (dupla-cega).
-      allow create: if logado() && request.resource.data.visivel == false
-        && request.resource.data.estrelas in [1, 2, 3, 4, 5]
-        && (
-          (request.resource.data.direcao == 'cliente_para_barbeiro' && request.resource.data.clienteUid == eu())
-          || (request.resource.data.direcao == 'barbeiro_para_cliente' && request.resource.data.barbeiroId == eu())
-        );
-      allow update, delete: if false;
+      // Só o Worker grava (POST /avaliacoes): confere que o atendimento foi concluído e é de quem avalia.
+      allow write: if false;
     }
     match /clubes/{id} {
       allow read: if true;

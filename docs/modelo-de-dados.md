@@ -18,7 +18,7 @@ Tipos completos em `src/types/models.ts`; permissões em `firestore.rules`.
 | `eventos/{id}` | app | 1 | Métricas do piloto: agendou, cancelou, faltou, tempo até agendar |
 | `notificacoes/{id}` | Worker | 1 | Sino na Agenda (casa) e em Agendamentos (cliente): marcado e cancelado avisam os outros lados (cliente, barbeiro, dono), nunca quem fez (id `agendamento_tipo_uid`, nunca duplica) e resumo do mês no dia 1 (`resumo_AAAA-MM_casa`). O destinatário só lê e marca como lida |
 | `pagamentos/{id}` | Worker (webhook Asaas) | 3 | Pix, cartão, split, assinatura |
-| `avaliacoes/{id}` | cliente/barbeiro cria oculta; Worker revela | 3 | Avaliação mútua dupla-cega |
+| `avaliacoes/{agendamentoId}` | Worker (`POST /avaliacoes`) | 1 | Avaliação do cliente sobre o atendimento concluído (1–5★ + comentário). O Worker soma `resumo.notaApp`, `nota` do barbeiro e `resumo.notaRanking`; a nota do Google (`resumo.notaGoogle`) vem do cron, 1 vez por dia. O app só lê as visíveis |
 | `clubes/{id}`, `assinaturasClube/{id}` | dono / Worker | 4 | Clube de assinatura do cliente |
 
 ## Trava contra horário duplo

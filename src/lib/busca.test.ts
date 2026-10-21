@@ -48,3 +48,11 @@ test('ainda hoje considera a antecedência', () => {
   assert.equal(atendeAindaHoje(b, paraMillis('2026-11-05', 18 * 60 + 40)), false);
   assert.equal(contarFiltros({ ...FILTROS_PADRAO, raioKm: 3, abertoAgora: true }), 2);
 });
+
+test('ranking: mais bem avaliadas primeiro; sem nota vai para o fim; empate fica com a mais perto', () => {
+  const comNota = (id: string, km: number, notaRanking?: number) => ({ ...casa(id, { km }), resumo: { ...casa(id, { km }).resumo, notaRanking } });
+  const l = [comNota('perto-sem-nota', 0.5), comNota('media', 1, 4.2), comNota('boa', 3, 4.8), comNota('boa-longe', 9, 4.8)];
+  assert.deepEqual(ids(filtrarBarbearias(l, { ...FILTROS_PADRAO, ordem: 'nota' }, quinta10h)), ['boa', 'boa-longe', 'media', 'perto-sem-nota']);
+  assert.deepEqual(ids(filtrarBarbearias(l, FILTROS_PADRAO, quinta10h)), ['perto-sem-nota', 'media', 'boa', 'boa-longe']);
+  assert.equal(contarFiltros({ ...FILTROS_PADRAO, ordem: 'nota' }), 1);
+});

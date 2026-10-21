@@ -15,9 +15,11 @@ export interface Filtros {
   abertoAgora: boolean;
   /** Ainda dá para cortar hoje: a casa fecha depois de agora + antecedência. */
   aindaHoje: boolean;
+  /** Mais perto primeiro (padrão) ou ranking: nota do app + Google (média bayesiana, calculada pelo Worker). */
+  ordem: 'perto' | 'nota';
 }
 
-export const FILTROS_PADRAO: Filtros = { raioKm: null, texto: '', categoria: null, preco: null, abertoAgora: false, aindaHoje: false };
+export const FILTROS_PADRAO: Filtros = { raioKm: null, texto: '', categoria: null, preco: null, abertoAgora: false, aindaHoje: false, ordem: 'perto' };
 
 const FAIXAS: Record<FaixaPreco, [number, number]> = { ate40: [0, 4000], '40a70': [4000, 7000], '70mais': [7000, Infinity] };
 
@@ -43,7 +45,7 @@ const semAcento = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLo
 
 export function filtrarBarbearias<T extends Barbearia & { distanciaKm: number }>(lista: T[], f: Filtros, agora: Millis): T[] {
   const texto = semAcento(f.texto.trim());
-  return lista.filter(b => {
+  const filtrada = lista.filter(b => {
     if (f.raioKm !== null && b.distanciaKm > f.raioKm) return false;
     if (texto && !semAcento(`${b.nome} ${b.endereco} ${b.cidade}`).includes(texto)) return false;
     if (f.categoria && !(b.resumo.categorias ?? []).includes(f.categoria)) return false;
@@ -56,8 +58,10 @@ export function filtrarBarbearias<T extends Barbearia & { distanciaKm: number }>
     if (f.aindaHoje && !atendeAindaHoje(b, agora)) return false;
     return true;
   });
+  // A lista já vem da mais perto para a mais longe; no ranking, empate de nota fica com a mais perto (sort estável).
+  return f.ordem === 'nota' ? filtrada.sort((a, b) => (b.resumo.notaRanking ?? 0) - (a.resumo.notaRanking ?? 0)) : filtrada;
 }
 
 export function contarFiltros(f: Filtros): number {
-  return [f.raioKm !== null, !!f.categoria, !!f.preco, f.abertoAgora, f.aindaHoje].filter(Boolean).length;
+  return [f.raioKm !== null, !!f.categoria, !!f.preco, f.abertoAgora, f.aindaHoje, f.ordem !== 'perto'].filter(Boolean).length;
 }

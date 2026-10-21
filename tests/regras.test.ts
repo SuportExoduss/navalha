@@ -526,3 +526,41 @@ test('erros: o app só grava, com campos e tamanhos fixos', async () => {
   await assertFails(setDoc(doc(env.unauthenticatedContext().firestore(), 'erros/e4'), ok));
   await assertFails(getDoc(doc(dbDe('ana'), 'erros/e1')));
 });
+
+test('avaliações e notas: só o servidor grava; ninguém infla a própria nota', async () => {
+  // Casa já nasce com nota: barrado. Sem nota: passa.
+  const novo = dbDe('novo2');
+  const criar = (id: string, resumo: object) => {
+    const b = writeBatch(novo);
+    b.set(doc(novo, 'barbearias', id), { ...casaNova(id, 'novo2', { status: 'rascunho', limiteBarbeiros: 1 }, false), resumo });
+    b.set(doc(novo, `barbearias/${id}/barbeiros/novo2`), { uid: 'novo2', ativo: true });
+    return b.commit();
+  };
+  await assertFails(criar('b8', { notaApp: 5, totalAvaliacoesApp: 80 }));
+  await assertFails(criar('b8', { notaGoogle: 5, totalAvaliacoesGoogle: 900 }));
+  await assertSucceeds(criar('b8', { notaApp: 0, totalAvaliacoesApp: 0 }));
+
+  // O dono muda o nome, mas não as notas da casa nem a dos barbeiros.
+  const dono = dbDe('dono');
+  await assertSucceeds(updateDoc(doc(dono, 'barbearias/b1'), { nome: 'Nova' }));
+  await assertFails(updateDoc(doc(dono, 'barbearias/b1'), { 'resumo.notaApp': 5, 'resumo.totalAvaliacoesApp': 99 }));
+  await assertFails(updateDoc(doc(dono, 'barbearias/b1'), { 'resumo.notaRanking': 5 }));
+  await assertFails(updateDoc(doc(dono, 'barbearias/b1'), { googleAtualizadoEm: 1 }));
+  await assertFails(updateDoc(doc(dono, 'barbearias/b1/barbeiros/lucas'), { nota: { media: 5, total: 50 } }));
+  await assertFails(updateDoc(doc(dbDe('lucas'), 'barbearias/b1/barbeiros/lucas'), { nota: { media: 5, total: 50 } }));
+  await assertSucceeds(updateDoc(doc(dbDe('lucas'), 'barbearias/b1/barbeiros/lucas'), { apelido: 'Lu' }));
+
+  // Avaliação: o app não cria; qualquer um lê as visíveis, ninguém lê as ocultas.
+  await assertFails(setDoc(doc(dbDe('ana'), 'avaliacoes/a1'), {
+    id: 'a1', clienteUid: 'ana', barbeariaId: 'b1', barbeiroId: 'lucas', direcao: 'cliente_para_barbeiro', estrelas: 5, visivel: false,
+  }));
+  await env.withSecurityRulesDisabled(async ctx => {
+    await setDoc(doc(ctx.firestore(), 'avaliacoes/v1'), { barbeariaId: 'b1', direcao: 'cliente_para_barbeiro', estrelas: 5, visivel: true, criadoEm: 2 });
+    await setDoc(doc(ctx.firestore(), 'avaliacoes/o1'), { barbeariaId: 'b1', direcao: 'cliente_para_barbeiro', estrelas: 1, visivel: false, criadoEm: 1 });
+  });
+  const visiveis = getDocs(query(collection(env.unauthenticatedContext().firestore(), 'avaliacoes'),
+    where('barbeariaId', '==', 'b1'), where('visivel', '==', true), where('direcao', '==', 'cliente_para_barbeiro'), orderBy('criadoEm', 'desc')));
+  assert.equal((await assertSucceeds(visiveis)).size, 1);
+  await assertFails(getDoc(doc(dbDe('ana'), 'avaliacoes/o1')));
+  await assertFails(updateDoc(doc(dbDe('dono'), 'avaliacoes/v1'), { estrelas: 1 }));
+});

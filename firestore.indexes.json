@@ -173,6 +173,28 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "avaliacoes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "barbeariaId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "direcao",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "visivel",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "criadoEm",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []
