@@ -131,5 +131,5 @@ Para isso, nesta ordem:
 
 ## Próximo no roadmap: Fase 2 — Piloto fechado (4/jan – 7/fev 2027)
 Teste fechado com 12+ testadores por 14 dias (conta Play e fichas já em andamento), onboarding presencial de 10 barbearias,
-correções por nova versão no Play (sem EAS Update; subir `versionCode` a cada AAB — hoje 1 em `android/app/build.gradle`).
+correções por nova versão no Play (sem EAS Update; subir `versionCode` a cada AAB — hoje 2 (0.2.0) em `android/app/build.gradle`).
 Depois do piloto: publicação aberta no Google Play. As Fases 3 a 5 estão fora do plano por enquanto (decisão do dono, 20/out/2026).
