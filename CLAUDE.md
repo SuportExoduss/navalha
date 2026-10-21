@@ -9,8 +9,9 @@ Leia também `AGENTS.md` (regras do Expo SDK 58: não confie na memória, consul
 - Falta para fechar a Fase 1: ligar Firebase/R2/Worker reais, APK Android gerado localmente (sem conta Expo, ver README),
   testar no celular e rodar com 3 barbearias amigas (portão da Fase 2). Itens da Fase 0 que dependem do dono
   (entrevistas, nome no INPI, termos/LGPD, contas) seguem abertos.
-- Próxima fase de código: **Fase 2 (piloto)** quase não tem código; a próxima grande entrega de código é a
-  **Fase 3** (Asaas, assinatura, avaliações, nota Google, iOS + Entrar com Apple).
+- Próxima fase: **Fase 2 (piloto)**, código pronto; o resto é do dono (teste fechado no Play, barbearias).
+- **Fases 3, 4 e 5 estão fora do plano** (decisão do dono, 20/out/2026): não proponha nem construa pagamento do corte,
+  avaliações, nota Google, iOS, clube, fidelidade, multiunidades etc. sem o dono pedir. As mensalidades pelo Google Play ficam.
 
 ## Sem conta Expo (decisão do dono)
 Não use EAS (build, update, submit) nem Expo Push, mesmo que o AGENTS.md sugira. Build Android local (`npx expo prebuild` + Gradle/Android Studio); push pelo FCM direto do Worker.

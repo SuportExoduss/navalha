@@ -10,9 +10,9 @@ Código no computador: `C:\Users\andre\AndroidStudioProjects\navalha` (no Androi
 | 0 · Fundação | 19/out – 1/nov | modelo de dados e contas técnicas prontos | dono: entrevistas, INPI/nome, termos/LGPD, landing, contador |
 | 1 · MVP | 2/nov – 27/dez | **100%** (adiantado ~6 semanas) + extras | portão: 3 barbearias amigas por 1 semana; cronometrar um dono montando a casa |
 | 2 · Piloto | jan – fev/2027 | código pronto (AAB assinado, privacidade, exclusão de conta, acesso de revisão) | dono: teste fechado com 12 testadores/14 dias, onboarding das 10 barbearias, cartaz com QR |
-| 3 · Lançamento | fev – abr/2027 | mensalidades prontas (~25% da fase) | pagamento do corte no app (Pix/cartão), avaliações, nota Google, ranking, feed de fotos, iOS + Entrar com Apple |
-| 4 · Crescimento | mai – jul/2027 | 0% | clube de assinatura, lista de espera, fidelidade, relatórios, indicação |
-| 5 · Escala | ago – out/2027 | 0% | multiunidades, nota fiscal, loja, lembretes por WhatsApp oficial, IA |
+| 3 · Lançamento | — | **fora do plano** (decisão do dono, 20/out) | só as mensalidades pelo Google Play foram feitas (adiantadas) e ficam |
+| 4 · Crescimento | — | **fora do plano** | — |
+| 5 · Escala | — | **fora do plano** | — |
 
 Requisitos da Google Play: `docs/publicar-google-play.md`. Pacote definitivo `com.trevotec.navalha`; `android/` versionada (abre direto no Android Studio).
 
@@ -121,5 +121,5 @@ Para isso, nesta ordem:
 
 ## Próximo no roadmap: Fase 2 — Piloto fechado (4/jan – 7/fev 2027)
 Teste fechado com 12+ testadores por 14 dias (conta Play e fichas já em andamento), onboarding presencial de 10 barbearias,
-correções por nova versão no Play (sem EAS Update; subir `versionCode` a cada AAB — hoje 1 em `android/app/build.gradle`),
-e preparar a Fase 3 (CNPJ, Asaas para o pagamento do corte, faturamento Google Cloud).
+correções por nova versão no Play (sem EAS Update; subir `versionCode` a cada AAB — hoje 1 em `android/app/build.gradle`).
+Depois do piloto: publicação aberta no Google Play. As Fases 3 a 5 estão fora do plano por enquanto (decisão do dono, 20/out/2026).

@@ -11,9 +11,9 @@ Em 12 meses o Navalha vai do protótipo a 3 cidades, e até o piloto com barbear
 | 0 · Fundação | 19/out – 1/nov 2026 | Validar com barbeiros e clientes, fechar nome, protótipo clicável | Requisitos validados e telas aprovadas |
 | 1 · MVP | 2/nov – 27/dez 2026 | App funcionando: login, barbearia, cardápio, agenda, busca | Versão Android + web pronta para teste |
 | 2 · Piloto fechado | 4/jan – 7/fev 2027 | 10 barbearias reais usando de graça | Métricas, depoimentos, lista de bugs |
-| 3 · Lançamento | fev – abr 2027 | Pagamentos, assinatura, iOS, avaliações | Receita recorrente e base pagante |
-| 4 · Crescimento | mai – jul 2027 | Clube de assinatura, fidelidade, indicação | Retenção alta e caixa para expandir |
-| 5 · Escala | ago – out 2027 | Outras cidades, time de vendas, recursos pagos | Base para série de investimento ou crescimento orgânico |
+| 3 · Lançamento | ~~fev – abr 2027~~ | **Fora do plano por enquanto** (só as mensalidades pelo Google Play foram feitas) | — |
+| 4 · Crescimento | ~~mai – jul 2027~~ | **Fora do plano por enquanto** | — |
+| 5 · Escala | ~~ago – out 2027~~ | **Fora do plano por enquanto** | — |
 
 **Regra de ouro:** cada fase só começa quando o portão da anterior foi atingido. Tudo que é construído numa fase já deixa o terreno pronto para a seguinte — por exemplo, o banco do MVP já nasce com as coleções de pagamento e avaliação modeladas, para a Fase 3 não exigir migração.
 
@@ -136,7 +136,7 @@ Cinco semanas com 10 barbearias reais usando o app de graça, em troca de feedba
 - [ ] Grupo de WhatsApp com os donos para suporte e ideias
 - [ ] Visita ou ligação semanal: o que travou, o que faltou
 - [ ] Corrigir bugs em ciclos de 2–3 dias publicando nova versão no teste fechado do Google Play (sem atualização pelo ar: o app não usa conta Expo)
-- [ ] **Preparar a Fase 3 em paralelo:** abrir o CNPJ, criar a conta Asaas e testar Pix e cartão no ambiente de testes; criar a conta de faturamento do Google Cloud com alerta de orçamento (a Places API exige cartão mesmo dentro da franquia gratuita); se a Apple for em nome da empresa, pedir o número D-U-N-S
+- [ ] ~~**Preparar a Fase 3 em paralelo:**~~ (fora do plano: Fase 3 em espera) abrir o CNPJ, criar a conta Asaas e testar Pix e cartão no ambiente de testes; criar a conta de faturamento do Google Cloud com alerta de orçamento (a Places API exige cartão mesmo dentro da franquia gratuita); se a Apple for em nome da empresa, pedir o número D-U-N-S
 - [ ] Na última semana, perguntar a cada dono se pagaria o plano do tamanho da casa (R$ 25 / 70 / 100 / 150, decididos em 20/out/2026)
 
 **Métricas que decidem o lançamento**
@@ -155,6 +155,8 @@ Cinco semanas com 10 barbearias reais usando o app de graça, em troca de feedba
 **Portão para a Fase 3:** metas da tabela atingidas em pelo menos 4 de 6.
 
 ## Fase 3 — Lançamento público (fev – abr 2027)
+
+**Fora do plano por enquanto** (decisão do dono, 20/out/2026): não faz parte da ideia atual do app. Fica registrado só como referência; nada desta fase é construído sem nova decisão.
 
 O app passa a cobrar a mensalidade, aceita Pix e cartão, entra na App Store e liga as avaliações — a fase que transforma o piloto em negócio. Custo novo: conta Apple (US$ 99/ano) e taxas do Asaas só sobre o que entrar.
 
@@ -186,6 +188,8 @@ O app passa a cobrar a mensalidade, aceita Pix e cartão, entra na App Store e l
 
 ## Fase 4 — Crescimento e retenção (mai – jul 2027)
 
+**Fora do plano por enquanto** (decisão do dono, 20/out/2026): não faz parte da ideia atual do app. Fica registrado só como referência; nada desta fase é construído sem nova decisão.
+
 Com a base pagando, o foco vira fazer o cliente voltar e a barbearia faturar mais pelo app — o que reduz cancelamento e justifica a mensalidade. Custo: provavelmente a primeira infra paga: Firebase Blaze (por uso) quando o Firestore passar de 50 mil leituras/dia, e Workers Paid (US$ 5/mês) se passar de 100 mil requisições/dia.
 
 **Recursos**
@@ -203,6 +207,8 @@ Com a base pagando, o foco vira fazer o cliente voltar e a barbearia faturar mai
 **Portão para a Fase 5:** 80 barbearias pagantes, cancelamento mensal de barbearias abaixo de 5% e receita cobrindo todos os custos fixos.
 
 ## Fase 5 — Escala (ago – out 2027)
+
+**Fora do plano por enquanto** (decisão do dono, 20/out/2026): não faz parte da ideia atual do app. Fica registrado só como referência; nada desta fase é construído sem nova decisão.
 
 Com o modelo provado numa região, a fase 5 repete a receita em mais 2 cidades e liga os recursos que cobram mais por barbearia. Custo: marketing local e, se preciso, um vendedor por comissão.
 
