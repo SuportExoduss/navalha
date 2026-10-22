@@ -5,11 +5,15 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from '../auth/AuthProvider';
 import { TemaProvider } from '../components/TemaProvider';
 import { AvisoApp } from '../components/AvisoApp';
+import { Abertura } from '../components/Abertura';
+import * as SplashScreen from 'expo-splash-screen';
 import { Botao, Titulo } from '../components/ui';
 import { capturarErrosGlobais, registrarErro } from '../services/erros';
 import { colors, space, type } from '../theme';
 
 capturarErrosGlobais();
+// A splash nativa espera a Abertura (cópia em JS) aparecer por cima; é ela que some com a transição.
+SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 export default function RootLayout() {
   return (
@@ -19,6 +23,7 @@ export default function RootLayout() {
           <View style={{ flex: 1, backgroundColor: colors.bg }}>
             <AvisoApp />
             <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />
+            <Abertura />
           </View>
         </AuthProvider>
       </TemaProvider>
