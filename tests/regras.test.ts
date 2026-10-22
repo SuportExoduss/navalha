@@ -570,6 +570,18 @@ test('SEC-009: foto só do nosso Worker ou da conta Google', async () => {
   await assertSucceeds(updateDoc(doc(dbDe('lucas'), 'barbearias/b1/servicos/s1'), { fotos: sete.slice(0, 6) }));
 });
 
+test('capa (banner): só do nosso Worker, no perfil e no cartão do barbeiro', async () => {
+  const capa = 'https://navalha-worker.navalha-worker.workers.dev/fotos/banner/lucas/lucas-x.webp';
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'users/lucas'), { uid: 'lucas' }));
+  await assertSucceeds(updateDoc(doc(dbDe('lucas'), 'users/lucas'), { bannerUrl: capa }));
+  await assertFails(updateDoc(doc(dbDe('lucas'), 'users/lucas'), { bannerUrl: 'https://rastreio.exemplo.com/pixel.gif' }));
+  // O próprio barbeiro e o dono põem a capa no cartão; outro cliente não.
+  await assertSucceeds(updateDoc(doc(dbDe('lucas'), 'barbearias/b1/barbeiros/lucas'), { bannerUrl: capa }));
+  await assertSucceeds(updateDoc(doc(dbDe('dono'), 'barbearias/b1/barbeiros/lucas'), { bannerUrl: capa }));
+  await assertFails(updateDoc(doc(dbDe('lucas'), 'barbearias/b1/barbeiros/lucas'), { bannerUrl: 'javascript:alert(1)' }));
+  await assertFails(updateDoc(doc(dbDe('ana'), 'barbearias/b1/barbeiros/lucas'), { bannerUrl: capa }));
+});
+
 test('erros: o app só grava, com campos e tamanhos fixos', async () => {
   const ok = { uid: 'ana', onde: 'tela', mensagem: 'x', pilha: 'y', plataforma: 'android', versao: '0.1.0', em: 1 };
   await assertSucceeds(setDoc(doc(dbDe('ana'), 'erros/e1'), ok));

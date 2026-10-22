@@ -29,12 +29,12 @@ service cloud.firestore {
       allow read: if logado() && eu() == uid;
       allow create: if logado() && eu() == uid
         && request.resource.data.uid == uid
-        && !('notaCliente' in request.resource.data) && fotoOk(request.resource.data, 'fotoUrl');
+        && !('notaCliente' in request.resource.data) && fotoOk(request.resource.data, 'fotoUrl') && fotoOk(request.resource.data, 'bannerUrl');
       // A nota como cliente é calculada pelo servidor.
       allow update: if logado() && eu() == uid && !mudou(['uid', 'notaCliente', 'criadoEm'])
         // Marca da última reserva: só o horário do servidor (serverTimestamp), nunca uma data escolhida pelo app.
         && (!mudou(['ultimaReserva']) || request.resource.data.ultimaReserva == request.time)
-        && fotoOk(request.resource.data, 'fotoUrl');
+        && fotoOk(request.resource.data, 'fotoUrl') && fotoOk(request.resource.data, 'bannerUrl');
       allow delete: if logado() && eu() == uid;
     }
 
@@ -42,7 +42,7 @@ service cloud.firestore {
     match /barbearias/{bid} {
       function fotosDaCasaOk(d) { return fotoOk(d, 'capaUrl') && fotoOk(d, 'logoUrl') && (!('fotos' in d) || d.fotos.size() <= 12); }
       // Comissão é dado comercial: não vai no perfil público do barbeiro (leitura aberta). Fica para um doc privado (SEC-008).
-      function perfilBarbeiroOk(d) { return fotoOk(d, 'fotoUrl') && !('comissaoPercent' in d); }
+      function perfilBarbeiroOk(d) { return fotoOk(d, 'fotoUrl') && fotoOk(d, 'bannerUrl') && !('comissaoPercent' in d); }
       function casa() { return /databases/$(database)/documents/barbearias/$(bid); }
       function barb(u) { return /databases/$(database)/documents/barbearias/$(bid)/barbeiros/$(u); }
       // 1 se o barbeiro u conta como ativo antes/depois desta gravação.

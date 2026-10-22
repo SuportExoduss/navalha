@@ -8,6 +8,7 @@ import { camposDaCasa, lerCompra } from './assinatura';
 
 test('chave da foto aceita só tipos e ids seguros', () => {
   assert.equal(chaveFoto('corte', 'uid123', 'ag_1', 'abc-1'), 'corte/ag_1/uid123-abc-1.webp');
+  assert.equal(chaveFoto('banner', 'uid123', 'uid123', 'abc-1'), 'banner/uid123/uid123-abc-1.webp');
   assert.equal(chaveFoto('virus', 'u', 'r', 'i'), null);
   assert.equal(chaveFoto('corte', 'u', '../../segredo', 'i'), null);
   assert.equal(chaveFoto('corte', 'u/x', 'r', 'i'), null);

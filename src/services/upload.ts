@@ -7,7 +7,7 @@ import { auth } from './firebase';
 
 const WORKER_URL = process.env.EXPO_PUBLIC_WORKER_URL ?? 'http://127.0.0.1:8787';
 
-export type TipoFoto = 'perfil' | 'barbearia' | 'servico' | 'corte';
+export type TipoFoto = 'perfil' | 'barbearia' | 'servico' | 'corte' | 'banner';
 
 export async function comprimir(uri: string): Promise<string> {
   const ctx = ImageManipulator.manipulate(uri, { maxWidth: 1080, maxHeight: 1350 });

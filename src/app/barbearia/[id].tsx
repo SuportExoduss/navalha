@@ -122,9 +122,26 @@ export default function PaginaBarbearia() {
         <View style={{ gap: space(2) }}>
           {equipe.map(e => {
             const qtd = servicos.filter(s => s.barbeiroId === e.uid).length;
+            const detalhe = `${e.nota.total ? `★ ${virgula(e.nota.media)} (${e.nota.total}) · ` : ''}${qtd} ${qtd === 1 ? 'corte' : 'cortes'}`;
+            const abrir = () => { setReservado(null); router.push({ pathname: '/cortes/[id]', params: { id: b.id, barbeiro: e.uid } }); };
+            // Com capa: a foto ao fundo e o nome numa faixa com véu escuro, legível sobre qualquer imagem ou cor.
+            if (e.bannerUrl) return (
+              <Pressable key={e.uid} accessibilityRole="button" accessibilityLabel={`Agendar com ${e.apelido || e.nome}`} onPress={abrir}
+                style={({ pressed }) => ({ height: 120, borderRadius: radius.card, overflow: 'hidden', justifyContent: 'flex-end', opacity: pressed ? 0.85 : 1,
+                  backgroundColor: colors.surfaceRaised })}>
+                <Image source={{ uri: e.bannerUrl }} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} resizeMode="cover" accessibilityIgnoresInvertColors />
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: space(3), paddingHorizontal: space(3), paddingVertical: space(2), backgroundColor: sobreFoto.veu }}>
+                  {e.fotoUrl ? <Image source={{ uri: e.fotoUrl }} style={{ width: 40, height: 40, borderRadius: radius.chip }} /> : null}
+                  <View style={{ flex: 1 }}>
+                    <Text style={[type.body, { fontWeight: '600', color: sobreFoto.texto }]} numberOfLines={1}>{e.apelido || e.nome}</Text>
+                    <Text style={[type.caption, { color: sobreFoto.texto }]}>{detalhe}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={sobreFoto.texto} />
+                </View>
+              </Pressable>
+            );
             return (
-              <Pressable key={e.uid} accessibilityRole="button" accessibilityLabel={`Agendar com ${e.apelido || e.nome}`}
-                onPress={() => { setReservado(null); router.push({ pathname: '/cortes/[id]', params: { id: b.id, barbeiro: e.uid } }); }}
+              <Pressable key={e.uid} accessibilityRole="button" accessibilityLabel={`Agendar com ${e.apelido || e.nome}`} onPress={abrir}
                 style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: space(3), padding: space(3), minHeight: 72,
                   borderRadius: radius.card, borderWidth: 1, borderColor: colors.border, backgroundColor: pressed ? colors.surfaceRaised : colors.surface })}>
                 {e.fotoUrl ? <Image source={{ uri: e.fotoUrl }} style={{ width: 52, height: 52, borderRadius: 26 }} />
@@ -133,9 +150,7 @@ export default function PaginaBarbearia() {
                     </View>}
                 <View style={{ flex: 1, gap: 2 }}>
                   <Text style={[type.body, { fontWeight: '600' }]} numberOfLines={1}>{e.apelido || e.nome}</Text>
-                  <Text style={type.caption}>
-                    {e.nota.total ? `★ ${virgula(e.nota.media)} (${e.nota.total}) · ` : ''}{qtd} {qtd === 1 ? 'corte' : 'cortes'}
-                  </Text>
+                  <Text style={type.caption}>{detalhe}</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
               </Pressable>

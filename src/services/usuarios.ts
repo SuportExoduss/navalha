@@ -45,9 +45,18 @@ export async function escolherPapel(db: Firestore, perfil: UserProfile, papel: R
 }
 
 export async function atualizarPerfil(
-  db: Firestore, uid: string, dados: Partial<Pick<UserProfile, 'nome' | 'apelido' | 'fotoUrl' | 'telefone' | 'privacidade' | 'pushToken'>>,
+  db: Firestore, uid: string, dados: Partial<Pick<UserProfile, 'nome' | 'apelido' | 'fotoUrl' | 'bannerUrl' | 'telefone' | 'privacidade' | 'pushToken'>>,
 ) {
   await updateDoc(doc(db, 'users', uid), dados);
+}
+
+/**
+ * Foto e capa do perfil também no cartão de barbeiro de cada casa onde a pessoa atende (é o que o cliente vê
+ * ao escolher o barbeiro). Antes a foto só era copiada ao entrar na casa e ficava velha.
+ */
+export async function refletirNaEquipe(db: Firestore, uid: string, barbearias: string[], campos: { fotoUrl?: string; bannerUrl?: string }) {
+  // Casa onde a pessoa não é mais barbeiro: o documento não existe e a gravação é ignorada.
+  await Promise.all(barbearias.map(bid => updateDoc(doc(db, 'barbearias', bid, 'barbeiros', uid), campos).catch(() => undefined)));
 }
 
 export const NOME_REMOVIDO = 'Cliente removido';

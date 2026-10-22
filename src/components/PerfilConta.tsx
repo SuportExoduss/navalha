@@ -6,9 +6,10 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Aviso, Botao, Campo, Cartao, Chip, Linha, Secao, Tela, Titulo } from './ui';
 import { AceitarConvite } from './casa/AceitarConvite';
+import { Capa } from './Capa';
 import { useAuth } from '../auth/AuthProvider';
 import { auth, db } from '../services/firebase';
-import { atualizarPerfil, escolherPapel, excluirConta } from '../services/usuarios';
+import { atualizarPerfil, escolherPapel, excluirConta, refletirNaEquipe } from '../services/usuarios';
 import { reautenticarGoogle, sairDoGoogle } from '../services/googleSignIn';
 import { escolherEEnviar } from '../services/fotos';
 import { colors, radius, space, type, type PreferenciaTema } from '../theme';
@@ -27,6 +28,7 @@ export function PerfilConta() {
   const [salvando, setSalvando] = useState(false);
   const [salvo, setSalvo] = useState(false);
   const [enviandoFoto, setEnviandoFoto] = useState(false);
+  const [enviandoCapa, setEnviandoCapa] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
@@ -51,20 +53,40 @@ export function PerfilConta() {
     setEnviandoFoto(true);
     try {
       const url = await escolherEEnviar('perfil', perfil!.uid, 'galeria', [1, 1]);
-      if (url) await atualizarPerfil(db, perfil!.uid, { fotoUrl: url });
+      if (url) {
+        await atualizarPerfil(db, perfil!.uid, { fotoUrl: url });
+        await refletirNaEquipe(db, perfil!.uid, perfil!.barbearias, { fotoUrl: url });
+      }
     } catch (e) { setErro(e instanceof Error ? e.message : 'Falha ao enviar a foto.'); }
     finally { setEnviandoFoto(false); }
+  }
+
+  async function trocarCapa() {
+    setErro(null);
+    setEnviandoCapa(true);
+    try {
+      const url = await escolherEEnviar('banner', perfil!.uid, 'galeria', [3, 1]);
+      if (url) {
+        await atualizarPerfil(db, perfil!.uid, { bannerUrl: url });
+        await refletirNaEquipe(db, perfil!.uid, perfil!.barbearias, { bannerUrl: url });
+      }
+    } catch (e) { setErro(e instanceof Error ? e.message : 'Falha ao enviar a capa.'); }
+    finally { setEnviandoCapa(false); }
   }
 
   async function sair() { await sairDoGoogle(); router.replace('/entrar'); }
 
   return (
     <Tela>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space(4) }}>
+      <Capa url={perfil.bannerUrl} onTrocar={trocarCapa} enviando={enviandoCapa} />
+      {/* A foto sobe um pouco sobre a capa, como num cartão de perfil. */}
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space(4), marginTop: -space(10), paddingHorizontal: space(3) }}>
         <Pressable onPress={trocarFoto} accessibilityRole="button" accessibilityLabel="Trocar foto de perfil">
           {perfil.fotoUrl
-            ? <Image source={{ uri: perfil.fotoUrl }} style={{ width: 64, height: 64, borderRadius: 32 }} />
-            : <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: colors.surfaceRaised }} />}
+            ? <Image source={{ uri: perfil.fotoUrl }} style={{ width: 72, height: 72, borderRadius: radius.chip, borderWidth: 3, borderColor: colors.bg }} />
+            : <View style={{ width: 72, height: 72, borderRadius: radius.chip, borderWidth: 3, borderColor: colors.bg, backgroundColor: colors.surfaceRaised, alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="person-outline" size={28} color={colors.textMuted} />
+              </View>}
           <View style={{ position: 'absolute', right: -2, bottom: -2, width: 24, height: 24, borderRadius: 12, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' }}>
             <Ionicons name={enviandoFoto ? 'hourglass-outline' : 'camera'} size={13} color={colors.accentText} />
           </View>

@@ -1,4 +1,4 @@
-export const TIPOS = ['perfil', 'barbearia', 'servico', 'corte'] as const;
+export const TIPOS = ['perfil', 'barbearia', 'servico', 'corte', 'banner'] as const;
 
 /** Monta a chave do arquivo no R2; recusa entrada que tente escapar da pasta. */
 export function chaveFoto(tipo: string, uid: string, refId: string, id: string): string | null {

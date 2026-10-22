@@ -19,6 +19,8 @@ export interface UserProfile {
   apelido?: string;
   email: string;
   fotoUrl?: string;
+  /** Capa do perfil (faixa no topo, atrás da foto e do nome). */
+  bannerUrl?: string;
   telefone?: string;
   /** Papéis que a conta já ativou; troca de modo sem trocar de conta. */
   papeis: Role[];
@@ -114,6 +116,8 @@ export interface Barbeiro {
   nome: string;
   apelido?: string;
   fotoUrl?: string;
+  /** Capa do barbeiro: aparece ao fundo na escolha do barbeiro. */
+  bannerUrl?: string;
   especialidades: string[];
   /** Expediente próprio dentro do horário da casa. */
   expediente: Expediente;
