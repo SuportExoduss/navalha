@@ -12,6 +12,7 @@ import { auth, db } from '../services/firebase';
 import { atualizarPerfil, escolherPapel, excluirConta, refletirNaEquipe } from '../services/usuarios';
 import { reautenticarGoogle, sairDoGoogle } from '../services/googleSignIn';
 import { escolherEEnviar } from '../services/fotos';
+import { telefoneNaEquipe } from '../services/barbearias';
 import { colors, radius, space, type, type PreferenciaTema } from '../theme';
 import { useTema } from './TemaProvider';
 import { ativarLembretesWeb, estadoLembretesWeb, type EstadoLembretesWeb } from '../services/push';
@@ -43,6 +44,8 @@ export function PerfilConta() {
     setSalvando(true);
     try {
       await atualizarPerfil(db, perfil!.uid, { nome: nome.trim() || perfil!.nome, apelido: apelido.trim(), telefone: tel });
+      // Quem atende numa casa: o dono vê o telefone na ficha do barbeiro.
+      await telefoneNaEquipe(db, perfil!.barbearias, perfil!.uid, tel);
       setSalvo(true); setTimeout(() => setSalvo(false), 2000);
     } catch { setErro('Não foi possível salvar.'); }
     finally { setSalvando(false); }

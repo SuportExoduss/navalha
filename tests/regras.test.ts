@@ -582,6 +582,19 @@ test('capa (banner): só do nosso Worker, no perfil e no cartão do barbeiro', a
   await assertFails(updateDoc(doc(dbDe('ana'), 'barbearias/b1/barbeiros/lucas'), { bannerUrl: capa }));
 });
 
+test('equipe privada: telefone e nota do barbeiro só para o dono e o próprio barbeiro', async () => {
+  const ref = (uid: string) => doc(dbDe(uid), 'barbearias/b1/equipePrivado/lucas');
+  await assertSucceeds(setDoc(ref('lucas'), { telefone: '15999990000' }, { merge: true }));
+  await assertSucceeds(setDoc(ref('lucas'), { telefone: '15988880000' }, { merge: true }));
+  // Nota é do Worker; ninguém grava pelo app. Outro barbeiro e cliente não leem nem gravam.
+  await assertFails(setDoc(ref('lucas'), { nota: { media: 5, total: 10 } }, { merge: true }));
+  await assertFails(setDoc(ref('dono'), { telefone: '1' }, { merge: true }));
+  await assertSucceeds(getDoc(ref('dono')));
+  await assertSucceeds(getDoc(ref('lucas')));
+  await assertFails(getDoc(ref('ana')));
+  await assertFails(setDoc(doc(dbDe('ana'), 'barbearias/b1/equipePrivado/ana'), { telefone: '1' }));
+});
+
 test('erros: o app só grava, com campos e tamanhos fixos', async () => {
   const ok = { uid: 'ana', onde: 'tela', mensagem: 'x', pilha: 'y', plataforma: 'android', versao: '0.1.0', em: 1 };
   await assertSucceeds(setDoc(doc(dbDe('ana'), 'erros/e1'), ok));

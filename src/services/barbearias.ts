@@ -86,6 +86,25 @@ export function ouvirBarbeiros(db: Firestore, barbeariaId: string, cb: (l: Barbe
   return onSnapshot(collection(db, 'barbearias', barbeariaId, 'barbeiros'), s => cb(s.docs.map(d => d.data() as Barbeiro)));
 }
 
+/** Parte privada do barbeiro (telefone e nota das avaliações): só o dono e ele mesmo leem. */
+export interface EquipePrivado { telefone?: string; nota?: { media: number; total: number } }
+
+export function ouvirEquipePrivado(db: Firestore, barbeariaId: string, uid: string, cb: (d: EquipePrivado) => void): Unsubscribe {
+  return onSnapshot(doc(db, 'barbearias', barbeariaId, 'equipePrivado', uid), s => cb((s.data() ?? {}) as EquipePrivado), () => cb({}));
+}
+
+/** O telefone que o barbeiro salva no perfil vale para o dono de cada casa onde ele atende. */
+export async function telefoneNaEquipe(db: Firestore, barbearias: string[], uid: string, telefone: string) {
+  await Promise.all(barbearias.map(bid =>
+    setDoc(doc(db, 'barbearias', bid, 'equipePrivado', uid), { telefone }, { merge: true }).catch(() => undefined)));
+}
+
+/** Foto e capa do cartão do barbeiro (o dono também pode trocar). */
+export async function atualizarCartaoBarbeiro(db: Firestore, barbeariaId: string, uid: string, campos: { fotoUrl?: string; bannerUrl?: string }) {
+  await updateDoc(doc(db, 'barbearias', barbeariaId, 'barbeiros', uid), campos);
+  esquecer(`casa:${barbeariaId}`);
+}
+
 export async function listarServicos(db: Firestore, barbeariaId: string) {
   const s = await getDocs(query(collection(db, 'barbearias', barbeariaId, 'servicos'), where('ativo', '==', true)));
   return s.docs.map(d => d.data() as Servico);
@@ -342,7 +361,7 @@ export async function excluirBarbearia(db: Firestore, barbeariaId: string, donoU
     }
   }
   // Equipe por último: as regras de cardápio e folgas ainda olham quem é da casa.
-  for (const sub of ['servicos', 'bloqueios', 'motivosFolga']) {
+  for (const sub of ['servicos', 'bloqueios', 'motivosFolga', 'equipePrivado']) {
     const docs = (await getDocs(collection(db, 'barbearias', barbeariaId, sub))).docs;
     for (let i = 0; i < docs.length; i += 400) {
       const lote = writeBatch(db);

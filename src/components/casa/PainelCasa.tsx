@@ -9,7 +9,7 @@ import { criarConvite, definirBarbeiroAtivo, linksDeRota } from '../../services/
 import { LIMITE_TESTE, cabeMaisUm } from '../../lib/planos';
 import { PainelDono } from './PainelDono';
 import { db } from '../../services/firebase';
-import { colors, radius, space, type, sobreFoto } from '../../theme';
+import { colors, minTouch, radius, space, type, sobreFoto } from '../../theme';
 import type { Barbearia, Barbeiro } from '../../types/models';
 
 export function PainelCasa({ b, equipe, ehDono, uid }: { b: Barbearia; equipe: Barbeiro[]; ehDono: boolean; uid: string }) {
@@ -87,13 +87,18 @@ export function PainelCasa({ b, equipe, ehDono, uid }: { b: Barbearia; equipe: B
         ) : null}
         {equipe.map(m => (
           <View key={m.uid} style={{ flexDirection: 'row', alignItems: 'center', gap: space(3), opacity: m.ativo ? 1 : 0.5 }}>
-            {m.fotoUrl
-              ? <Image source={{ uri: m.fotoUrl }} style={{ width: 44, height: 44, borderRadius: 22 }} />
-              : <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surfaceRaised }} />}
-            <View style={{ flex: 1 }}>
-              <Text style={type.body}>{m.apelido || m.nome}{m.uid === b.donoUid ? ' · dono' : ''}</Text>
-              <Text style={type.caption}>{m.nota.total ? `★ ${m.nota.media.toFixed(1).replace('.', ',')}` : 'Sem avaliações ainda'}</Text>
-            </View>
+            {/* Ficha do barbeiro: o dono abre a de todos; o barbeiro, só a própria. */}
+            <Pressable disabled={!ehDono && m.uid !== uid} onPress={() => router.push({ pathname: '/equipe/[uid]', params: { uid: m.uid } })}
+              accessibilityRole="button" accessibilityLabel={`Ficha de ${m.apelido || m.nome}`}
+              style={({ pressed }) => ({ flex: 1, flexDirection: 'row', alignItems: 'center', gap: space(3), minHeight: minTouch, opacity: pressed ? 0.7 : 1 })}>
+              {m.fotoUrl
+                ? <Image source={{ uri: m.fotoUrl }} style={{ width: 44, height: 44, borderRadius: 22 }} />
+                : <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surfaceRaised }} />}
+              <View style={{ flex: 1 }}>
+                <Text style={type.body}>{m.apelido || m.nome}{m.uid === b.donoUid ? ' · dono' : ''}</Text>
+                <Text style={type.caption}>{ehDono || m.uid === uid ? 'Ver ficha e avaliações' : m.ativo ? 'Na agenda' : 'Fora da agenda'}</Text>
+              </View>
+            </Pressable>
             {ehDono && m.uid !== b.donoUid ? (
               <Interruptor value={m.ativo} rotulo={`Barbeiro ${m.nome} ativo`} onValueChange={v => {
                 if (v && cheia) { setErro('A equipe está completa no seu plano. Desligue alguém ou mude de plano.'); return; }

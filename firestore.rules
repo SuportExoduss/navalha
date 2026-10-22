@@ -155,6 +155,16 @@ service cloud.firestore {
           && request.resource.data.keys().hasOnly(['barbeiroId', 'motivo'])
           && request.resource.data.motivo is string && request.resource.data.motivo.size() <= 100;
       }
+      // Dados do barbeiro que não podem ir no documento público dele: telefone (o barbeiro grava) e a nota das
+      // avaliações dos clientes (só o Worker). Leem o dono e o próprio barbeiro.
+      match /equipePrivado/{uid} {
+        allow read: if ehDono(bid) || (ehBarbeiro(bid) && eu() == uid);
+        allow create: if ehBarbeiro(bid) && eu() == uid && request.resource.data.keys().hasOnly(['telefone'])
+          && request.resource.data.telefone is string && request.resource.data.telefone.size() <= 15;
+        allow update: if ehBarbeiro(bid) && eu() == uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['telefone'])
+          && request.resource.data.telefone is string && request.resource.data.telefone.size() <= 15;
+        allow delete: if ehDono(bid);
+      }
     }
 
     // ---------- Assinatura ----------
