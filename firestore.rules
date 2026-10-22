@@ -288,9 +288,10 @@ service cloud.firestore {
              && request.resource.data.diff(ag()).affectedKeys().hasOnly(['status', 'atualizadoEm', 'fotosAprovadas', 'cancelamento'])
              && cancelamentoOk('cliente'))
           || (ag().clienteUid == eu() && request.resource.data.diff(ag()).affectedKeys().hasOnly(['fotosAprovadas', 'atualizadoEm']))
-          // Exclusão de conta (LGPD): o cliente apaga o próprio nome do histórico da barbearia.
+          // Exclusão de conta (LGPD): o cliente apaga o próprio nome e o telefone do histórico da barbearia.
           || (ag().clienteUid == eu() && request.resource.data.clienteNome == 'Cliente removido'
-             && request.resource.data.diff(ag()).affectedKeys().hasOnly(['clienteNome', 'atualizadoEm']))
+             && !('clienteTelefone' in request.resource.data)
+             && request.resource.data.diff(ag()).affectedKeys().hasOnly(['clienteNome', 'clienteTelefone', 'atualizadoEm']))
           || (daCasaParaEste(ag()) && ag().status != 'cancelado'
              && request.resource.data.status in ['confirmado', 'concluido', 'faltou', 'cancelado']
              && cancelamentoOk('casa'))

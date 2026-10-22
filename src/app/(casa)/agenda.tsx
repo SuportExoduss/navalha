@@ -12,6 +12,7 @@ import { Encaixe } from '../../components/agenda/Encaixe';
 import { PainelNotificacoes } from '../../components/agenda/PainelNotificacoes';
 import { avisarAgendamento } from '../../services/avisos';
 import { NotaDoCliente } from '../../components/agenda/NotaDoCliente';
+import { LembrarNoWhatsapp } from '../../components/agenda/LembrarNoWhatsapp';
 import { AvaliarCliente } from '../../components/agenda/Avaliar';
 import { useAuth } from '../../auth/AuthProvider';
 import { useMinhaBarbearia } from '../../hooks/useMinhaBarbearia';
@@ -222,6 +223,7 @@ function ItemAgenda({ a, barbeiro, uid, lista }: { a: Agendamento; barbeiro?: st
           </View>
         </View>
       ) : null}
+      {ativo && !confirmarCancelamento && !concluindo ? <LembrarNoWhatsapp a={a} uid={uid} /> : null}
       {/* Depois do corte, da falta ou do cancelamento do cliente: avaliar é opcional. */}
       {!ativo && a.clienteUid ? <AvaliarCliente a={a} abrirJa={acabouDeFinalizar} /> : null}
       {ocupado && !confirmarCancelamento && !concluindo ? <Aviso texto="Salvando…" /> : null}

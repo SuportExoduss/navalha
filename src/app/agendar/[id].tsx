@@ -101,7 +101,7 @@ export default function Agendar() {
     try {
       const agendamentoId = await reservar(db, {
         barbeariaId: b.id, barbeariaNome: b.nome, barbeiroId: barbeiro!.uid, barbeiroNome: nomeBarbeiro,
-        servico, cliente: { uid: perfil.uid, nome: perfil.apelido || perfil.nome },
+        servico, cliente: { uid: perfil.uid, nome: perfil.apelido || perfil.nome, ...(perfil.telefone ? { telefone: perfil.telefone } : {}) },
         inicio: escolhido, passoMin: b.passoMin, origem: 'app',
       });
       registrarEvento(db, { tipo: 'agendou', uid: perfil.uid, barbeariaId: b.id, duracaoMs: Date.now() - abriuEm.current, em: Date.now() });

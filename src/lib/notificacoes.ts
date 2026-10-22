@@ -14,6 +14,9 @@ export interface Notificacao {
   titulo: string;
   corpo: string;
   agendamentoId?: string;
+  /** Do agendamento (avisos de 22/out em diante): o painel mostra "Lembrar no WhatsApp" ao barbeiro do horário. */
+  barbeiroId?: string;
+  inicio?: Millis;
   em: Millis;
   lida: boolean;
 }

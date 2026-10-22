@@ -2,7 +2,7 @@
 // o agendamento e um documento de ocupação por bloco de horário.
 // Se qualquer bloco já existir, a transação aborta e nada é gravado.
 import {
-  addDoc, collection, doc, getDocs, limit, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc,
+  addDoc, collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc,
   where, updateDoc, writeBatch, type Firestore, type Unsubscribe,
 } from 'firebase/firestore';
 import {
@@ -22,7 +22,8 @@ export interface NovaReserva {
   barbeariaNome?: string;
   barbeiroNome?: string;
   servico: Pick<Servico, 'id' | 'nome' | 'precoCentavos' | 'duracaoMin'>;
-  cliente: { uid: string | null; nome: string };
+  /** Telefone (WhatsApp) do perfil do cliente: o barbeiro do horário pode mandar um lembrete. */
+  cliente: { uid: string | null; nome: string; telefone?: string };
   inicio: number;
   passoMin: number;
   origem: 'app' | 'balcao';
@@ -47,6 +48,7 @@ export async function reservar(db: Firestore, r: NovaReserva): Promise<string> {
       ...(r.barbeiroNome ? { barbeiroNome: r.barbeiroNome } : {}),
       clienteUid: r.cliente.uid,
       clienteNome: r.cliente.nome,
+      ...(r.cliente.telefone ? { clienteTelefone: r.cliente.telefone } : {}),
       servicoId: r.servico.id,
       servicoNome: r.servico.nome,
       precoCentavos: r.servico.precoCentavos,
@@ -91,6 +93,11 @@ export async function cancelar(
 export async function iniciarCorte(db: Firestore, id: string) {
   const agora = Date.now();
   await updateDoc(doc(db, 'agendamentos', id), { status: 'confirmado', iniciadoEm: agora, atualizadoEm: agora });
+}
+
+export async function lerAgendamento(db: Firestore, id: string): Promise<Agendamento | null> {
+  const s = await getDoc(doc(db, 'agendamentos', id));
+  return s.exists() ? (s.data() as Agendamento) : null;
 }
 
 export function ouvirAgendamento(db: Firestore, id: string, cb: (a: Agendamento | null) => void): Unsubscribe {

@@ -144,6 +144,8 @@ test('avisos: só quem é do agendamento avisa; os outros lados recebem uma vez;
     const r = await avisarAgendamento(db, 't', 'p', 'ana', 'a1', agora);
     assert.deepEqual(r.corpo, { enviados: 2 });
     assert.equal((docs.get('notificacoes/a1_agendado_dono') as { corpo: string }).corpo.includes('com Lucas'), true);
+    const n = docs.get('notificacoes/a1_agendado_lucas') as { barbeiroId: string; inicio: number };
+    assert.deepEqual([n.barbeiroId, n.inicio], ['lucas', agora + 86_400_000]); // o painel do barbeiro mostra "Lembrar no WhatsApp"
     assert.deepEqual(pushes, ['tk-lucas']); // o dono não tem token: fica só no painel
     assert.deepEqual((await avisarAgendamento(db, 't', 'p', 'ana', 'a1', agora)).corpo, { enviados: 0 }); // não repete
     assert.equal((await avisarAgendamento(db, 't', 'p', 'ana', 'a1', agora + 60 * 60_000)).status, 409); // velho demais

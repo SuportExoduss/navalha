@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { db } from '../../services/firebase';
 import { marcarLidas, ouvirNotificacoes } from '../../services/notificacoes';
+import { LembrarPelaNotificacao } from './LembrarNoWhatsapp';
 import { quandoChegou, type Notificacao, type TipoNotificacao } from '../../lib/notificacoes';
 import { colors, radius, space, type, sobreFoto } from '../../theme';
 
@@ -75,6 +76,8 @@ export function PainelNotificacoes({ uid, vazio = VAZIO_CASA }: { uid: string; v
                           <Text style={type.caption}>{quandoChegou(n.em, Date.now())}</Text>
                         </View>
                         <Text style={[type.caption, { color: colors.text, lineHeight: 20 }]}>{n.corpo}</Text>
+                        {n.tipo === 'agendado' && n.agendamentoId && n.barbeiroId === uid && (n.inicio ?? 0) > Date.now()
+                          ? <View style={{ marginTop: space(2) }}><LembrarPelaNotificacao agendamentoId={n.agendamentoId} uid={uid} /></View> : null}
                       </View>
                     </View>
                   );

@@ -1,5 +1,5 @@
 import {
-  collection, deleteDoc, doc, getDocs, onSnapshot, query, setDoc, updateDoc, where,
+  collection, deleteDoc, deleteField, doc, getDocs, onSnapshot, query, setDoc, updateDoc, where,
   type Firestore, type Unsubscribe,
 } from 'firebase/firestore';
 import { deleteUser, type User } from 'firebase/auth';
@@ -73,7 +73,7 @@ export async function excluirConta(db: Firestore, user: User, agora = Date.now()
     // Só o que ainda não começou: a regra não deixa o cliente cancelar horário em andamento (SEC-004).
     if (['reservado', 'confirmado'].includes(a.status) && a.inicio > agora) await cancelar(db, a, { por: 'cliente', motivo: 'Conta excluída' });
     if (a.clienteNome !== NOME_REMOVIDO) {
-      await updateDoc(doc(db, 'agendamentos', a.id), { clienteNome: NOME_REMOVIDO, atualizadoEm: agora });
+      await updateDoc(doc(db, 'agendamentos', a.id), { clienteNome: NOME_REMOVIDO, clienteTelefone: deleteField(), atualizadoEm: agora });
     }
   }
   await deleteDoc(doc(db, 'users', user.uid));

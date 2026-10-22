@@ -6,7 +6,7 @@
   "hosting": {
     "site": "navalha",
     "public": "dist",
-    "ignore": ["firebase.json", "**/.*"],
+    "ignore": ["firebase.json", "**/node_modules/**"],
     "rewrites": [{ "source": "**", "destination": "/index.html" }],
     "headers": [
       { "source": "/_expo/**", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] },

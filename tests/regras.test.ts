@@ -8,7 +8,7 @@ import {
   initializeTestEnvironment, assertFails, assertSucceeds, type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
 import {
-  collection, deleteDoc, doc, getDoc, getDocs, increment, orderBy, query, serverTimestamp, setDoc, updateDoc, runTransaction, where, writeBatch,
+  collection, deleteDoc, deleteField, doc, getDoc, getDocs, increment, orderBy, query, serverTimestamp, setDoc, updateDoc, runTransaction, where, writeBatch,
   type Firestore,
 } from 'firebase/firestore';
 import { chavesOcupacao, paraMillis } from '../src/lib/agenda';
@@ -417,14 +417,18 @@ test('barbeiro atualiza só o resumo do cardápio da casa', async () => {
   await assertFails(updateDoc(doc(dbDe('beto'), 'barbearias/b1'), { 'resumo.precoMin': 1 }));
 });
 
-test('exclusão de conta: cliente cancela e tira o nome do histórico, e só isso', async () => {
-  const id = await reservar(dbDe('ana'), novaReserva('ana', inicio));
+test('exclusão de conta: cliente cancela e tira o nome e o telefone do histórico, e só isso', async () => {
+  const id = await reservar(dbDe('ana'), novaReserva('ana', inicio, { cliente: { uid: 'ana', nome: 'ana', telefone: '15999990000' } }));
   const ref = doc(dbDe('ana'), 'agendamentos', id);
+  assert.equal((await getDoc(doc(dbDe('lucas'), 'agendamentos', id))).data()?.clienteTelefone, '15999990000'); // o barbeiro vê para lembrar
   await assertFails(updateDoc(ref, { clienteNome: 'Outra pessoa', atualizadoEm: 1 }));
+  await assertFails(updateDoc(ref, { clienteTelefone: '11911112222', atualizadoEm: 1 })); // trocar o número por fora, não
+  await assertFails(updateDoc(ref, { clienteNome: NOME_REMOVIDO, clienteTelefone: '1', atualizadoEm: 1 })); // apagar o nome e deixar outro número, não
   await assertFails(updateDoc(doc(dbDe('beto'), 'agendamentos', id), { clienteNome: NOME_REMOVIDO, atualizadoEm: 1 }));
   const ag = (await getDoc(ref)).data()!;
   await assertSucceeds(cancelar(dbDe('ana'), { id, slots: ag.slots }));
-  await assertSucceeds(updateDoc(ref, { clienteNome: NOME_REMOVIDO, atualizadoEm: 1 }));
+  await assertSucceeds(updateDoc(ref, { clienteNome: NOME_REMOVIDO, clienteTelefone: deleteField(), atualizadoEm: 1 }));
+  assert.equal((await getDoc(ref)).data()?.clienteTelefone, undefined);
   await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'users/ana'), { uid: 'ana' }));
   await assertSucceeds(deleteDoc(doc(dbDe('ana'), 'users/ana')));
 });

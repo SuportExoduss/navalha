@@ -37,6 +37,14 @@
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="navalha"/>
       </intent-filter>
+      <!-- Links do site (ex.: lembrete no WhatsApp) abrem o app direto; o Android confere em
+           https://navalha.web.app/.well-known/assetlinks.json (mesmo intentFilters do app.json). -->
+      <intent-filter android:autoVerify="true">
+        <action android:name="android.intent.action.VIEW"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <category android:name="android.intent.category.BROWSABLE"/>
+        <data android:scheme="https" android:host="navalha.web.app"/>
+      </intent-filter>
     </activity>
   </application>
 </manifest>

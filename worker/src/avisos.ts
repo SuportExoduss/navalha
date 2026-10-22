@@ -43,7 +43,9 @@ export async function avisarAgendamento(db: Firestore, tokenSA: string, projectI
   const dados = ag as Parameters<typeof textoAviso>[1];
   const notifs = novos.map(p => {
     const t = tipo === 'avaliar' ? textoPedidoAvaliacao(dados) : textoAviso(tipo, dados, agora, papel(p));
-    return { id: idAviso(agendamentoId, tipo, p), paraUid: p, barbeariaId: ag.barbeariaId as string, tipo, ...t, agendamentoId, em: agora, lida: false };
+    // Barbeiro e horário: o painel mostra "Lembrar no WhatsApp" só ao barbeiro do horário, sem ler o agendamento.
+    return { id: idAviso(agendamentoId, tipo, p), paraUid: p, barbeariaId: ag.barbeariaId as string, tipo, ...t, agendamentoId,
+      barbeiroId: ag.barbeiroId as string, inicio: ag.inicio as number, em: agora, lida: false };
   });
   await db.escrever([
     ...notifs.map(n => ({ caminho: `notificacoes/${n.id}`, criar: true, campos: n as Record<string, unknown> })),
