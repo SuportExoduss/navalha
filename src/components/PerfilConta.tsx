@@ -1,10 +1,10 @@
 // Perfil compartilhado por cliente e barbearia: foto, nome, apelido, telefone,
 // modo ativo, aparência (tema), trocar conta Google e excluir a conta.
 import { useEffect, useState } from 'react';
-import { Image, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { Image, Platform, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Aviso, Botao, Cartao, Chip, Linha, Secao, Tela, Titulo } from './ui';
+import { Aviso, Botao, Campo, Cartao, Chip, Linha, Secao, Tela, Titulo } from './ui';
 import { AceitarConvite } from './casa/AceitarConvite';
 import { useAuth } from '../auth/AuthProvider';
 import { auth, db } from '../services/firebase';
@@ -58,8 +58,6 @@ export function PerfilConta() {
 
   async function sair() { await sairDoGoogle(); router.replace('/entrar'); }
 
-  const campo = { minHeight: 48, color: colors.text, fontSize: 15, backgroundColor: colors.surfaceRaised, borderRadius: radius.input, paddingHorizontal: space(4), borderWidth: 1, borderColor: colors.border };
-
   return (
     <Tela>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space(4) }}>
@@ -79,12 +77,10 @@ export function PerfilConta() {
 
       <Cartao style={{ gap: space(3) }}>
         <Text style={type.heading}>Seus dados</Text>
-        <Text style={type.caption}>Nome</Text>
-        <TextInput value={nome} onChangeText={setNome} style={campo} />
-        <Text style={type.caption}>Apelido (como o barbeiro vai te chamar)</Text>
-        <TextInput value={apelido} onChangeText={setApelido} style={campo} placeholder="Ex.: Dedé" placeholderTextColor={colors.textMuted} />
-        <Text style={type.caption}>WhatsApp (a barbearia usa só para falar sobre seus horários)</Text>
-        <TextInput value={telefone} onChangeText={setTelefone} style={campo} keyboardType="phone-pad" placeholder="(15) 99999-0000" placeholderTextColor={colors.textMuted} />
+        <Campo rotulo="Nome" value={nome} onChangeText={setNome} />
+        <Campo rotulo="Apelido (como o barbeiro vai te chamar)" value={apelido} onChangeText={setApelido} placeholder="Ex.: Dedé" />
+        <Campo rotulo="WhatsApp (a barbearia usa só para falar sobre seus horários)" value={telefone} onChangeText={setTelefone}
+          keyboardType="phone-pad" placeholder="(15) 99999-0000" />
         {erro ? <Aviso texto={erro} tom="erro" /> : null}
         <Botao titulo={salvo ? 'Salvo' : 'Salvar'} onPress={salvar} carregando={salvando} />
       </Cartao>

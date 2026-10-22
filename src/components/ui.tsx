@@ -85,13 +85,17 @@ export function Titulo({ children, destaque }: { children: ReactNode; destaque?:
 }
 
 export function Campo({ rotulo, dica, ...p }: TextInputProps & { rotulo: string; dica?: string }) {
+  const [foco, setFoco] = useState(false);
   return (
     <View style={{ gap: space(1) }}>
       <Text style={type.caption}>{rotulo}</Text>
       <TextInput
         placeholderTextColor={colors.textMuted}
+        accessibilityLabel={rotulo}
         {...p}
-        style={[s.campo, p.multiline && { minHeight: 88, paddingTop: space(3), textAlignVertical: 'top' }, p.style]}
+        onFocus={e => { setFoco(true); p.onFocus?.(e); }}
+        onBlur={e => { setFoco(false); p.onBlur?.(e); }}
+        style={[s.campo, foco && s.campoFoco, p.multiline && { minHeight: 88, paddingTop: space(3), textAlignVertical: 'top' }, p.style]}
       />
       {dica ? <Text style={[type.caption, { fontSize: 12 }]}>{dica}</Text> : null}
     </View>
@@ -114,7 +118,6 @@ export function CampoBusca({ value, onChangeText, placeholder }: { value: string
         accessibilityLabel={placeholder}
         onFocus={() => setFoco(true)}
         onBlur={() => setFoco(false)}
-        // "solid" com largura 0: o Chrome usa "auto" e aí ignora a largura.
         style={{ flex: 1, minHeight: 48, color: colors.text, fontSize: 15, outlineStyle: 'solid', outlineWidth: 0 }}
       />
     </View>
@@ -187,8 +190,12 @@ const s = {
   get chipTexto() { return { color: colors.text, fontSize: 14 }; },
   get campo() {
     return { minHeight: 48, color: colors.text, fontSize: 15, backgroundColor: colors.surfaceRaised,
-      borderRadius: radius.input, paddingHorizontal: space(4), borderWidth: 1, borderColor: colors.border };
+      borderRadius: radius.input, paddingHorizontal: space(4), borderWidth: 1, borderColor: colors.border,
+      // "solid" com largura 0: o Chrome usa "auto" e aí ignora a largura (o anel ficava por dentro da caixa).
+      outlineStyle: 'solid' as const, outlineWidth: 0 };
   },
+  // Foco igual ao da busca: a borda da caixa fica âmbar.
+  get campoFoco() { return { borderColor: colors.accent }; },
   get cartao() { return { backgroundColor: colors.surface, borderRadius: radius.card, padding: space(4), borderWidth: 1, borderColor: colors.border }; },
 };
 
