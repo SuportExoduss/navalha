@@ -36,7 +36,7 @@ O resultado completo da rodada pelo adb está no fim deste arquivo; o que falta 
 ## 4. Cliente: achar e reservar
 - [ ] Início → permitir localização → a barbearia aparece em "Perto de você"
 - [ ] Explorar → filtros de distância, preço, tipo de corte, "aberta agora", "atende hoje" → a lista muda certo
-- [ ] ✅ Página da barbearia → corte → horário → Confirmar = 3 toques → "Horário reservado"
+- [ ] ✅ Página da barbearia → barbeiro → corte → horário → Confirmar (3 passos) → "Horário reservado"
 - [ ] O horário reservado some da grade para outro cliente (testar com a 2ª conta no mesmo horário)
 - [ ] **Dois celulares, mesmo horário, confirmar ao mesmo tempo** → só um consegue; o outro vê "acabou de ser ocupado"
 - [ ] Botões Google Maps, Waze e WhatsApp da barbearia abrem os apps certos

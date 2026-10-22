@@ -1,13 +1,13 @@
 // Início do cliente: localização atual → barbearias mais próximas.
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Cartao, Chip, SemSinal, Tela, Titulo, FalhaAoCarregar } from '../../components/ui';
+import { CampoBusca, Cartao, Chip, SemSinal, Tela, Titulo, FalhaAoCarregar } from '../../components/ui';
 import { CardBarbearia } from '../../components/CardBarbearia';
 import { useBarbeariasPerto } from '../../hooks/useBarbeariasPerto';
 import { FILTROS_PADRAO, filtrarBarbearias, type Filtros } from '../../lib/busca';
-import { colors, radius, space, type } from '../../theme';
+import { colors, space, type } from '../../theme';
 
 // Atalhos rápidos; os filtros completos ficam na aba Explorar.
 const ATALHOS: { rotulo: string; filtro: Partial<Filtros> }[] = [
@@ -24,6 +24,7 @@ export default function Inicio() {
   const { loc, negada, semSinal, tentarDeNovo, lista, erro, recarregar } = useBarbeariasPerto();
   const [atalho, setAtalho] = useState(0);
   const [busca, setBusca] = useState('');
+  const { height: altura } = useWindowDimensions();
 
   const filtrada = filtrarBarbearias(lista ?? [], { ...FILTROS_PADRAO, ...ATALHOS[atalho].filtro, texto: busca }, Date.now());
 
@@ -41,18 +42,10 @@ export default function Inicio() {
         </View>
       </View>
 
-      <Titulo destaque="mais perto de você.">{'Seu próximo corte\n'}</Titulo>
+      {/* Tela baixa (Android pequeno): sem o título grande, para a lista aparecer sem rolar. */}
+      {altura >= 700 ? <Titulo destaque="mais perto de você.">{'Seu próximo corte\n'}</Titulo> : null}
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space(2), backgroundColor: colors.surface, borderRadius: radius.input, paddingHorizontal: space(4), borderWidth: 1, borderColor: colors.border }}>
-        <Ionicons name="search" size={18} color={colors.textMuted} />
-        <TextInput
-          value={busca}
-          onChangeText={setBusca}
-          placeholder="Buscar por nome ou bairro…"
-          placeholderTextColor={colors.textMuted}
-          style={{ flex: 1, minHeight: 48, color: colors.text, fontSize: 15 }}
-        />
-      </View>
+      <CampoBusca value={busca} onChangeText={setBusca} placeholder="Buscar por nome ou bairro…" />
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space(2) }}>
         {ATALHOS.map((a, i) => <Chip key={a.rotulo} rotulo={a.rotulo} ativo={i === atalho} onPress={() => setAtalho(i)} />)}

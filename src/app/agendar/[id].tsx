@@ -3,7 +3,7 @@
 // A grade escuta a ocupação em tempo real; a trava contra horário duplo continua em reservar()
 // (se dois confirmarem no mesmo instante, só um passa e o outro vê o aviso).
 import { useEffect, useRef, useState } from 'react';
-import { Image, Modal, Pressable, Text, View } from 'react-native';
+import { Modal, Pressable, Text, View } from 'react-native';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -134,18 +134,9 @@ export default function Agendar() {
     <Tela>
       <Voltar />
       <Etapa numero={1} titulo={`Barbeiro: ${nomeBarbeiro}`} feito />
-      <Etapa numero={2} titulo={`Corte: ${servico.nome}`} feito />
+      {/* Duração e preço na própria etapa: o cartão de resumo repetia barbeiro e corte e empurrava os horários para baixo. */}
+      <Etapa numero={2} titulo={`Corte: ${servico.nome}`} dica={`${servico.duracaoMin} min · ${formatarPreco(servico.precoCentavos)} · ${b.nome}`} feito />
       <Etapa numero={3} titulo="Escolha o dia e o horário" dica="Toque no horário para confirmar." />
-      <Cartao style={{ flexDirection: 'row', gap: space(3), alignItems: 'center' }}>
-        {servico.fotos[0]
-          ? <Image source={{ uri: servico.fotos[0] }} style={{ width: 64, height: 80, borderRadius: radius.input }} />
-          : <View style={{ width: 64, height: 80, borderRadius: radius.input, backgroundColor: colors.surfaceRaised }} />}
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text style={type.heading}>{servico.nome}</Text>
-          <Text style={type.caption}>com {nomeBarbeiro} · {b.nome}</Text>
-          <Text style={type.caption}>{servico.duracaoMin} min · <Text style={{ color: colors.accent, fontWeight: '600' }}>{formatarPreco(servico.precoCentavos)}</Text></Text>
-        </View>
-      </Cartao>
 
       <Secao titulo="Dia">
         <SeletorDia dias={dias} hoje={hoje} valor={dia} onChange={setDia} />

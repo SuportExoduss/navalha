@@ -30,7 +30,7 @@ export default function Entrar() {
       <View style={{ flex: 1, justifyContent: 'center', gap: space(6) }}>
         <View style={{ gap: space(2) }}>
           <Text style={[type.caption, { letterSpacing: 4, color: colors.accent }]}>NAVALHA</Text>
-          <Titulo destaque="em 3 toques.">Seu próximo corte, </Titulo>
+          <Titulo destaque="em 3 passos.">Seu próximo corte, </Titulo>
           <Text style={type.caption}>Barbearias perto de você, corte escolhido pela foto e horário garantido.</Text>
         </View>
         <Botao

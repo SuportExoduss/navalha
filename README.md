@@ -1,6 +1,6 @@
 # Navalha
 
-App de agendamento para barbearias: cliente acha a barbearia mais perto, escolhe o corte pela foto e agenda em 3 toques.
+App de agendamento para barbearias: cliente acha a barbearia mais perto, escolhe o corte pela foto e agenda em 3 passos (barbeiro, corte e horário).
 Stack custo zero: **Expo (React Native) + Firebase (plano Spark) + Cloudflare R2/Workers**.
 
 Estado atual: **Fase 1 (MVP) com os 4 sprints de código concluídos** — falta ligar os serviços reais e testar em celular. Roadmap em `docs/roadmap.md`, andamento em `docs/status.md`.

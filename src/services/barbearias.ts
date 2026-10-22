@@ -64,8 +64,13 @@ export function geoDe(lat: number, lng: number) {
 }
 
 export async function lerBarbearia(db: Firestore, id: string) {
-  const s = await getDoc(doc(db, 'barbearias', id));
-  return s.exists() ? (s.data() as Barbearia) : null;
+  // Casa que não existe ou saiu do ar (despublicada, plano vencido): as regras recusam a leitura.
+  // Para quem vê de fora é o mesmo que não existir; erro de conexão segue sendo erro.
+  const s = await getDoc(doc(db, 'barbearias', id)).catch((e: { code?: string }) => {
+    if (e?.code === 'permission-denied') return null;
+    throw e;
+  });
+  return s?.exists() ? (s.data() as Barbearia) : null;
 }
 
 export function ouvirBarbearia(db: Firestore, id: string, cb: (b: Barbearia | null) => void): Unsubscribe {
@@ -96,8 +101,13 @@ export function ouvirServicosDoBarbeiro(
 /** Página pública da casa e o agendar usam os mesmos dados: lidos uma vez e guardados 5 min. */
 export function dadosDaCasa(db: Firestore, id: string, { forcar = false } = {}) {
   return lembrar(`casa:${id}`, async () => {
-    const [barbearia, equipe, servicos] = await Promise.all([lerBarbearia(db, id), listarBarbeiros(db, id), listarServicos(db, id)]);
-    return { barbearia, equipe, servicos };
+    const [barbearia, equipe, servicos] = await Promise.allSettled([lerBarbearia(db, id), listarBarbeiros(db, id), listarServicos(db, id)]);
+    if (barbearia.status === 'rejected') throw barbearia.reason;
+    // Casa que não existe: as regras recusam listar equipe e cardápio dela, e isso não é falha de conexão.
+    if (!barbearia.value) return { barbearia: null, equipe: [], servicos: [] };
+    if (equipe.status === 'rejected') throw equipe.reason;
+    if (servicos.status === 'rejected') throw servicos.reason;
+    return { barbearia: barbearia.value, equipe: equipe.value, servicos: servicos.value };
   }, { forcar });
 }
 

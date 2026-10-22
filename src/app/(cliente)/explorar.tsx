@@ -1,12 +1,11 @@
 // Explorar: busca por perto com todos os filtros (ordem, raio, preço, tipo de corte, horário).
 import { useState } from 'react';
-import { ActivityIndicator, Text, TextInput, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { Cartao, Chip, Interruptor, Secao, SemSinal, Tela, Titulo, FalhaAoCarregar } from '../../components/ui';
+import { ActivityIndicator, Text, View } from 'react-native';
+import { CampoBusca, Cartao, Chip, Interruptor, Secao, SemSinal, Tela, Titulo, FalhaAoCarregar } from '../../components/ui';
 import { CardBarbearia } from '../../components/CardBarbearia';
 import { useBarbeariasPerto } from '../../hooks/useBarbeariasPerto';
 import { FILTROS_PADRAO, RAIOS, contarFiltros, filtrarBarbearias, type FaixaPreco, type Filtros } from '../../lib/busca';
-import { colors, radius, space, type } from '../../theme';
+import { colors, space, type } from '../../theme';
 import type { Servico } from '../../types/models';
 
 const PRECOS: { id: FaixaPreco; rotulo: string }[] = [
@@ -26,11 +25,7 @@ export default function Explorar() {
   return (
     <Tela>
       <Titulo>Explorar</Titulo>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space(2), backgroundColor: colors.surface, borderRadius: radius.input, paddingHorizontal: space(4), borderWidth: 1, borderColor: colors.border }}>
-        <Ionicons name="search" size={18} color={colors.textMuted} />
-        <TextInput value={f.texto} onChangeText={texto => mudar({ texto })} placeholder="Nome, rua ou bairro…"
-          placeholderTextColor={colors.textMuted} style={{ flex: 1, minHeight: 48, color: colors.text, fontSize: 15 }} />
-      </View>
+      <CampoBusca value={f.texto} onChangeText={texto => mudar({ texto })} placeholder="Nome, rua ou bairro…" />
 
       <Secao titulo="Ordem">
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space(2) }}>

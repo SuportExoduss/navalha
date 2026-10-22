@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
   ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Switch, Text, TextInput, View,
   type PressableProps, type StyleProp, type TextInputProps, type ViewStyle,
@@ -94,6 +94,29 @@ export function Campo({ rotulo, dica, ...p }: TextInputProps & { rotulo: string;
         style={[s.campo, p.multiline && { minHeight: 88, paddingTop: space(3), textAlignVertical: 'top' }, p.style]}
       />
       {dica ? <Text style={[type.caption, { fontSize: 12 }]}>{dica}</Text> : null}
+    </View>
+  );
+}
+
+/** Busca com lupa (início e explorar). O foco aparece na borda da caixa; na web o anel do navegador
+ *  ficava por dentro, colado no texto e cortado à direita. */
+export function CampoBusca({ value, onChangeText, placeholder }: { value: string; onChangeText: (t: string) => void; placeholder: string }) {
+  const [foco, setFoco] = useState(false);
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space(2), backgroundColor: colors.surface, borderRadius: radius.input,
+      paddingHorizontal: space(4), borderWidth: 1, borderColor: foco ? colors.accent : colors.border }}>
+      <Ionicons name="search" size={18} color={colors.textMuted} />
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={colors.textMuted}
+        accessibilityLabel={placeholder}
+        onFocus={() => setFoco(true)}
+        onBlur={() => setFoco(false)}
+        // "solid" com largura 0: o Chrome usa "auto" e aí ignora a largura.
+        style={{ flex: 1, minHeight: 48, color: colors.text, fontSize: 15, outlineStyle: 'solid', outlineWidth: 0 }}
+      />
     </View>
   );
 }

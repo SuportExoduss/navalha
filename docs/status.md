@@ -69,6 +69,10 @@ Requisitos da Google Play: `docs/publicar-google-play.md`. Pacote definitivo `co
 - [x] Testes: 26 de lógica, 22 de regras, 5 do Worker, typecheck e 2 roteiros no navegador (tests/e2e)
 - [x] Portão "fluxo inteiro em 3 toques": na página da barbearia, corte → horário → confirmar = 3 toques (medido no navegador)
 - [x] O mesmo fluxo num celular Android real (18/out; desde 20/out são 3 telas: barbeiro → corte → horário + confirmação)
+  - 21/out: a promessa do login virou "em 3 passos" (são 4 toques a partir da barbearia: barbeiro, corte, horário, confirmar)
+- [x] Dogfood na web (21/out, relatório local em `dogfood-output/`, fora do git): 5 achados médios corrigidos e conferidos
+  no navegador (3 passos, tela pequena, página de rota inexistente, barbearia não encontrada, foco da busca); os 6 baixos seguem abertos.
+  Build de teste contra o emulador: passar também `EXPO_PUBLIC_WORKER_URL=http://127.0.0.1:9` para não chamar o Worker real.
 - [ ] Push real: testar no celular com o APK local (o envio pelo FCM já está publicado no Worker)
 
 ## Segurança (auditoria /codesec de 18/out/2026)

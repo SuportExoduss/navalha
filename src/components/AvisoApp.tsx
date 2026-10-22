@@ -28,13 +28,13 @@ export function AvisoApp() {
   }
 
   return (
-    <View accessibilityRole="alert" style={{ flexDirection: 'row', alignItems: 'center', gap: space(3), padding: space(3),
+    // Uma linha só: em celular pequeno o aviso de duas linhas tirava um quinto da tela de todas as telas.
+    <View accessibilityRole="alert" style={{ flexDirection: 'row', alignItems: 'center', gap: space(3), paddingHorizontal: space(3), paddingVertical: space(2),
       backgroundColor: colors.surfaceRaised, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-      <Image source={require('../../assets/icon.png')} style={{ width: 40, height: 40, borderRadius: radius.input }} accessibilityIgnoresInvertColors />
-      <View style={{ flex: 1 }}>
-        <Text style={[type.body, { fontWeight: '600' }]}>O Navalha funciona melhor no app</Text>
-        <Text style={type.caption}>Lembretes do seu horário e fotos mais rápidas. Grátis na Play Store.</Text>
-      </View>
+      <Image source={require('../../assets/icon.png')} style={{ width: 28, height: 28, borderRadius: radius.input }} accessibilityIgnoresInvertColors />
+      <Text style={[type.caption, { flex: 1, color: colors.text }]} numberOfLines={2}>
+        <Text style={{ fontWeight: '600' }}>Melhor no app:</Text> lembretes do horário.
+      </Text>
       <Pressable onPress={() => Linking.openURL(LINK_PLAY_STORE)} accessibilityRole="link" accessibilityLabel="Baixar o app na Play Store"
         style={{ backgroundColor: colors.accent, borderRadius: radius.chip, paddingHorizontal: space(3), minHeight: 36, justifyContent: 'center' }}>
         <Text style={[type.caption, { color: colors.accentText, fontWeight: '700' }]}>Baixar</Text>
