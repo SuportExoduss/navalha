@@ -57,15 +57,19 @@ export async function avaliar(
     notas.push({ caminho: `notasCliente/${clienteUid}`, criar: true, campos: { media: nota.media, total: nota.total } });
   }
 
+  // A da barbearia é pública (qualquer um lê o documento, não só a tela): só o primeiro nome, sem foto, capa nem uid
+  // do cliente (LGPD, necessidade). As outras ficam entre a casa e o cliente, com o nome todo e a foto.
+  const publica = alvo === 'barbearia';
+  const quemAvaliou = publica ? { clienteNome: nomeCliente.split(' ')[0] } : {
+    clienteUid, autorUid: uid, clienteNome: nomeCliente,
+    ...(perfilCliente?.fotoUrl ? { clienteFotoUrl: perfilCliente.fotoUrl } : {}),
+    ...(perfilCliente?.bannerUrl ? { clienteBannerUrl: perfilCliente.bannerUrl } : {}),
+  };
   await db.escrever([
     { caminho: `avaliacoes/${agendamentoId}_${alvo}`, criar: true, campos: {
-      id: `${agendamentoId}_${alvo}`, agendamentoId, barbeariaId: bid, barbeiroId, clienteUid, alvo, direcao: DIRECAO_DO_ALVO[alvo],
-      // A da barbearia é pública: só o primeiro nome. As outras ficam entre a casa e o cliente.
-      clienteNome: alvo === 'barbearia' ? nomeCliente.split(' ')[0] : nomeCliente,
-      ...(perfilCliente?.fotoUrl ? { clienteFotoUrl: perfilCliente.fotoUrl } : {}),
-      ...(perfilCliente?.bannerUrl ? { clienteBannerUrl: perfilCliente.bannerUrl } : {}),
+      id: `${agendamentoId}_${alvo}`, agendamentoId, barbeariaId: bid, barbeiroId, alvo, direcao: DIRECAO_DO_ALVO[alvo], ...quemAvaliou,
       barbeiroNome: (ag.barbeiroNome as string | undefined) ?? '', servicoNome: (ag.servicoNome as string | undefined) ?? '',
-      inicio: ag.inicio as number, origem: ag.status === 'cancelado' ? 'cancelamento' : 'atendimento', autorUid: uid,
+      inicio: ag.inicio as number, origem: ag.status === 'cancelado' ? 'cancelamento' : 'atendimento',
       estrelas, chips: [], ...(texto ? { comentario: texto } : {}), visivel: true, criadoEm: agora,
     } },
     { caminho: `agendamentos/${agendamentoId}`, campos: { [`avaliacoes.${alvo}`]: { estrelas, em: agora } } },

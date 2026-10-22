@@ -637,7 +637,9 @@ test('avaliações e notas: só o servidor grava; ninguém infla a própria nota
   }));
   const base = { barbeariaId: 'b1', barbeiroId: 'lucas', clienteUid: 'ana', estrelas: 5, visivel: true };
   await env.withSecurityRulesDisabled(async ctx => {
-    await setDoc(doc(ctx.firestore(), 'avaliacoes/v1_barbearia'), { ...base, direcao: 'cliente_para_barbearia', criadoEm: 2 });
+    // A pública não guarda o uid do cliente (qualquer um lê o documento): as listas da casa continuam funcionando sem ele.
+    const { clienteUid: _, ...semUid } = base;
+    await setDoc(doc(ctx.firestore(), 'avaliacoes/v1_barbearia'), { ...semUid, direcao: 'cliente_para_barbearia', criadoEm: 2 });
     await setDoc(doc(ctx.firestore(), 'avaliacoes/o1'), { ...base, direcao: 'cliente_para_barbearia', visivel: false, criadoEm: 1 });
     await setDoc(doc(ctx.firestore(), 'avaliacoes/v1_barbeiro'), { ...base, direcao: 'cliente_para_barbeiro', criadoEm: 3 });
     await setDoc(doc(ctx.firestore(), 'avaliacoes/v1_cliente'), { ...base, direcao: 'barbeiro_para_cliente', criadoEm: 4 });

@@ -150,6 +150,10 @@ Relatório na conversa de 22/out (12 achados, L01–L12; não é parecer jurídi
 - [x] L12 `fotosNoPortfolio` começa desligado
 - [x] Testes: lógica 53, regras 47, Worker 16. Publicado em 22/out: Worker (versão 17f98175), regras + índices e web.
   Conferido no ar: `/conta/excluir` recusa sem token; o site publicado chama a rota nova
+- [x] Avaliação pública (da barbearia) sem foto, capa nem uid do cliente: só o primeiro nome (qualquer um lê o
+  documento); a exclusão de conta acha pelo id. Worker 16, regras 47; Worker publicado em 22/out (versão 8f7979e1).
+  As públicas gravadas antes disso ainda têm esses campos (limpeza única, se precisar)
+- [x] Rascunho da política de privacidade v2 em `.lgpd/policies/privacy-policy-v2-draft.md` (para o advogado)
 - [ ] Dono: testar a exclusão com uma conta descartável (cliente com avaliação e foto de corte) e conferir no console e no R2
 - [ ] Etapa 2 (documentos, depende do dono e de advogado): política v2 (L03), roteiro e registro de incidentes (L06),
   encarregado (L07), aceite dos termos de tratamento de dados do Firebase e da Cloudflare + região do Firestore (L08),

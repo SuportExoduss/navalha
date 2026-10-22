@@ -243,14 +243,15 @@ export interface Avaliacao {
   id: string;
   /** Na da barbearia (pública), só o primeiro nome; nas outras, o nome todo. */
   clienteNome?: string;
-  /** Foto e capa do cliente no momento da avaliação, para a lista mostrar quem avaliou. */
+  /** Foto e capa do cliente no momento da avaliação, para a lista mostrar quem avaliou (nunca na pública). */
   clienteFotoUrl?: string;
   clienteBannerUrl?: string;
   barbeiroNome?: string;
   agendamentoId: string;
   barbeariaId: string;
   barbeiroId: string;
-  clienteUid: string;
+  /** Fica de fora da pública (a da barbearia), que qualquer um lê: a exclusão de conta a acha pelo id. */
+  clienteUid?: string;
   alvo?: AlvoAvaliacao;
   direcao: 'cliente_para_barbeiro' | 'cliente_para_barbearia' | 'barbeiro_para_cliente';
   /** Dia e horário do corte e o serviço (para listar "Degradê · ter 21/10, 15:00"). */

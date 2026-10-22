@@ -218,6 +218,10 @@ test('avaliar: três direções, cada uma de quem pode e uma vez; cada nota no s
   assert.deepEqual([r.notaApp, r.totalAvaliacoesApp], [4.5, 2]);
   assert.ok(r.notaRanking > 4 && r.notaRanking < 5);
   assert.equal((docs.get('avaliacoes/a1_barbearia') as Record<string, unknown>).clienteNome, 'Ana'); // pública: primeiro nome
+  // Pública: qualquer um lê o documento, então nada de foto, capa ou uid do cliente (LGPD).
+  const pub = docs.get('avaliacoes/a1_barbearia') as Record<string, unknown>;
+  for (const campo of ['clienteUid', 'autorUid', 'clienteFotoUrl', 'clienteBannerUrl']) assert.equal(campo in pub, false, campo);
+  assert.equal((docs.get('avaliacoes/a1_barbeiro') as Record<string, unknown>).clienteUid, 'ana'); // a privada continua ligada
 
   // Barbeiro (ou dono) → cliente; a cliente não se avalia. Cancelamento do cliente também vale.
   assert.equal((await avaliar(db, 'ana', 'a1', 'cliente', 5, '', agora)).status, 403);
@@ -282,10 +286,11 @@ test('excluir conta: anonimiza histórico e avaliações, apaga nota, avisos, pe
     ['barbearias/b2/barbeiros/ana', { nome: 'Ana', fotoUrl: 'f', ativo: true }],
     ['barbearias/b3', { donoUid: 'ana' }],
     ['barbearias/b3/barbeiros/ana', { nome: 'Ana', ativo: true }],
+    ['avaliacoes/a1_barbearia', { clienteNome: 'Ana' }], // pública: sem uid, achada pelo id
   ]);
   const consultas: Record<string, { id: string; dados: Record<string, unknown> }[]> = {
     agendamentos: [{ id: 'a1', dados: { barbeariaId: 'b1', barbeiroId: 'lucas', fotos: [foto, 'https://evil/x.webp'] } }],
-    avaliacoes: [{ id: 'a1_barbearia', dados: {} }],
+    avaliacoes: [{ id: 'a1_barbeiro', dados: {} }],
     notificacoes: [{ id: 'n-da-ana', dados: {} }],
   };
   const gravados: { caminho: string; campos: Record<string, unknown> }[] = [];
@@ -310,6 +315,7 @@ test('excluir conta: anonimiza histórico e avaliações, apaga nota, avisos, pe
   const g = (c: string) => gravados.find(w => w.caminho === c)?.campos;
   assert.deepEqual(g('agendamentos/a1'), { clienteNome: 'Cliente removido', clienteTelefone: APAGAR, fotos: [], atualizadoEm: agora });
   assert.deepEqual(g('avaliacoes/a1_barbearia'), { clienteNome: 'Cliente removido', clienteFotoUrl: APAGAR, clienteBannerUrl: APAGAR });
+  assert.deepEqual(g('avaliacoes/a1_barbeiro'), { clienteNome: 'Cliente removido', clienteFotoUrl: APAGAR, clienteBannerUrl: APAGAR });
   assert.deepEqual(g('barbearias/b2/barbeiros/ana'), { nome: 'Barbeiro removido', apelido: APAGAR, fotoUrl: APAGAR, bannerUrl: APAGAR, ativo: false });
   assert.deepEqual(g('barbearias/b2'), { barbeirosAtivos: 2, mudouBarbeiro: 'ana' });
   assert.equal(g('barbearias/b3/barbeiros/ana'), undefined); // dona: a casa dela continua de pé
