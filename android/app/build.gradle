@@ -88,9 +88,11 @@ def chaveUpload = new Properties()
 def arquivoChave = rootProject.file('keystore.properties')
 if (arquivoChave.exists()) arquivoChave.withInputStream { chaveUpload.load(it) }
 // Falha na hora, com o motivo, em vez de gerar um release sem assinatura.
+// O "Generate Signed App Bundle" do Android Studio passa a chave por propriedades injetadas: também vale.
+def assinaturaDoStudio = project.hasProperty('android.injected.signing.store.file')
 gradle.taskGraph.whenReady { grafo ->
     def geraRelease = grafo.allTasks.any { t -> t.project == project && t.name ==~ /(assemble|bundle|package|install)Release/ }
-    if (geraRelease && !arquivoChave.exists()) {
+    if (geraRelease && !arquivoChave.exists() && !assinaturaDoStudio) {
         throw new GradleException('Release precisa de android/keystore.properties (chave de upload, ver docs/publicar-google-play.md). Para testar no celular, gere o debug.')
     }
 }
