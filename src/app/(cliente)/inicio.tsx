@@ -5,6 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { CampoBusca, Cartao, Chip, SemSinal, Tela, Titulo, FalhaAoCarregar } from '../../components/ui';
 import { CardBarbearia } from '../../components/CardBarbearia';
+import { PainelNotificacoes, VAZIO_CLIENTE } from '../../components/agenda/PainelNotificacoes';
+import { useAuth } from '../../auth/AuthProvider';
 import { useBarbeariasPerto } from '../../hooks/useBarbeariasPerto';
 import { FILTROS_PADRAO, filtrarBarbearias, type Filtros } from '../../lib/busca';
 import { colors, space, type } from '../../theme';
@@ -25,6 +27,7 @@ export default function Inicio() {
   const [atalho, setAtalho] = useState(0);
   const [busca, setBusca] = useState('');
   const { height: altura } = useWindowDimensions();
+  const { perfil } = useAuth();
 
   const filtrada = filtrarBarbearias(lista ?? [], { ...FILTROS_PADRAO, ...ATALHOS[atalho].filtro, texto: busca }, Date.now());
 
@@ -40,6 +43,7 @@ export default function Inicio() {
             {negada ? 'Permita a localização' : semSinal ? 'Sem sinal de localização' : loc?.cidade ? [...new Set([loc.bairro, loc.cidade].filter(Boolean))].join(', ') : loc ? 'Perto de você' : 'Localizando…'}
           </Text>
         </View>
+        {perfil ? <PainelNotificacoes uid={perfil.uid} vazio={VAZIO_CLIENTE} /> : null}
       </View>
 
       {/* Tela baixa (Android pequeno): sem o título grande, para a lista aparecer sem rolar. */}

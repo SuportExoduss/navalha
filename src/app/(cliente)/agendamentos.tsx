@@ -11,7 +11,7 @@ import { cancelar, ouvirMeusAgendamentos, registrarEvento } from '../../services
 import { lerBarbearia } from '../../services/barbearias';
 import { cancelamentoGratis, dataLocal, formatarHora, formatarPreco, rotuloDia } from '../../lib/agenda';
 import { avisarAgendamento } from '../../services/avisos';
-import { PainelNotificacoes } from '../../components/agenda/PainelNotificacoes';
+import { PainelNotificacoes, VAZIO_CLIENTE } from '../../components/agenda/PainelNotificacoes';
 import { AvaliarAtendimento } from '../../components/agenda/Avaliar';
 import { colors, space, type } from '../../theme';
 import type { Agendamento } from '../../types/models';
@@ -35,7 +35,7 @@ export default function Agendamentos() {
     <Tela>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <Titulo>Agendamentos</Titulo>
-        <PainelNotificacoes uid={perfil.uid} vazio="Se a barbearia cancelar ou mudar algo no seu horário, avisamos aqui e no celular." />
+        <PainelNotificacoes uid={perfil.uid} vazio={VAZIO_CLIENTE} />
       </View>
       {erro ? <Aviso texto={erro} tom="erro" /> : null}
       <Secao titulo="Próximos">

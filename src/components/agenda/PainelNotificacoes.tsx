@@ -1,4 +1,4 @@
-// Sino (Agenda da casa e Agendamentos do cliente) com o número de não lidas; abre um painel lateral (estilo menu hambúrguer)
+// Sino (Agenda da casa, Início e Agendamentos do cliente) com bolinha quando há não lidas; abre um painel lateral (estilo menu hambúrguer)
 // com os horários marcados, os cancelados e, no dia 1, o resumo do mês. Abrir o painel marca tudo como lido.
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
@@ -13,6 +13,7 @@ const ICONE: Record<TipoNotificacao, keyof typeof Ionicons.glyphMap> = {
   agendado: 'calendar-outline', cancelado: 'close-circle-outline', resumo_mes: 'stats-chart-outline',
 };
 
+export const VAZIO_CLIENTE = 'Se a barbearia cancelar ou mudar algo no seu horário, avisamos aqui e no celular.';
 const VAZIO_CASA = 'Quando um cliente marcar ou cancelar, avisamos aqui e no celular. No dia 1 chega o resumo do mês.';
 
 export function PainelNotificacoes({ uid, vazio = VAZIO_CASA }: { uid: string; vazio?: string }) {
@@ -33,14 +34,13 @@ export function PainelNotificacoes({ uid, vazio = VAZIO_CASA }: { uid: string; v
   return (
     <>
       <Pressable onPress={abrir} hitSlop={8} accessibilityRole="button"
-        accessibilityLabel={naoLidas.length ? `Notificações, ${naoLidas.length} novas` : 'Notificações'}
+        accessibilityLabel={naoLidas.length ? `Notificações, ${naoLidas.length} ${naoLidas.length === 1 ? 'nova' : 'novas'}` : 'Notificações'}
         style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
         <Ionicons name={naoLidas.length ? 'notifications' : 'notifications-outline'} size={24} color={naoLidas.length ? colors.accent : colors.text} />
+        {/* Bolinha discreta; quantas são novas vai no rótulo de acessibilidade. */}
         {naoLidas.length ? (
-          <View style={{ position: 'absolute', top: 4, right: 2, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9,
-            backgroundColor: colors.danger, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ color: sobreFoto.texto, fontSize: 11, fontWeight: '700' }}>{naoLidas.length > 9 ? '9+' : naoLidas.length}</Text>
-          </View>
+          <View style={{ position: 'absolute', top: 9, right: 9, width: 10, height: 10, borderRadius: radius.chip,
+            backgroundColor: colors.danger, borderWidth: 2, borderColor: colors.bg }} />
         ) : null}
       </Pressable>
 
