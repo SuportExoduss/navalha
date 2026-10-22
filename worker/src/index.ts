@@ -4,7 +4,7 @@
 //  GET  /saude                 → verificação simples
 //  POST /assinatura/verificar → confere no Google Play a compra do plano e libera a casa
 //  POST /admin/migrar-assinaturas → migração única das casas antigas (exige ADMIN_TOKEN)
-//  POST /avaliacoes            → o cliente avalia um atendimento concluído (notas só mudam por aqui)
+//  POST /avaliacoes            → avaliações: cliente → barbeiro e barbearia, barbeiro → cliente (notas só mudam por aqui)
 //  POST /avisos/agendamento    → avisa cliente, barbeiro e dono (push + painel) quando alguém marca ou cancela
 //  cron a cada hora            → lembretes de 24 h e 2 h, casas com plano/teste vencido, nota do Google e, no dia 1, resumo do mês
 import { verificarIdToken } from './auth';
@@ -123,12 +123,15 @@ export default {
       const token = req.headers.get('Authorization')?.replace(/^Bearer /, '') ?? '';
       const uid = token ? await verificarIdToken(token, env.FIREBASE_PROJECT_ID) : null;
       if (!uid) return json({ erro: 'Entre na sua conta.' }, 401, h);
-      const corpo = (await req.json().catch(() => null)) as { agendamentoId?: unknown; estrelas?: unknown; comentario?: unknown } | null;
+      const corpo = (await req.json().catch(() => null)) as { agendamentoId?: unknown; alvo?: unknown; estrelas?: unknown; comentario?: unknown } | null;
+      // App antigo não manda o alvo: era a avaliação do cliente para o barbeiro.
+      const alvo = corpo?.alvo === undefined ? 'barbeiro' : corpo.alvo;
+      if (alvo !== 'barbeiro' && alvo !== 'barbearia' && alvo !== 'cliente') return json({ erro: 'Avaliação inválida.' }, 400, h);
       const agendamentoId = typeof corpo?.agendamentoId === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(corpo.agendamentoId) ? corpo.agendamentoId : '';
       if (!agendamentoId) return json({ erro: 'Agendamento inválido.' }, 400, h);
       if (!env.GOOGLE_SA_EMAIL || !env.GOOGLE_SA_PRIVATE_KEY) return json({ erro: 'Servidor sem credenciais.' }, 503, h);
       const tokenSA = await tokenGoogle(env.GOOGLE_SA_EMAIL, env.GOOGLE_SA_PRIVATE_KEY);
-      const r = await avaliar(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA), uid, agendamentoId,
+      const r = await avaliar(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA), uid, agendamentoId, alvo,
         Number(corpo?.estrelas), typeof corpo?.comentario === 'string' ? corpo.comentario : '');
       return json(r.corpo, r.status, h);
     }

@@ -2,7 +2,7 @@
 // Sem Cloud Functions: o app avisa o Worker logo depois de reservar/cancelar; o Worker confere o agendamento
 // no Firestore (nunca confia no que o app manda), grava a notificação com id fixo (sem duplicar) e manda o push.
 import {
-  calcularResumoMes, ehDiaDoResumo, idAviso, mesAnterior, textoAviso, textoResumoMes,
+  calcularResumoMes, ehDiaDoResumo, idAviso, mesAnterior, textoAviso, textoPedidoAvaliacao, textoResumoMes,
 } from '../../src/lib/notificacoes';
 import type { Firestore } from './firestore';
 import { mensagemFcm } from './util';
@@ -26,11 +26,14 @@ export async function avisarAgendamento(db: Firestore, tokenSA: string, projectI
   const clienteUid = (ag.clienteUid as string | null) ?? undefined; // balcão: sem cliente no app
   // Só quem faz parte do agendamento avisa, e só logo depois (um aviso velho reenviado não vira notificação).
   if (![clienteUid, ag.barbeiroId, donoUid].includes(uid)) return { status: 403, corpo: { erro: 'Sem permissão.' } };
-  const tipo = ag.status === 'cancelado' ? 'cancelado' : ['reservado', 'confirmado'].includes(ag.status as string) ? 'agendado' : null;
-  const quando = Number(tipo === 'cancelado' ? ag.atualizadoEm : ag.criadoEm);
+  // Finalizado pela casa: se o dono ligou "pedir avaliação", só o cliente recebe o pedido.
+  const pedir = ag.status === 'concluido' && casa?.pedirAvaliacao === true && !!clienteUid && uid !== clienteUid;
+  const tipo = ag.status === 'cancelado' ? 'cancelado' : ['reservado', 'confirmado'].includes(ag.status as string) ? 'agendado' : pedir ? 'avaliar' : null;
+  const quando = Number(tipo === 'agendado' ? ag.criadoEm : ag.atualizadoEm);
   if (!tipo || !(agora - quando < RECENTE_MS)) return { status: 409, corpo: { erro: 'Nada a avisar.' } };
 
-  const para = [...new Set([clienteUid, ag.barbeiroId as string, donoUid].filter((x): x is string => !!x && x !== uid))];
+  const para = tipo === 'avaliar' ? [clienteUid!]
+    : [...new Set([clienteUid, ag.barbeiroId as string, donoUid].filter((x): x is string => !!x && x !== uid))];
   const papel = (p: string) => (p === clienteUid ? 'cliente' : p === ag.barbeiroId ? 'barbeiro' : 'dono');
   const ids = para.map(p => idAviso(agendamentoId, tipo, p));
   const ja = await db.varios(ids.map(id => `notificacoes/${id}`));
@@ -39,10 +42,14 @@ export async function avisarAgendamento(db: Firestore, tokenSA: string, projectI
 
   const dados = ag as Parameters<typeof textoAviso>[1];
   const notifs = novos.map(p => {
-    const t = textoAviso(tipo, dados, agora, papel(p));
+    const t = tipo === 'avaliar' ? textoPedidoAvaliacao(dados) : textoAviso(tipo, dados, agora, papel(p));
     return { id: idAviso(agendamentoId, tipo, p), paraUid: p, barbeariaId: ag.barbeariaId as string, tipo, ...t, agendamentoId, em: agora, lida: false };
   });
-  await db.escrever(notifs.map(n => ({ caminho: `notificacoes/${n.id}`, criar: true, campos: n })));
+  await db.escrever([
+    ...notifs.map(n => ({ caminho: `notificacoes/${n.id}`, criar: true, campos: n as Record<string, unknown> })),
+    // O app do cliente mostra o pedido em destaque nos Agendamentos (sem ler a configuração da casa).
+    ...(tipo === 'avaliar' ? [{ caminho: `agendamentos/${agendamentoId}`, campos: { pedidoAvaliacao: true } }] : []),
+  ]);
   const perfis = await db.varios(novos.map(p => `users/${p}`));
   for (const n of notifs) {
     const token = perfis.get(`users/${n.paraUid}`)?.pushToken as string | undefined;

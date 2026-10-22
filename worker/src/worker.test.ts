@@ -133,7 +133,8 @@ test('avisos: só quem é do agendamento avisa; os outros lados recebem uma vez;
   ]);
   const db = {
     varios: async (cs: string[]) => new Map(cs.filter(c => docs.has(c)).map(c => [c, docs.get(c)!])),
-    escrever: async (l: { caminho: string; campos: Record<string, unknown> }[]) => { for (const w of l) docs.set(w.caminho, w.campos); },
+    // Como o Firestore: junta os campos ao documento que já existe.
+    escrever: async (l: { caminho: string; campos: Record<string, unknown> }[]) => { for (const w of l) docs.set(w.caminho, { ...docs.get(w.caminho), ...w.campos }); },
   } as never;
   const pushes: string[] = [];
   const original = globalThis.fetch;
@@ -156,17 +157,33 @@ test('avisos: só quem é do agendamento avisa; os outros lados recebem uma vez;
     assert.equal((docs.get('notificacoes/a2_cancelado_ana') as { titulo: string }).titulo, 'Seu horário foi cancelado');
     assert.equal(docs.has('notificacoes/a2_cancelado_dono'), false);
     assert.deepEqual(pushes.sort(), ['tk-ana', 'tk-lucas']);
+
+    // Finalizado: com "pedir avaliação" ligado, só o cliente recebe o pedido; desligado, ninguém recebe nada.
+    docs.set('agendamentos/a3', { ...docs.get('agendamentos/a1'), barbeariaNome: 'Navalha de Ouro', status: 'concluido', atualizadoEm: agora - 1000 });
+    assert.equal((await avisarAgendamento(db, 't', 'p', 'lucas', 'a3', agora)).status, 409);
+    docs.set('barbearias/b1', { donoUid: 'dono', pedirAvaliacao: true });
+    pushes.length = 0;
+    assert.deepEqual((await avisarAgendamento(db, 't', 'p', 'lucas', 'a3', agora)).corpo, { enviados: 1 });
+    const pedido = docs.get('notificacoes/a3_avaliar_ana') as { titulo: string; corpo: string };
+    assert.equal(pedido.titulo, 'Como foi o corte?');
+    assert.equal(pedido.corpo, 'Avalie seu atendimento com Lucas na Navalha de Ouro. Leva 10 segundos.');
+    assert.deepEqual(pushes, ['tk-ana']);
+    assert.equal((docs.get('agendamentos/a3') as { pedidoAvaliacao?: boolean }).pedidoAvaliacao, true);
+    assert.equal((await avisarAgendamento(db, 't', 'p', 'ana', 'a3', agora)).status, 409); // o cliente não pede para si
   } finally { globalThis.fetch = original; }
 });
 
-test('avaliar: só o cliente de um atendimento concluído, uma vez; notas da casa e do barbeiro somam', async () => {
+test('avaliar: três direções, cada uma de quem pode e uma vez; cada nota no seu lugar', async () => {
   const { avaliar } = await import('./avaliacoes');
   const agora = 1_800_000_000_000;
   const docs = new Map<string, Record<string, unknown>>([
-    ['agendamentos/a1', { clienteUid: 'ana', clienteNome: 'Ana Souza', status: 'concluido', fim: agora - 3_600_000, barbeariaId: 'b1', barbeiroId: 'lucas' }],
+    ['agendamentos/a1', { clienteUid: 'ana', clienteNome: 'Ana Souza', status: 'concluido', fim: agora - 3_600_000, inicio: agora - 6_300_000,
+      barbeariaId: 'b1', barbeiroId: 'lucas', servicoNome: 'Degradê' }],
     ['agendamentos/a2', { clienteUid: 'ana', status: 'reservado', fim: agora + 3_600_000, barbeariaId: 'b1', barbeiroId: 'lucas' }],
-    ['barbearias/b1', { resumo: { notaApp: 4, totalAvaliacoesApp: 1, notaGoogle: 4.8, totalAvaliacoesGoogle: 100 } }],
-    ['barbearias/b1/barbeiros/lucas', { nota: { media: 0, total: 0 } }],
+    ['agendamentos/a3', { clienteUid: 'ana', clienteNome: 'Ana Souza', status: 'cancelado', cancelamento: { por: 'cliente' }, fim: agora + 3_600_000,
+      barbeariaId: 'b1', barbeiroId: 'lucas' }],
+    ['barbearias/b1', { donoUid: 'dono', resumo: { notaApp: 4, totalAvaliacoesApp: 1, notaGoogle: 4.8, totalAvaliacoesGoogle: 100 } }],
+    ['users/ana', { uid: 'ana', fotoUrl: 'https://x/f.webp', notaCliente: { media: 0, total: 0, faltas90d: 2 } }],
   ]);
   const db = {
     varios: async (cs: string[]) => new Map(cs.filter(c => docs.has(c)).map(c => [c, docs.get(c)!])),
@@ -181,17 +198,34 @@ test('avaliar: só o cliente de um atendimento concluído, uma vez; notas da cas
       }
     },
   } as never;
-  assert.equal((await avaliar(db, 'beto', 'a1', 5, '', agora)).status, 403);
-  assert.equal((await avaliar(db, 'ana', 'a2', 5, '', agora)).status, 409); // ainda não concluído
-  assert.equal((await avaliar(db, 'ana', 'a1', 9, '', agora)).status, 400);
-  assert.equal((await avaliar(db, 'ana', 'a1', 5, '  Ótimo degradê  ', agora)).status, 200);
+  // Cliente → barbeiro e barbearia; outra pessoa não; ainda não concluído não; estrelas fora de 1..5 não.
+  assert.equal((await avaliar(db, 'beto', 'a1', 'barbeiro', 5, '', agora)).status, 403);
+  assert.equal((await avaliar(db, 'lucas', 'a1', 'barbearia', 5, '', agora)).status, 403); // barbeiro não avalia a casa
+  assert.equal((await avaliar(db, 'ana', 'a2', 'barbeiro', 5, '', agora)).status, 409);
+  assert.equal((await avaliar(db, 'ana', 'a1', 'barbeiro', 9, '', agora)).status, 400);
+  assert.equal((await avaliar(db, 'ana', 'a1', 'barbeiro', 5, '  Ótimo degradê  ', agora)).status, 200);
+  assert.deepEqual(docs.get('barbearias/b1/equipePrivado/lucas')!.nota, { media: 5, total: 1 });
+  const rAntes = docs.get('barbearias/b1')!.resumo as Record<string, number>;
+  assert.deepEqual([rAntes.notaApp, rAntes.totalAvaliacoesApp], [4, 1]); // a do barbeiro não mexe no ranking
+  const avB = docs.get('avaliacoes/a1_barbeiro') as Record<string, unknown>;
+  assert.deepEqual([avB.clienteNome, avB.comentario, avB.direcao, avB.servicoNome, avB.clienteFotoUrl], ['Ana Souza', 'Ótimo degradê', 'cliente_para_barbeiro', 'Degradê', 'https://x/f.webp']);
+  assert.equal((await avaliar(db, 'ana', 'a1', 'barbeiro', 1, '', agora)).status, 409); // uma vez por direção
+
+  assert.equal((await avaliar(db, 'ana', 'a1', 'barbearia', 5, '', agora)).status, 200);
   const r = docs.get('barbearias/b1')!.resumo as Record<string, number>;
   assert.deepEqual([r.notaApp, r.totalAvaliacoesApp], [4.5, 2]);
   assert.ok(r.notaRanking > 4 && r.notaRanking < 5);
-  assert.deepEqual(docs.get('barbearias/b1/barbeiros/lucas')!.nota, { media: 5, total: 1 });
-  const av = docs.get('avaliacoes/a1') as Record<string, unknown>;
-  assert.deepEqual([av.clienteNome, av.comentario, av.visivel], ['Ana', 'Ótimo degradê', true]);
-  assert.equal((await avaliar(db, 'ana', 'a1', 1, '', agora)).status, 409); // não avalia duas vezes
+  assert.equal((docs.get('avaliacoes/a1_barbearia') as Record<string, unknown>).clienteNome, 'Ana'); // pública: primeiro nome
+
+  // Barbeiro (ou dono) → cliente; a cliente não se avalia. Cancelamento do cliente também vale.
+  assert.equal((await avaliar(db, 'ana', 'a1', 'cliente', 5, '', agora)).status, 403);
+  assert.equal((await avaliar(db, 'lucas', 'a1', 'cliente', 4, 'Pontual', agora)).status, 200);
+  assert.equal((await avaliar(db, 'dono', 'a3', 'cliente', 2, 'Cancelou em cima da hora', agora)).status, 200);
+  assert.deepEqual(docs.get('notasCliente/ana'), { media: 3, total: 2 });
+  const nc = docs.get('users/ana')!.notaCliente as Record<string, number>;
+  assert.deepEqual([nc.media, nc.total, nc.faltas90d], [3, 2, 2]);
+  assert.equal((docs.get('avaliacoes/a3_cliente') as Record<string, unknown>).origem, 'cancelamento');
+  assert.deepEqual(Object.keys(docs.get('agendamentos/a1')!.avaliacoes as object).sort(), ['barbearia', 'barbeiro', 'cliente']);
 });
 
 test('nota do Google: no máximo 1 vez por dia por casa, gravada numa chamada só', async () => {

@@ -22,6 +22,7 @@ export default function CasaLayout() {
     }}>
       <Tabs.Screen name="agenda" options={{ title: 'Agenda', tabBarIcon: icone('calendar') }} />
       <Tabs.Screen name="casa" options={{ title: 'Barbearia', tabBarIcon: icone('storefront-outline') }} />
+      <Tabs.Screen name="avaliacoes" options={{ title: 'Avaliações', tabBarIcon: icone('star-outline') }} />
       <Tabs.Screen name="conta" options={{ title: 'Perfil', tabBarIcon: icone('person-outline') }} />
     </Tabs>
   );

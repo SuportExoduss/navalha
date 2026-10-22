@@ -2,6 +2,7 @@
 // Já inclui as coleções das Fases 3 a 5 (pagamentos, avaliações, assinaturas),
 // para que nenhuma fase futura exija migração. Ver docs/modelo-de-dados.md.
 import type { PlanoId } from '../lib/planos';
+import type { AlvoAvaliacao } from '../lib/avaliacoes';
 
 export type Role = 'cliente' | 'barbeiro' | 'dono';
 
@@ -80,6 +81,8 @@ export interface Barbearia {
   janelaDias: number;
   /** Place ID do Google: o Worker busca a nota do Google 1 vez por dia. */
   googlePlaceId?: string;
+  /** O app pede ao cliente para avaliar quando o barbeiro finaliza o corte (o dono liga em Configurações). */
+  pedirAvaliacao?: boolean;
   /** Última consulta da nota do Google (só o Worker grava). */
   googleAtualizadoEm?: Millis;
   /** Resumo desnormalizado: a lista "Perto de você" custa 1 leitura por card. */
@@ -192,6 +195,10 @@ export interface Agendamento {
   cancelamento?: { por: 'cliente' | 'casa'; motivo: string; em: Millis };
   /** Avaliação do cliente (gravada só pelo Worker): o card mostra as estrelas no lugar do botão Avaliar. */
   avaliacao?: { estrelas: number; em: Millis };
+  /** Avaliações deste atendimento por direção (gravadas só pelo Worker). */
+  avaliacoes?: Partial<Record<AlvoAvaliacao, { estrelas: number; em: Millis }>>;
+  /** A casa pede avaliação e o barbeiro finalizou: o cliente vê o pedido em destaque (só o Worker grava). */
+  pedidoAvaliacao?: boolean;
   criadoEm: Millis;
   atualizadoEm: Millis;
 }
@@ -223,17 +230,31 @@ export interface Pagamento {
   criadoEm: Millis;
 }
 
-/** avaliacoes/{agendamentoId} — gravada só pelo Worker (POST /avaliacoes), visível na página da casa. */
+/**
+ * avaliacoes/{agendamentoId}_{alvo} — gravada só pelo Worker (POST /avaliacoes). A da barbearia é pública
+ * (página da casa); a do barbeiro, só a casa e o cliente veem; a do cliente, o cliente e a casa.
+ * (As de antes de 22/out têm id = agendamentoId e direção cliente_para_barbeiro.)
+ */
 export interface Avaliacao {
   id: string;
-  /** Só o primeiro nome do cliente. */
+  /** Na da barbearia (pública), só o primeiro nome; nas outras, o nome todo. */
   clienteNome?: string;
+  /** Foto e capa do cliente no momento da avaliação, para a lista mostrar quem avaliou. */
+  clienteFotoUrl?: string;
+  clienteBannerUrl?: string;
   barbeiroNome?: string;
   agendamentoId: string;
   barbeariaId: string;
   barbeiroId: string;
   clienteUid: string;
-  direcao: 'cliente_para_barbeiro' | 'barbeiro_para_cliente';
+  alvo?: AlvoAvaliacao;
+  direcao: 'cliente_para_barbeiro' | 'cliente_para_barbearia' | 'barbeiro_para_cliente';
+  /** Dia e horário do corte e o serviço (para listar "Degradê · ter 21/10, 15:00"). */
+  inicio?: Millis;
+  servicoNome?: string;
+  /** Avaliação feita num cancelamento (e não depois do atendimento). */
+  origem?: 'atendimento' | 'cancelamento';
+  autorUid?: string;
   estrelas: 1 | 2 | 3 | 4 | 5;
   chips: string[];
   comentario?: string;

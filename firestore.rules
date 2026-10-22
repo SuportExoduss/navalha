@@ -280,7 +280,8 @@ service cloud.firestore {
       // Status anterior conta (SEC-004): o cliente só cancela o que ainda está de pé e não começou
       // (falta e atendimento concluído não se apagam), e reserva cancelada não volta a valer,
       // porque os blocos dela já foram liberados para outra pessoa.
-      allow update: if logado() && !mudou(['id', 'barbeariaId', 'barbeiroId', 'clienteUid', 'inicio', 'fim', 'slots', 'precoCentavos', 'pagamentoId'])
+      // As marcas de avaliação são do Worker: ninguém bloqueia (nem libera) uma avaliação pelo app.
+      allow update: if logado() && !mudou(['id', 'barbeariaId', 'barbeiroId', 'clienteUid', 'inicio', 'fim', 'slots', 'precoCentavos', 'pagamentoId', 'avaliacao', 'avaliacoes', 'pedidoAvaliacao'])
         && (
           (ag().clienteUid == eu() && request.resource.data.status == 'cancelado'
              && ag().status in ['reservado', 'confirmado'] && ag().inicio > request.time.toMillis()
@@ -314,11 +315,18 @@ service cloud.firestore {
       allow read: if logado() && (resource.data.clienteUid == eu() || ehDono(resource.data.barbeariaId));
       allow write: if false;
     }
+    // A da barbearia é pública (página da casa). A do barbeiro e a do cliente ficam entre a casa e o cliente:
+    // o dono vê todas da casa; o barbeiro, as dele; o cliente, as do atendimento dele.
     match /avaliacoes/{id} {
-      allow read: if resource.data.visivel == true
-        && resource.data.direcao == 'cliente_para_barbeiro';
+      allow read: if (resource.data.visivel == true && resource.data.direcao == 'cliente_para_barbearia')
+        || (logado() && (resource.data.clienteUid == eu() || resource.data.barbeiroId == eu() || ehDono(resource.data.barbeariaId)));
       // Só o Worker grava (POST /avaliacoes): confere que o atendimento foi concluído e é de quem avalia.
       allow write: if false;
+    }
+    // Média do cliente (só o Worker grava): a casa lê ao ver o agendamento. Só por id (sem listar).
+    match /notasCliente/{uid} {
+      allow get: if logado();
+      allow list, write: if false;
     }
     match /clubes/{id} {
       allow read: if true;

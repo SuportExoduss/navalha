@@ -3,7 +3,7 @@
 import { formatarHora, formatarPreco, rotuloDia, dataLocal } from './agenda';
 import type { Agendamento, Millis } from '../types/models';
 
-export type TipoNotificacao = 'agendado' | 'cancelado' | 'resumo_mes';
+export type TipoNotificacao = 'agendado' | 'cancelado' | 'resumo_mes' | 'avaliar';
 
 /** notificacoes/{id}: gravada só pelo Worker; o destinatário só lê e marca como lida. */
 export interface Notificacao {
@@ -40,6 +40,12 @@ export function textoAviso(tipo: 'agendado' | 'cancelado', a: AgParaAviso, agora
     return { titulo: 'Horário cancelado', corpo: `A casa cancelou ${a.servicoNome} de ${a.clienteNome}${com}, ${quando}.${motivo}` };
   }
   return { titulo: 'Horário cancelado', corpo: `${a.clienteNome} cancelou ${a.servicoNome}${com} de ${quando}.${motivo}` };
+}
+
+/** Pedido de avaliação ao cliente quando o barbeiro finaliza (só se a casa ligou "pedir avaliação"). */
+export function textoPedidoAvaliacao(a: Pick<Agendamento, 'barbeiroNome'> & Partial<Pick<Agendamento, 'barbeariaNome'>>) {
+  const frase = ['Avalie seu atendimento', a.barbeiroNome && `com ${a.barbeiroNome}`, a.barbeariaNome && `na ${a.barbeariaNome}`].filter(Boolean).join(' ');
+  return { titulo: 'Como foi o corte?', corpo: `${frase}. Leva 10 segundos.` };
 }
 
 /** Id fixo: o mesmo aviso nunca é gravado (nem enviado) duas vezes, mesmo se o app chamar de novo. */

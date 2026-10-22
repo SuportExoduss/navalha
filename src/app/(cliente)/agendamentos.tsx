@@ -12,7 +12,8 @@ import { lerBarbearia } from '../../services/barbearias';
 import { cancelamentoGratis, dataLocal, formatarHora, formatarPreco, rotuloDia } from '../../lib/agenda';
 import { avisarAgendamento } from '../../services/avisos';
 import { PainelNotificacoes, VAZIO_CLIENTE } from '../../components/agenda/PainelNotificacoes';
-import { AvaliarAtendimento } from '../../components/agenda/Avaliar';
+import { AvaliacoesDoCliente } from '../../components/agenda/Avaliar';
+import { podeAvaliarAlvo } from '../../lib/avaliacoes';
 import { colors, space, type } from '../../theme';
 import type { Agendamento } from '../../types/models';
 
@@ -29,7 +30,9 @@ export default function Agendamentos() {
   if (!perfil || lista === null) return <Carregando />;
   const agora = Date.now();
   const proximos = lista.filter(a => ATIVOS.includes(a.status) && a.fim > agora).sort((a, b) => a.inicio - b.inicio);
-  const historico = lista.filter(a => !proximos.includes(a));
+  // A casa pediu avaliação (barbeiro finalizou com "pedir avaliação" ligado): vem em destaque, já aberta.
+  const pedidos = lista.filter(a => a.pedidoAvaliacao && podeAvaliarAlvo(a, 'barbeiro', agora));
+  const historico = lista.filter(a => !proximos.includes(a) && !pedidos.includes(a));
 
   return (
     <Tela>
@@ -47,6 +50,11 @@ export default function Agendamentos() {
           // Já na cadeira (começou e não terminou) segue em "Próximos", mas sem cancelar: a regra barra (SEC-004).
         ) : proximos.map(a => <ItemAgendamento key={a.id} a={a} uid={perfil.uid} podeCancelar={a.inicio > agora} />)}
       </Secao>
+      {pedidos.length ? (
+        <Secao titulo="Como foi o corte?">
+          {pedidos.map(a => <ItemAgendamento key={a.id} a={a} uid={perfil.uid} pedido />)}
+        </Secao>
+      ) : null}
       {historico.length ? (
         <Secao titulo="Histórico">
           {historico.map(a => <ItemAgendamento key={a.id} a={a} uid={perfil.uid} />)}
@@ -56,7 +64,7 @@ export default function Agendamentos() {
   );
 }
 
-function ItemAgendamento({ a, uid, podeCancelar }: { a: Agendamento; uid: string; podeCancelar?: boolean }) {
+function ItemAgendamento({ a, uid, podeCancelar, pedido }: { a: Agendamento; uid: string; podeCancelar?: boolean; pedido?: boolean }) {
   const [confirmando, setConfirmando] = useState<string | null>(null);
   const [cancelando, setCancelando] = useState(false);
   const [motivo, setMotivo] = useState('');
@@ -98,7 +106,7 @@ function ItemAgendamento({ a, uid, podeCancelar }: { a: Agendamento; uid: string
           {a.fotos.map(f => <Image key={f} source={{ uri: f }} accessibilityLabel="Foto do corte" style={{ width: 96, height: 120, borderRadius: 12 }} />)}
         </ScrollView>
       ) : null}
-      <AvaliarAtendimento a={a} />
+      <AvaliacoesDoCliente a={a} pedido={pedido} />
       {/* Agendar de novo começa na casa, pela etapa 1 (barbeiro): agendar é sempre barbeiro → corte → horário. */}
       <Pressable onPress={() => router.push({ pathname: '/barbearia/[id]', params: { id: a.barbeariaId } })} hitSlop={8}>
         <Text style={[type.caption, { color: colors.accent }]}>{podeCancelar ? 'Ver barbearia' : 'Agendar de novo'}</Text>

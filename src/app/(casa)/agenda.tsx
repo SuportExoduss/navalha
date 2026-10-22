@@ -11,6 +11,8 @@ import { MotivoCancelamento, textoCancelamento } from '../../components/agenda/M
 import { Encaixe } from '../../components/agenda/Encaixe';
 import { PainelNotificacoes } from '../../components/agenda/PainelNotificacoes';
 import { avisarAgendamento } from '../../services/avisos';
+import { notaDoCliente } from '../../services/avaliacoes';
+import { AvaliarCliente } from '../../components/agenda/Avaliar';
 import { useAuth } from '../../auth/AuthProvider';
 import { useMinhaBarbearia } from '../../hooks/useMinhaBarbearia';
 import { db } from '../../services/firebase';
@@ -104,11 +106,21 @@ export default function AgendaBarbeiro() {
   );
 }
 
+/** Média do cliente nas avaliações das barbearias (1 leitura por cliente, guardada 5 min). */
+function NotaDoCliente({ uid }: { uid: string }) {
+  const [nota, setNota] = useState<{ media: number; total: number } | null>(null);
+  useEffect(() => { notaDoCliente(db, uid).then(setNota).catch(() => setNota(null)); }, [uid]);
+  if (!nota?.total) return null;
+  return <Text style={type.caption}>{`★ ${nota.media.toFixed(1).replace('.', ',')} como cliente (${nota.total})`}</Text>;
+}
+
 function ItemAgenda({ a, barbeiro, uid }: { a: Agendamento; barbeiro?: string; uid: string }) {
   const [ocupado, setOcupado] = useState(false);
   const [confirmarCancelamento, setConfirmarCancelamento] = useState(false);
   const [motivo, setMotivo] = useState('');
   const [concluindo, setConcluindo] = useState(false);
+  // Acabou de finalizar: pergunta (opcional) se quer avaliar o cliente.
+  const [acabouDeFinalizar, setAcabouDeFinalizar] = useState(false);
   const cancelamento = textoCancelamento(a, 'casa');
   const [erro, setErro] = useState<string | null>(null);
   const ativo = ATIVOS.includes(a.status);
@@ -128,13 +140,15 @@ function ItemAgenda({ a, barbeiro, uid }: { a: Agendamento; barbeiro?: string; u
       const foto = origem ? await escolherEEnviar('corte', a.id, origem) : null;
       if (origem && !foto) return; // cancelou a câmera: continua aberto para tentar de novo
       await concluir(db, a.id, foto ? [...a.fotos, foto] : a.fotos);
+      avisarAgendamento(a.id); // com "pedir avaliação" ligado na casa, o cliente recebe o pedido
       registrarEvento(db, { tipo: 'concluiu', uid, barbeariaId: a.barbeariaId, em: Date.now() });
       setConcluindo(false);
+      setAcabouDeFinalizar(true);
     });
   }
 
   return (
-    <Cartao style={{ gap: space(2), opacity: ativo ? 1 : 0.6 }}>
+    <Cartao style={{ gap: space(2), opacity: ativo || acabouDeFinalizar ? 1 : 0.6 }}>
       <View style={{ flexDirection: 'row', gap: space(3) }}>
         <View style={{ width: 56 }}>
           <Text style={[type.heading, type.number]}>{formatarHora(a.inicio)}</Text>
@@ -142,6 +156,7 @@ function ItemAgenda({ a, barbeiro, uid }: { a: Agendamento; barbeiro?: string; u
         </View>
         <View style={{ flex: 1, gap: 2 }}>
           <Text style={type.body}>{a.clienteNome}{a.origem === 'balcao' ? ' · balcão' : ''}</Text>
+          {a.clienteUid ? <NotaDoCliente uid={a.clienteUid} /> : null}
           <Text style={type.caption}>{a.servicoNome} · {formatarPreco(a.precoCentavos)}{barbeiro ? ` · ${barbeiro}` : ''}</Text>
         </View>
         <EtiquetaStatus status={a.status} />
@@ -153,6 +168,7 @@ function ItemAgenda({ a, barbeiro, uid }: { a: Agendamento; barbeiro?: string; u
           {comecou ? <Chip rotulo="Faltou" onPress={() => agir(async () => {
             await definirStatus(db, a.id, 'faltou');
             registrarEvento(db, { tipo: 'faltou', uid, barbeariaId: a.barbeariaId, em: Date.now() });
+            setAcabouDeFinalizar(true);
           })} /> : null}
           <Chip rotulo="Cancelar" onPress={() => setConfirmarCancelamento(true)} />
         </View>
@@ -192,6 +208,8 @@ function ItemAgenda({ a, barbeiro, uid }: { a: Agendamento; barbeiro?: string; u
           </View>
         </View>
       ) : null}
+      {/* Depois do corte, da falta ou do cancelamento do cliente: avaliar é opcional. */}
+      {!ativo && a.clienteUid ? <AvaliarCliente a={a} abrirJa={acabouDeFinalizar} /> : null}
       {ocupado && !confirmarCancelamento && !concluindo ? <Aviso texto="Salvando…" /> : null}
       {erro ? <Aviso texto={erro} tom="erro" /> : null}
     </Cartao>

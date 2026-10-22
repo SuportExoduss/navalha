@@ -122,7 +122,8 @@ export default function PaginaBarbearia() {
         <View style={{ gap: space(2) }}>
           {equipe.map(e => {
             const qtd = servicos.filter(s => s.barbeiroId === e.uid).length;
-            const detalhe = `${e.nota.total ? `★ ${virgula(e.nota.media)} (${e.nota.total}) · ` : ''}${qtd} ${qtd === 1 ? 'corte' : 'cortes'}`;
+            // A nota do barbeiro é interna da casa (decisão de 22/out): o cliente vê só quantos cortes ele faz.
+            const detalhe = `${qtd} ${qtd === 1 ? 'corte' : 'cortes'}`;
             const abrir = () => { setReservado(null); router.push({ pathname: '/cortes/[id]', params: { id: b.id, barbeiro: e.uid } }); };
             // Com capa: a foto ao fundo e o nome numa faixa com véu escuro, legível sobre qualquer imagem ou cor.
             if (e.bannerUrl) return (

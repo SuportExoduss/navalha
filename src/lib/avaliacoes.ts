@@ -26,9 +26,43 @@ export function notaRanking(r: { notaApp?: number; totalAvaliacoesApp?: number; 
   return duasCasas((PRIOR_NOTA * PRIOR_PESO + soma) / (PRIOR_PESO + nApp + nGoogle));
 }
 
-/** Ainda dá para avaliar? Só atendimento concluído, uma vez, até 30 dias depois. */
-export function podeAvaliar(a: { status: string; fim: number; avaliacao?: unknown }, agora: number) {
-  return a.status === 'concluido' && !a.avaliacao && agora - a.fim < DIAS_PARA_AVALIAR * 86_400_000;
+/**
+ * Três avaliações, todas opcionais: o cliente avalia o barbeiro (nota interna da casa) e a barbearia (pública,
+ * conta no ranking); o barbeiro avalia o cliente (o cliente vê em Perfil). Cada uma, uma vez por atendimento.
+ */
+export type AlvoAvaliacao = 'barbeiro' | 'barbearia' | 'cliente';
+export const DIRECAO_DO_ALVO = {
+  barbeiro: 'cliente_para_barbeiro', barbearia: 'cliente_para_barbearia', cliente: 'barbeiro_para_cliente',
+} as const;
+
+type AgParaAvaliar = {
+  status: string; fim: number; clienteUid?: string | null; cancelamento?: { por: 'cliente' | 'casa' };
+  /** Avaliação antiga (antes de 22/out): era a do cliente para o barbeiro. */
+  avaliacao?: unknown;
+  avaliacoes?: Partial<Record<AlvoAvaliacao, unknown>>;
+};
+
+export function jaAvaliado(a: AgParaAvaliar, alvo: AlvoAvaliacao) {
+  return !!a.avaliacoes?.[alvo] || (alvo === 'barbeiro' && !!a.avaliacao);
+}
+
+/**
+ * Ainda dá para avaliar? Até 30 dias depois, uma vez por direção. Atendimento concluído vale para as três;
+ * cancelamento, só para quem foi cancelado avaliar quem cancelou; falta, para o barbeiro avaliar o cliente.
+ */
+export function podeAvaliarAlvo(a: AgParaAvaliar, alvo: AlvoAvaliacao, agora: number) {
+  if (jaAvaliado(a, alvo) || agora - a.fim >= DIAS_PARA_AVALIAR * 86_400_000) return false;
+  if (alvo === 'barbearia') return a.status === 'concluido';
+  if (alvo === 'barbeiro') return a.status === 'concluido' || (a.status === 'cancelado' && a.cancelamento?.por === 'casa');
+  return !!a.clienteUid && (a.status === 'concluido' || a.status === 'faltou' || (a.status === 'cancelado' && a.cancelamento?.por === 'cliente'));
+}
+
+/**
+ * Janela de avaliação da casa no Google. O Google não aceita estrelas nem texto pré-preenchidos (e não há API
+ * para publicar pelo cliente): o app copia o comentário e abre esta página; a pessoa escolhe as estrelas e cola.
+ */
+export function linkAvaliacaoGoogle(placeId: string) {
+  return `https://search.google.com/local/writereview?placeid=${encodeURIComponent(placeId)}`;
 }
 
 /** Place ID do Google: só letras, números, _ e - (nada que mude o endereço da chamada ao Google). */

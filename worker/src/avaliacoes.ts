@@ -1,47 +1,75 @@
-// Avaliações do cliente e nota do Google. As notas só mudam aqui (as regras barram o app), então ninguém
-// infla a própria nota: o Worker confere o agendamento concluído antes de somar.
-import { MAX_COMENTARIO, notaRanking, placeIdValido, podeAvaliar, somarAvaliacao } from '../../src/lib/avaliacoes';
+// Avaliações (cliente ↔ barbeiro, cliente → barbearia) e nota do Google. As notas só mudam aqui (as regras barram
+// o app), então ninguém infla a própria nota: o Worker confere o atendimento e quem avalia antes de somar.
+import {
+  DIRECAO_DO_ALVO, MAX_COMENTARIO, jaAvaliado, notaRanking, placeIdValido, podeAvaliarAlvo, somarAvaliacao, type AlvoAvaliacao,
+} from '../../src/lib/avaliacoes';
 import type { Firestore } from './firestore';
 
 type Resumo = { notaApp?: number; totalAvaliacoesApp?: number; notaGoogle?: number; totalAvaliacoesGoogle?: number };
 
 /**
- * POST /avaliacoes — o cliente avalia um atendimento concluído (1 a 5 estrelas, comentário opcional).
- * ponytail: média recalculada a partir do valor lido (sem transação); duas avaliações da mesma casa no mesmo
+ * POST /avaliacoes — uma das três avaliações de um atendimento (1 a 5 estrelas, comentário opcional):
+ * - `barbeiro` e `barbearia`: quem avalia é o cliente; `cliente`: o barbeiro do atendimento ou o dono da casa.
+ * Quando cada uma vale está em podeAvaliarAlvo (concluído; cancelamento só para quem foi cancelado).
+ * Notas: barbearia → resumo da casa (ranking); barbeiro → equipePrivado (só a casa vê); cliente → perfil do cliente
+ * e notasCliente (a casa lê no agendamento).
+ * ponytail: média recalculada a partir do valor lido (sem transação); duas avaliações do mesmo alvo no mesmo
  * segundo podem perder uma na média. Recalcular pelo total das avaliações se o volume crescer.
  */
-export async function avaliar(db: Firestore, uid: string, agendamentoId: string, estrelas: number, comentario: string, agora = Date.now()) {
+export async function avaliar(
+  db: Firestore, uid: string, agendamentoId: string, alvo: AlvoAvaliacao, estrelas: number, comentario: string, agora = Date.now(),
+) {
   if (!Number.isInteger(estrelas) || estrelas < 1 || estrelas > 5) return { status: 400, corpo: { erro: 'Escolha de 1 a 5 estrelas.' } };
   const ag = (await db.varios([`agendamentos/${agendamentoId}`])).get(`agendamentos/${agendamentoId}`);
   if (!ag) return { status: 404, corpo: { erro: 'Agendamento não encontrado.' } };
-  if (ag.clienteUid !== uid) return { status: 403, corpo: { erro: 'Sem permissão.' } };
-  if (!podeAvaliar(ag as { status: string; fim: number; avaliacao?: unknown }, agora)) {
-    return { status: 409, corpo: { erro: ag.avaliacao ? 'Você já avaliou este atendimento.' : 'Este atendimento não pode mais ser avaliado.' } };
+  const bid = ag.barbeariaId as string, barbeiroId = ag.barbeiroId as string, clienteUid = ag.clienteUid as string | null;
+  const casa = (await db.varios([`barbearias/${bid}`])).get(`barbearias/${bid}`);
+  if (!casa) return { status: 404, corpo: { erro: 'A barbearia saiu do ar.' } };
+
+  const autorOk = alvo === 'cliente' ? uid === barbeiroId || uid === casa.donoUid : uid === clienteUid;
+  if (!autorOk) return { status: 403, corpo: { erro: 'Sem permissão.' } };
+  if (!podeAvaliarAlvo(ag as Parameters<typeof podeAvaliarAlvo>[0], alvo, agora)) {
+    return { status: 409, corpo: { erro: jaAvaliado(ag as Parameters<typeof jaAvaliado>[0], alvo) ? 'Você já fez esta avaliação.' : 'Este atendimento não pode mais ser avaliado.' } };
   }
 
-  const bid = ag.barbeariaId as string, barbeiroId = ag.barbeiroId as string;
-  const docs = await db.varios([`barbearias/${bid}`, `barbearias/${bid}/barbeiros/${barbeiroId}`]);
-  const casa = docs.get(`barbearias/${bid}`);
-  if (!casa) return { status: 404, corpo: { erro: 'A barbearia saiu do ar.' } };
-  const barbeiro = docs.get(`barbearias/${bid}/barbeiros/${barbeiroId}`);
-
-  const resumo = (casa.resumo ?? {}) as Resumo;
-  const app = somarAvaliacao({ media: resumo.notaApp ?? 0, total: resumo.totalAvaliacoesApp ?? 0 }, estrelas);
+  const caminhos = { privado: `barbearias/${bid}/equipePrivado/${barbeiroId}`, cliente: `users/${clienteUid}` };
+  const outros = await db.varios([caminhos.privado, ...(clienteUid ? [caminhos.cliente] : [])]);
+  const perfilCliente = outros.get(caminhos.cliente);
   const texto = comentario.trim().slice(0, MAX_COMENTARIO);
-  await db.escrever([
-    { caminho: `avaliacoes/${agendamentoId}`, criar: true, campos: {
-      id: agendamentoId, agendamentoId, barbeariaId: bid, barbeiroId, clienteUid: uid,
-      // Só o primeiro nome aparece na página da casa.
-      clienteNome: String(ag.clienteNome ?? 'Cliente').split(' ')[0], barbeiroNome: (ag.barbeiroNome as string | undefined) ?? '',
-      direcao: 'cliente_para_barbeiro', estrelas, chips: [], ...(texto ? { comentario: texto } : {}), visivel: true, criadoEm: agora,
-    } },
-    { caminho: `agendamentos/${agendamentoId}`, campos: { avaliacao: { estrelas, em: agora } } },
-    { caminho: `barbearias/${bid}`, campos: {
+  const nomeCliente = String(ag.clienteNome ?? 'Cliente');
+
+  const notas: { caminho: string; campos: Record<string, unknown>; criar?: boolean }[] = [];
+  if (alvo === 'barbearia') {
+    const resumo = (casa.resumo ?? {}) as Resumo;
+    const app = somarAvaliacao({ media: resumo.notaApp ?? 0, total: resumo.totalAvaliacoesApp ?? 0 }, estrelas);
+    notas.push({ caminho: `barbearias/${bid}`, campos: {
       'resumo.notaApp': app.media, 'resumo.totalAvaliacoesApp': app.total,
       'resumo.notaRanking': notaRanking({ ...resumo, notaApp: app.media, totalAvaliacoesApp: app.total }),
+    } });
+  } else if (alvo === 'barbeiro') {
+    const atual = outros.get(caminhos.privado)?.nota as { media: number; total: number } | undefined;
+    notas.push({ caminho: caminhos.privado, criar: true, campos: { nota: somarAvaliacao(atual, estrelas) } });
+  } else if (clienteUid) {
+    const atual = perfilCliente?.notaCliente as { media: number; total: number } | undefined;
+    const nota = somarAvaliacao(atual, estrelas);
+    // Conta excluída: não recria o perfil, só a nota que a casa lê.
+    if (perfilCliente) notas.push({ caminho: caminhos.cliente, campos: { 'notaCliente.media': nota.media, 'notaCliente.total': nota.total } });
+    notas.push({ caminho: `notasCliente/${clienteUid}`, criar: true, campos: { media: nota.media, total: nota.total } });
+  }
+
+  await db.escrever([
+    { caminho: `avaliacoes/${agendamentoId}_${alvo}`, criar: true, campos: {
+      id: `${agendamentoId}_${alvo}`, agendamentoId, barbeariaId: bid, barbeiroId, clienteUid, alvo, direcao: DIRECAO_DO_ALVO[alvo],
+      // A da barbearia é pública: só o primeiro nome. As outras ficam entre a casa e o cliente.
+      clienteNome: alvo === 'barbearia' ? nomeCliente.split(' ')[0] : nomeCliente,
+      ...(perfilCliente?.fotoUrl ? { clienteFotoUrl: perfilCliente.fotoUrl } : {}),
+      ...(perfilCliente?.bannerUrl ? { clienteBannerUrl: perfilCliente.bannerUrl } : {}),
+      barbeiroNome: (ag.barbeiroNome as string | undefined) ?? '', servicoNome: (ag.servicoNome as string | undefined) ?? '',
+      inicio: ag.inicio as number, origem: ag.status === 'cancelado' ? 'cancelamento' : 'atendimento', autorUid: uid,
+      estrelas, chips: [], ...(texto ? { comentario: texto } : {}), visivel: true, criadoEm: agora,
     } },
-    // Barbeiro que saiu da casa: a avaliação conta só para a casa.
-    ...(barbeiro ? [{ caminho: `barbearias/${bid}/barbeiros/${barbeiroId}`, campos: { nota: somarAvaliacao(barbeiro.nota as { media: number; total: number } | undefined, estrelas) } }] : []),
+    { caminho: `agendamentos/${agendamentoId}`, campos: { [`avaliacoes.${alvo}`]: { estrelas, em: agora } } },
+    ...notas,
   ]);
   return { status: 200, corpo: { ok: true } };
 }

@@ -10,7 +10,7 @@ import { quandoChegou, type Notificacao, type TipoNotificacao } from '../../lib/
 import { colors, radius, space, type, sobreFoto } from '../../theme';
 
 const ICONE: Record<TipoNotificacao, keyof typeof Ionicons.glyphMap> = {
-  agendado: 'calendar-outline', cancelado: 'close-circle-outline', resumo_mes: 'stats-chart-outline',
+  agendado: 'calendar-outline', cancelado: 'close-circle-outline', resumo_mes: 'stats-chart-outline', avaliar: 'star-outline',
 };
 
 export const VAZIO_CLIENTE = 'Se a barbearia cancelar ou mudar algo no seu horário, avisamos aqui e no celular.';

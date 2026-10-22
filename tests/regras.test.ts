@@ -627,17 +627,51 @@ test('avaliações e notas: só o servidor grava; ninguém infla a própria nota
   await assertFails(updateDoc(doc(dbDe('lucas'), 'barbearias/b1/barbeiros/lucas'), { nota: { media: 5, total: 50 } }));
   await assertSucceeds(updateDoc(doc(dbDe('lucas'), 'barbearias/b1/barbeiros/lucas'), { apelido: 'Lu' }));
 
-  // Avaliação: o app não cria; qualquer um lê as visíveis, ninguém lê as ocultas.
-  await assertFails(setDoc(doc(dbDe('ana'), 'avaliacoes/a1'), {
-    id: 'a1', clienteUid: 'ana', barbeariaId: 'b1', barbeiroId: 'lucas', direcao: 'cliente_para_barbeiro', estrelas: 5, visivel: false,
+  // Avaliação: o app não cria; a da barbearia qualquer um lê; a do barbeiro e a do cliente, só a casa e o cliente.
+  await assertFails(setDoc(doc(dbDe('ana'), 'avaliacoes/a1_barbearia'), {
+    id: 'a1_barbearia', clienteUid: 'ana', barbeariaId: 'b1', barbeiroId: 'lucas', direcao: 'cliente_para_barbearia', estrelas: 5, visivel: true,
   }));
+  const base = { barbeariaId: 'b1', barbeiroId: 'lucas', clienteUid: 'ana', estrelas: 5, visivel: true };
   await env.withSecurityRulesDisabled(async ctx => {
-    await setDoc(doc(ctx.firestore(), 'avaliacoes/v1'), { barbeariaId: 'b1', direcao: 'cliente_para_barbeiro', estrelas: 5, visivel: true, criadoEm: 2 });
-    await setDoc(doc(ctx.firestore(), 'avaliacoes/o1'), { barbeariaId: 'b1', direcao: 'cliente_para_barbeiro', estrelas: 1, visivel: false, criadoEm: 1 });
+    await setDoc(doc(ctx.firestore(), 'avaliacoes/v1_barbearia'), { ...base, direcao: 'cliente_para_barbearia', criadoEm: 2 });
+    await setDoc(doc(ctx.firestore(), 'avaliacoes/o1'), { ...base, direcao: 'cliente_para_barbearia', visivel: false, criadoEm: 1 });
+    await setDoc(doc(ctx.firestore(), 'avaliacoes/v1_barbeiro'), { ...base, direcao: 'cliente_para_barbeiro', criadoEm: 3 });
+    await setDoc(doc(ctx.firestore(), 'avaliacoes/v1_cliente'), { ...base, direcao: 'barbeiro_para_cliente', criadoEm: 4 });
   });
-  const visiveis = getDocs(query(collection(env.unauthenticatedContext().firestore(), 'avaliacoes'),
-    where('barbeariaId', '==', 'b1'), where('visivel', '==', true), where('direcao', '==', 'cliente_para_barbeiro'), orderBy('criadoEm', 'desc')));
-  assert.equal((await assertSucceeds(visiveis)).size, 1);
-  await assertFails(getDoc(doc(dbDe('ana'), 'avaliacoes/o1')));
-  await assertFails(updateDoc(doc(dbDe('dono'), 'avaliacoes/v1'), { estrelas: 1 }));
+  const publicas = getDocs(query(collection(env.unauthenticatedContext().firestore(), 'avaliacoes'),
+    where('barbeariaId', '==', 'b1'), where('visivel', '==', true), where('direcao', '==', 'cliente_para_barbearia'), orderBy('criadoEm', 'desc')));
+  assert.equal((await assertSucceeds(publicas)).size, 1);
+  await assertFails(getDoc(doc(dbDe('beto'), 'avaliacoes/o1')));
+  for (const id of ['v1_barbeiro', 'v1_cliente']) {
+    await assertFails(getDoc(doc(dbDe('beto'), 'avaliacoes', id))); // outro cliente
+    await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), 'avaliacoes', id)));
+    for (const quem of ['ana', 'lucas', 'dono']) await assertSucceeds(getDoc(doc(dbDe(quem), 'avaliacoes', id)));
+  }
+  // Listas das telas: dono pela casa, barbeiro pelas dele, cliente pelas dele.
+  await assertSucceeds(getDocs(query(collection(dbDe('dono'), 'avaliacoes'), where('barbeariaId', '==', 'b1'), orderBy('criadoEm', 'desc'))));
+  await assertSucceeds(getDocs(query(collection(dbDe('lucas'), 'avaliacoes'), where('barbeiroId', '==', 'lucas'), orderBy('criadoEm', 'desc'))));
+  await assertSucceeds(getDocs(query(collection(dbDe('ana'), 'avaliacoes'), where('clienteUid', '==', 'ana'), orderBy('criadoEm', 'desc'))));
+  await assertFails(getDocs(query(collection(dbDe('beto'), 'avaliacoes'), where('barbeariaId', '==', 'b1'))));
+  await assertFails(updateDoc(doc(dbDe('dono'), 'avaliacoes/v1_barbearia'), { estrelas: 1 }));
+});
+
+test('pedir avaliação: só o dono liga ou desliga', async () => {
+  await assertSucceeds(updateDoc(doc(dbDe('dono'), 'barbearias/b1'), { pedirAvaliacao: true }));
+  await assertFails(updateDoc(doc(dbDe('lucas'), 'barbearias/b1'), { pedirAvaliacao: false }));
+  await assertFails(updateDoc(doc(dbDe('ana'), 'barbearias/b1'), { pedirAvaliacao: false }));
+});
+
+test('nota do cliente: a casa lê por id; ninguém lista nem grava pelo app', async () => {
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'notasCliente/ana'), { media: 4.5, total: 2 }));
+  await assertSucceeds(getDoc(doc(dbDe('lucas'), 'notasCliente/ana')));
+  await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), 'notasCliente/ana')));
+  await assertFails(getDocs(collection(dbDe('lucas'), 'notasCliente')));
+  await assertFails(setDoc(doc(dbDe('ana'), 'notasCliente/ana'), { media: 5, total: 99 }));
+});
+
+test('marcas de avaliação no agendamento: só o Worker', async () => {
+  const id = await reservar(dbDe('ana'), novaReserva('ana', inicio));
+  await assertFails(updateDoc(doc(dbDe('ana'), 'agendamentos', id), { avaliacoes: { barbeiro: { estrelas: 5, em: 1 } }, atualizadoEm: 1 }));
+  await assertFails(updateDoc(doc(dbDe('lucas'), 'agendamentos', id), { status: 'confirmado', avaliacoes: { cliente: { estrelas: 1, em: 1 } } }));
+  await assertSucceeds(updateDoc(doc(dbDe('lucas'), 'agendamentos', id), { status: 'confirmado' }));
 });

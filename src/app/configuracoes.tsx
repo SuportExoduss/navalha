@@ -36,9 +36,33 @@ export default function Configuracoes() {
           onPress={() => router.push({ pathname: '/expediente', params: { alvo: 'casa' } })} />
       </Secao>
       <WhatsApp b={b} />
+      <PedirAvaliacao b={b} />
       <PlaceIdGoogle b={b} />
       <ExcluirBarbearia b={b} />
     </Tela>
+  );
+}
+
+/** Ligado: quando o barbeiro finaliza o corte, o cliente recebe "Como foi o corte?". Desligado, nada muda para ele. */
+function PedirAvaliacao({ b }: { b: Barbearia }) {
+  const [erro, setErro] = useState<string | null>(null);
+  async function alternar(v: boolean) {
+    setErro(null);
+    await atualizarBarbearia(db, b.id, { pedirAvaliacao: v }).catch(() => setErro('Não foi possível salvar. Tente de novo.'));
+  }
+  return (
+    <Secao titulo="Avaliações">
+      <Cartao style={{ gap: space(2) }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space(3) }}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={type.body}>Pedir avaliação ao cliente</Text>
+            <Text style={type.caption}>Quando o barbeiro finaliza o corte, o cliente recebe "Como foi o corte?" e avalia o barbeiro e, se quiser, a barbearia.</Text>
+          </View>
+          <Interruptor value={!!b.pedirAvaliacao} onValueChange={alternar} rotulo="Pedir avaliação ao cliente" />
+        </View>
+        {erro ? <Aviso texto={erro} tom="erro" /> : null}
+      </Cartao>
+    </Secao>
   );
 }
 

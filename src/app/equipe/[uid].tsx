@@ -10,6 +10,9 @@ import { useMinhaBarbearia } from '../../hooks/useMinhaBarbearia';
 import { db } from '../../services/firebase';
 import { atualizarCartaoBarbeiro, ouvirEquipePrivado, type EquipePrivado } from '../../services/barbearias';
 import { escolherEEnviar } from '../../services/fotos';
+import { avaliacoesDaCasa, avaliacoesDoBarbeiro } from '../../services/avaliacoes';
+import { ItemAvaliacao } from '../../components/agenda/ListaAvaliacoes';
+import type { Avaliacao } from '../../types/models';
 import { colors, radius, space, type } from '../../theme';
 
 export default function FichaBarbeiro() {
@@ -18,12 +21,21 @@ export default function FichaBarbeiro() {
   const [privado, setPrivado] = useState<EquipePrivado | null>(null);
   const [enviando, setEnviando] = useState<'foto' | 'capa' | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const [avaliacoes, setAvaliacoes] = useState<Avaliacao[] | null>(null);
   const pode = ehDono || alvo === uid;
 
   useEffect(() => {
     if (!barbearia || !alvo || !pode) return;
     return ouvirEquipePrivado(db, barbearia.id, alvo, setPrivado);
   }, [barbearia?.id, alvo, pode]);
+
+  // As regras deixam o dono ler pela casa e o barbeiro pelas dele.
+  useEffect(() => {
+    if (!barbearia || !alvo || !pode) return;
+    (ehDono ? avaliacoesDaCasa(db, barbearia.id) : avaliacoesDoBarbeiro(db, alvo))
+      .then(l => setAvaliacoes(l.filter(a => a.barbeiroId === alvo && a.direcao === 'cliente_para_barbeiro')))
+      .catch(() => setAvaliacoes([]));
+  }, [barbearia?.id, alvo, pode, ehDono]);
 
   if (carregando) return <Carregando />;
   const m = equipe.find(e => e.uid === alvo);
@@ -77,8 +89,10 @@ export default function FichaBarbeiro() {
         icone={<Ionicons name="logo-whatsapp" size={18} color={colors.text} />} /> : null}
       {!tel && alvo === uid ? <Aviso texto="Seu telefone ainda não está aqui: salve o WhatsApp em Perfil para o dono poder falar com você." /> : null}
 
-      <Secao titulo="Avaliações">
-        <Text style={type.caption}>As avaliações dos clientes sobre {m.apelido || m.nome.split(' ')[0]} aparecem aqui.</Text>
+      <Secao titulo="Avaliações dos clientes">
+        {avaliacoes === null ? <Carregando />
+          : avaliacoes.length === 0 ? <Text style={type.caption}>Quando um cliente avaliar {m.apelido || m.nome.split(' ')[0]}, aparece aqui.</Text>
+          : avaliacoes.map(a => <ItemAvaliacao key={a.id} a={a} />)}
       </Secao>
     </Tela>
   );

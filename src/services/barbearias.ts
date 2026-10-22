@@ -200,7 +200,7 @@ export async function criarBarbearia(
 }
 
 export async function atualizarBarbearia(db: Firestore, id: string, dados: Partial<Pick<Barbearia,
-  'nome' | 'endereco' | 'cidade' | 'telefone' | 'instagram' | 'capaUrl' | 'logoUrl' | 'fotos' | 'publicada' | 'comodidades' | 'googlePlaceId'>>) {
+  'nome' | 'endereco' | 'cidade' | 'telefone' | 'instagram' | 'capaUrl' | 'logoUrl' | 'fotos' | 'publicada' | 'comodidades' | 'googlePlaceId' | 'pedirAvaliacao'>>) {
   await updateDoc(doc(db, 'barbearias', id), dados);
   casaMudou(id);
 }
