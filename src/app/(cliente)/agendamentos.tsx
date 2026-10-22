@@ -44,7 +44,8 @@ export default function Agendamentos() {
             <Text style={type.caption}>Nenhum horário marcado.</Text>
             <Botao titulo="Encontrar barbearia" variante="secundario" onPress={() => router.push('/inicio')} />
           </Cartao>
-        ) : proximos.map(a => <ItemAgendamento key={a.id} a={a} uid={perfil.uid} podeCancelar />)}
+          // Já na cadeira (começou e não terminou) segue em "Próximos", mas sem cancelar: a regra barra (SEC-004).
+        ) : proximos.map(a => <ItemAgendamento key={a.id} a={a} uid={perfil.uid} podeCancelar={a.inicio > agora} />)}
       </Secao>
       {historico.length ? (
         <Secao titulo="Histórico">
