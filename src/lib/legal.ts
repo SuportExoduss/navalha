@@ -1,8 +1,11 @@
 // Dados públicos das páginas legais (política de privacidade e exclusão de conta). Um lugar só para trocar.
-export const RESPONSAVEL = 'TrevoTec';
+/** Marca. Ainda não é empresa (sem CNPJ): quem responde pelos dados é o dono, pessoa física (RESPONSAVEL). */
+export const MARCA = 'TrevoTec';
+/** Controlador dos dados (LGPD, art. 5º, VI). Quando houver CNPJ, troque por razão social + CNPJ e avise os usuários. */
+export const RESPONSAVEL = 'Andre Luiz R.P de Barros';
 export const CONTATO = 'trevotecsuport@gmail.com';
 export const SITE = 'https://navalha.web.app';
 /** Data em que a versão atual da política passou a valer. */
-export const VIGENCIA = '20 de outubro de 2026';
+export const VIGENCIA = '22 de outubro de 2026';
 /** Prazo para responder pedidos de titulares (LGPD, art. 19). */
 export const PRAZO_RESPOSTA_DIAS = 15;

@@ -23,13 +23,15 @@
 
 ## 1. Quem somos
 
-O Navalha é um app de agendamento para barbearias, mantido por:
+O Navalha é um app de agendamento para barbearias, mantido sob a marca TrevoTec por:
 
-- **Razão social**: [PENDENTE: razão social da TrevoTec]
-- **CNPJ**: [PENDENTE]
-- **Endereço**: [PENDENTE]
+- **Responsável (controlador)**: Andre Luiz R.P de Barros, pessoa física
 - **Site**: https://navalha.web.app
 - **Contato**: trevotecsuport@gmail.com
+
+[JURÍDICO: a TrevoTec ainda não existe como empresa (sem CNPJ), então o controlador é o dono como pessoa física.
+Conferir o que precisa ser publicado para identificá-lo (Art. 9º, III e IV): se o nome abreviado basta ou se deve ir
+por extenso, e se é preciso endereço. O CPF não vai na política (não é exigido e expõe o dono a fraude). Quando houver CNPJ, trocar por razão social e CNPJ e avisar os usuários (mudança importante).]
 
 [JURÍDICO: papel de cada um. A v1 diz que a TrevoTec é a controladora de todos os dados. Nas atividades das seções
 3.4, 3.5, 3.7 e 3.8 quem decide é a barbearia (encaixe de balcão, avaliar o cliente, fotografar o corte, mandar
@@ -227,10 +229,12 @@ exemplo `navalha.web.app/privacidade/v1`.]
 - Base legal da foto do corte (3.5).
 - Transferência internacional: hipótese do Art. 33 para Google e Cloudflare (6).
 - ECA Digital: o app é de "acesso provável" por adolescentes? (8)
-- Se a TrevoTec é agente de pequeno porte: muda prazos e o encarregado (2, 7, 9).
+- Controlador pessoa física: confirmar o enquadramento como agente de pequeno porte (Res. CD/ANPD nº 2/2022), que
+  muda prazos e o encarregado (2, 7, 9), e se vale abrir CNPJ antes do piloto (quem responde por multa ou
+  indenização hoje é o dono, com os bens pessoais).
 
 ### O que o dono precisa responder
-- Razão social, CNPJ, endereço e o e-mail do encarregado.
+- E-mail do encarregado (o responsável já está na seção 1: o dono, pessoa física, porque a TrevoTec ainda não tem CNPJ).
 - Região do Firestore (Console do Firebase › Configurações do projeto) e aceite dos termos de tratamento de dados
   do Firebase e da Cloudflare.
 - Prazo de guarda do histórico de atendimentos, das avaliações e dos registros de compra.

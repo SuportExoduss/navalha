@@ -1,15 +1,15 @@
 // Política de privacidade (pública, exigida pela Google Play e pela LGPD). Descreve só o que o app faz de fato;
 // mudou a coleta de dados no código, mude aqui e a VIGENCIA em src/lib/legal.ts.
 import { Documento, Item, Link, Paragrafo, Topico } from '../components/Documento';
-import { CONTATO, PRAZO_RESPOSTA_DIAS, RESPONSAVEL, VIGENCIA } from '../lib/legal';
+import { CONTATO, MARCA, PRAZO_RESPOSTA_DIAS, RESPONSAVEL, VIGENCIA } from '../lib/legal';
 
 export default function Privacidade() {
   return (
     <Documento titulo="Política de privacidade" resumo={`Como o Navalha usa os seus dados. Em vigor desde ${VIGENCIA}.`}>
       <Topico titulo="Quem somos">
         <Paragrafo>
-          O Navalha é um app de agendamento para barbearias, mantido pela {RESPONSAVEL}, responsável (controladora)
-          pelos dados descritos aqui. Fale com a gente pelo e-mail <Link href={`mailto:${CONTATO}`}>{CONTATO}</Link>.
+          O Navalha é um app de agendamento para barbearias, mantido sob a marca {MARCA} por {RESPONSAVEL}, pessoa
+          física, responsável (controlador) pelos dados descritos aqui. Fale com a gente pelo e-mail <Link href={`mailto:${CONTATO}`}>{CONTATO}</Link>.
         </Paragrafo>
       </Topico>
 
