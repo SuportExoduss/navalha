@@ -124,8 +124,10 @@ Requisitos da Google Play: `docs/publicar-google-play.md`. Pacote definitivo `co
   1,35 s logado, toque pula); capa (banner) no perfil do cliente e no cartão do barbeiro; ficha do barbeiro para o
   dono (foto, capa, telefone, nota, avaliações); seguir cortes (iniciar → tela do corte atual → finalizar → avaliar
   o cliente; um corte aberto por barbeiro). Testes: lógica 50, regras 47, Worker 13; conferido no navegador
-- [ ] **Publicar regras + índices e o Worker** (capa, avaliações novas e pedido de avaliação dependem deles) e gerar
-  APK/AAB novo (entrou o módulo nativo `expo-clipboard`)
+- [x] Publicado em 22/out: regras + índices, Worker (versão 65f47711) e web (navalha.web.app). Conferido sem login:
+  Worker recusa sem token; regras liberam só a avaliação pública da barbearia; site com a página nova de link quebrado
+- [ ] Dono: testar com a conta real (avaliar, capa, seguir cortes, "Publicar também no Google") e gerar APK/AAB novo
+  (entrou o módulo nativo `expo-clipboard`)
 - [ ] Dono: chave da Places API (Google Cloud com faturamento ativo + `npx wrangler secret put GOOGLE_PLACES_KEY` em `worker/`); sem ela, só a nota do Navalha aparece
 
 ## Extras de 20/out/2026 (fora do roadmap original, no ar)
