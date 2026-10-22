@@ -47,6 +47,9 @@ export function lerValor(v: Valor | undefined): unknown {
   return undefined;
 }
 
+/** Valor de `escrever` que apaga o campo (fica na máscara sem valor, como o deleteField do SDK). */
+export const APAGAR = Symbol('apagar');
+
 export class Firestore {
   constructor(private projectId: string, private token: string) {}
   private get base() { return `https://firestore.googleapis.com/v1/projects/${this.projectId}/databases/(default)/documents`; }
@@ -88,7 +91,7 @@ export class Firestore {
     const raiz = `projects/${this.projectId}/databases/(default)/documents/`;
     const writes = lista.map(({ caminho, campos, criar }) => {
       const fields: Record<string, Valor> = {};
-      for (const [k, v] of Object.entries(campos)) mesclar(fields, montarCampo(k.split('.'), paraValor(v)));
+      for (const [k, v] of Object.entries(campos)) if (v !== APAGAR) mesclar(fields, montarCampo(k.split('.'), paraValor(v)));
       return {
         update: { name: raiz + caminho, fields },
         updateMask: { fieldPaths: Object.keys(campos) },
@@ -96,6 +99,16 @@ export class Firestore {
       };
     });
     const r = await fetch(`${this.base}:commit`, { method: 'POST', headers: this.headers(), body: JSON.stringify({ writes }) });
+    if (!r.ok) throw new Error(`commit ${r.status}: ${await r.text()}`);
+  }
+
+  /** Apaga vários documentos numa chamada só (até 500; documento que não existe é ignorado). */
+  async apagar(caminhos: string[]) {
+    if (!caminhos.length) return;
+    const raiz = `projects/${this.projectId}/databases/(default)/documents/`;
+    const r = await fetch(`${this.base}:commit`, {
+      method: 'POST', headers: this.headers(), body: JSON.stringify({ writes: caminhos.map(c => ({ delete: raiz + c })) }),
+    });
     if (!r.ok) throw new Error(`commit ${r.status}: ${await r.text()}`);
   }
 

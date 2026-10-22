@@ -54,7 +54,8 @@ export default function Privacidade() {
           é dela: o cliente vê os próprios agendamentos; a barbearia vê a própria agenda.
         </Paragrafo>
         <Paragrafo>
-          Guardamos os dados enquanto a conta existir. Ao excluir a conta, seguimos o que está descrito em{' '}
+          Guardamos os dados enquanto a conta existir, menos os registros de uso e de erros (apagados após 12 meses) e os
+          avisos do sino (apagados após 90 dias). Ao excluir a conta, seguimos o que está descrito em{' '}
           <Link href="/excluir-conta">Excluir conta e dados</Link>. Registros de compra podem ser mantidos pelo prazo que a lei exigir.
         </Paragrafo>
       </Topico>

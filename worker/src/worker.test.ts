@@ -254,3 +254,86 @@ test('nota do Google: no máximo 1 vez por dia por casa, gravada numa chamada s�
     assert.deepEqual(b3.campos, { googleAtualizadoEm: agora });
   } finally { globalThis.fetch = original; }
 });
+
+test('Firestore REST: APAGAR tira o campo (fica na máscara sem valor) e apagar manda deletes', async () => {
+  const { APAGAR } = await import('./firestore');
+  const chamadas: any[] = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (_u: string, init?: RequestInit) => { chamadas.push(JSON.parse(String(init?.body))); return new Response('{}'); }) as typeof fetch;
+  try {
+    const db = new Firestore('p', 't');
+    await db.escrever([{ caminho: 'agendamentos/a1', campos: { clienteNome: 'X', clienteTelefone: APAGAR } }]);
+    assert.deepEqual(chamadas[0].writes[0].updateMask.fieldPaths, ['clienteNome', 'clienteTelefone']);
+    assert.deepEqual(Object.keys(chamadas[0].writes[0].update.fields), ['clienteNome']);
+    await db.apagar(['users/u1']);
+    assert.equal(chamadas[1].writes[0].delete, 'projects/p/databases/(default)/documents/users/u1');
+  } finally { globalThis.fetch = original; }
+});
+
+test('excluir conta: anonimiza histórico e avaliações, apaga nota, avisos, perfil e fotos; barbeiro sai da equipe', async () => {
+  const { excluirConta, chaveDaFoto } = await import('./conta');
+  const { APAGAR } = await import('./firestore');
+  const agora = 1_800_000_000_000;
+  const foto = 'https://navalha-worker.navalha-worker.workers.dev/fotos/corte/a1/lucas-x1.webp';
+  const docs = new Map<string, Record<string, unknown>>([
+    ['users/ana', { uid: 'ana', barbearias: ['b2', 'b3'] }], // atende na b2; é dona da b3
+    ['barbearias/b1', { donoUid: 'dono' }],
+    ['barbearias/b2', { donoUid: 'outro', barbeirosAtivos: 3 }],
+    ['barbearias/b2/barbeiros/ana', { nome: 'Ana', fotoUrl: 'f', ativo: true }],
+    ['barbearias/b3', { donoUid: 'ana' }],
+    ['barbearias/b3/barbeiros/ana', { nome: 'Ana', ativo: true }],
+  ]);
+  const consultas: Record<string, { id: string; dados: Record<string, unknown> }[]> = {
+    agendamentos: [{ id: 'a1', dados: { barbeariaId: 'b1', barbeiroId: 'lucas', fotos: [foto, 'https://evil/x.webp'] } }],
+    avaliacoes: [{ id: 'a1_barbearia', dados: {} }],
+    notificacoes: [{ id: 'n-da-ana', dados: {} }],
+  };
+  const gravados: { caminho: string; campos: Record<string, unknown> }[] = [];
+  const apagados: string[] = [];
+  const db = {
+    query: async (q: { from: { collectionId: string }[]; where: { fieldFilter: { value: { stringValue: string } } } }) => {
+      assert.equal(q.where.fieldFilter.value.stringValue, 'ana'); // nunca consulta dados de outra pessoa
+      return consultas[q.from[0].collectionId];
+    },
+    varios: async (cs: string[]) => new Map(cs.filter(c => docs.has(c)).map(c => [c, docs.get(c)!])),
+    escrever: async (l: typeof gravados) => { gravados.push(...l); },
+    apagar: async (l: string[]) => { apagados.push(...l); },
+  } as never;
+  const fotosApagadas: string[] = [];
+  const bucket = {
+    list: async ({ prefix }: { prefix: string }) => ({ objects: prefix === 'perfil/ana/' ? [{ key: 'perfil/ana/ana-1.webp' }] : [] }),
+    delete: async (k: string[]) => { fotosApagadas.push(...k); },
+  } as never;
+
+  assert.equal(chaveDaFoto('https://x/fotos/../segredo/a.webp'), null);
+  assert.deepEqual((await excluirConta(db, bucket, 'ana', agora)).status, 200);
+  const g = (c: string) => gravados.find(w => w.caminho === c)?.campos;
+  assert.deepEqual(g('agendamentos/a1'), { clienteNome: 'Cliente removido', clienteTelefone: APAGAR, fotos: [], atualizadoEm: agora });
+  assert.deepEqual(g('avaliacoes/a1_barbearia'), { clienteNome: 'Cliente removido', clienteFotoUrl: APAGAR, clienteBannerUrl: APAGAR });
+  assert.deepEqual(g('barbearias/b2/barbeiros/ana'), { nome: 'Barbeiro removido', apelido: APAGAR, fotoUrl: APAGAR, bannerUrl: APAGAR, ativo: false });
+  assert.deepEqual(g('barbearias/b2'), { barbeirosAtivos: 2, mudouBarbeiro: 'ana' });
+  assert.equal(g('barbearias/b3/barbeiros/ana'), undefined); // dona: a casa dela continua de pé
+  for (const c of ['users/ana', 'notasCliente/ana', 'notificacoes/n-da-ana', 'notificacoes/a1_agendado_lucas', 'notificacoes/a1_cancelado_dono',
+    'notificacoes/a1_avaliar_lucas', 'barbearias/b2/equipePrivado/ana']) assert.ok(apagados.includes(c), c);
+  assert.equal(apagados.includes('barbearias/b3/equipePrivado/ana'), false);
+  assert.deepEqual(fotosApagadas.sort(), ['corte/a1/lucas-x1.webp', 'perfil/ana/ana-1.webp']); // a de fora do R2 é ignorada
+});
+
+test('prazos de guarda: apaga métricas e erros com mais de 12 meses e avisos com mais de 90 dias', async () => {
+  const { limparAntigos } = await import('./conta');
+  const agora = 1_800_000_000_000, DIA = 86_400_000;
+  const limites: Record<string, number> = {};
+  const apagados: string[] = [];
+  const db = {
+    query: async (q: { from: { collectionId: string }[]; where: { fieldFilter: { field: { fieldPath: string }; op: string; value: { integerValue: string } } } }) => {
+      const c = q.from[0].collectionId;
+      assert.deepEqual([q.where.fieldFilter.field.fieldPath, q.where.fieldFilter.op], ['em', 'LESS_THAN']);
+      limites[c] = Number(q.where.fieldFilter.value.integerValue);
+      return [{ id: `${c}-velho`, dados: {} }];
+    },
+    apagar: async (l: string[]) => { apagados.push(...l); },
+  } as never;
+  await limparAntigos(db, agora);
+  assert.deepEqual(limites, { eventos: agora - 365 * DIA, erros: agora - 365 * DIA, notificacoes: agora - 90 * DIA });
+  assert.deepEqual(apagados, ['eventos/eventos-velho', 'erros/erros-velho', 'notificacoes/notificacoes-velho']);
+});

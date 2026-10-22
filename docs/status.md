@@ -137,6 +137,25 @@ Requisitos da Google Play: `docs/publicar-google-play.md`. Pacote definitivo `co
 - [x] Testes: lógica 40, regras 38, Worker 11; regras, índices, Worker e web publicados
 - [ ] Testar no celular com 3 contas (cliente, barbeiro, dono): push de marcado/cancelado e agenda do barbeiro só com os horários dele
 
+## LGPD — auditoria /codelgpd (22/out/2026)
+Relatório na conversa de 22/out (12 achados, L01–L12; não é parecer jurídico). Etapa 1 = correções de código.
+- [x] L01 Exclusão de conta completa: `POST /conta/excluir` no Worker (`worker/src/conta.ts`) anonimiza histórico e
+  avaliações (sem nome nem foto), apaga nota do cliente, avisos, perfil e fotos no R2 (perfil, capa, cortes); barbeiro
+  (não dono) sai da equipe e perde nome, fotos e telefone. O app cancela os horários futuros, chama o Worker e só então
+  apaga o login. Página `/excluir-conta` reescrita para bater com o código
+- [x] L02 `notasCliente`: só o próprio cliente ou quem é de verdade de uma barbearia lê (o `barbearias` do perfil é
+  editável, então a regra confere a equipe). Limite: barbeiro de qualquer casa ainda lê a nota de qualquer cliente
+- [x] L04 Prazos de guarda no cron: `eventos` e `erros` 12 meses, `notificacoes` 90 dias (até 500 por coleção/hora);
+  prazos citados na política de privacidade
+- [x] L12 `fotosNoPortfolio` começa desligado
+- [x] Testes: lógica 53, regras 47, Worker 16. Publicado em 22/out: Worker (versão 17f98175), regras + índices e web.
+  Conferido no ar: `/conta/excluir` recusa sem token; o site publicado chama a rota nova
+- [ ] Dono: testar a exclusão com uma conta descartável (cliente com avaliação e foto de corte) e conferir no console e no R2
+- [ ] Etapa 2 (documentos, depende do dono e de advogado): política v2 (L03), roteiro e registro de incidentes (L06),
+  encarregado (L07), aceite dos termos de tratamento de dados do Firebase e da Cloudflare + região do Firestore (L08),
+  papel da TrevoTec e das barbearias + termo com as barbearias (L09), faixa etária / ECA Digital (L10), base legal da nota do cliente (L11)
+- [ ] Etapa 3 (antes da publicação aberta): mapa de dados e ROPA em `.lgpd/`, script de acesso e portabilidade (L05)
+
 ## Fase 1 — o que falta para o portão da Fase 2
 O código do MVP está completo. O portão é "3 barbearias amigas usando por 1 semana sem erro grave e nenhum horário duplicado".
 Para isso, nesta ordem:

@@ -1,5 +1,5 @@
 import {
-  collection, deleteDoc, deleteField, doc, getDocs, onSnapshot, query, setDoc, updateDoc, where,
+  collection, doc, getDocs, onSnapshot, query, setDoc, updateDoc, where,
   type Firestore, type Unsubscribe,
 } from 'firebase/firestore';
 import { deleteUser, type User } from 'firebase/auth';
@@ -18,7 +18,8 @@ export async function criarPerfil(db: Firestore, user: User): Promise<UserProfil
     papelAtivo: 'cliente',
     barbearias: [],
     favoritos: { barbearias: [], barbeiros: [] },
-    privacidade: { fotosNoPortfolio: true },
+    // Consentimento não vem marcado (LGPD art. 8º): a pessoa liga se quiser.
+    privacidade: { fotosNoPortfolio: false },
     provedores: ['google'],
     criadoEm: Date.now(),
   };
@@ -59,11 +60,13 @@ export async function refletirNaEquipe(db: Firestore, uid: string, barbearias: s
   await Promise.all(barbearias.map(bid => updateDoc(doc(db, 'barbearias', bid, 'barbeiros', uid), campos).catch(() => undefined)));
 }
 
+/** Nome que fica no histórico da barbearia depois da exclusão (o Worker grava; as regras aceitam do próprio cliente). */
 export const NOME_REMOVIDO = 'Cliente removido';
 
 /**
- * Exclusão de conta (LGPD e exigência das lojas): cancela os horários futuros,
- * tira o nome do histórico das barbearias, apaga o perfil e por fim a conta de login.
+ * Exclusão de conta (LGPD e exigência das lojas): cancela os horários futuros (a transação libera os blocos),
+ * pede ao Worker para apagar ou anonimizar o resto (histórico, avaliações, nota, avisos, fotos no R2, perfil)
+ * e por fim apaga a conta de login. Se o Worker falhar, o login fica: dá para tentar de novo.
  * Quem é dono continua dono da barbearia até transferi-la (o documento da casa não é apagado).
  */
 export async function excluirConta(db: Firestore, user: User, agora = Date.now()) {
@@ -72,10 +75,10 @@ export async function excluirConta(db: Firestore, user: User, agora = Date.now()
   for (const a of meus) {
     // Só o que ainda não começou: a regra não deixa o cliente cancelar horário em andamento (SEC-004).
     if (['reservado', 'confirmado'].includes(a.status) && a.inicio > agora) await cancelar(db, a, { por: 'cliente', motivo: 'Conta excluída' });
-    if (a.clienteNome !== NOME_REMOVIDO) {
-      await updateDoc(doc(db, 'agendamentos', a.id), { clienteNome: NOME_REMOVIDO, clienteTelefone: deleteField(), atualizadoEm: agora });
-    }
   }
-  await deleteDoc(doc(db, 'users', user.uid));
+  const r = await fetch(`${process.env.EXPO_PUBLIC_WORKER_URL}/conta/excluir`, {
+    method: 'POST', headers: { Authorization: `Bearer ${await user.getIdToken()}` },
+  });
+  if (!r.ok) throw new Error(`Falha ao apagar os dados (${r.status}).`);
   await deleteUser(user);
 }

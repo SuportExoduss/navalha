@@ -325,8 +325,14 @@ service cloud.firestore {
       allow write: if false;
     }
     // Média do cliente (só o Worker grava): a casa lê ao ver o agendamento. Só por id (sem listar).
+    // Só quem é de alguma barbearia (e o próprio cliente): outro cliente não consulta a reputação alheia (LGPD L02).
+    // A lista `barbearias` do perfil o próprio usuário edita, então a casa é conferida de verdade (até as 2 primeiras).
     match /notasCliente/{uid} {
-      allow get: if logado();
+      function daAlgumaCasa() {
+        let casas = get(/databases/$(database)/documents/users/$(eu())).data.get('barbearias', []);
+        return (casas.size() > 0 && ehDaCasa(casas[0])) || (casas.size() > 1 && ehDaCasa(casas[1]));
+      }
+      allow get: if logado() && (eu() == uid || daAlgumaCasa());
       allow list, write: if false;
     }
     match /clubes/{id} {

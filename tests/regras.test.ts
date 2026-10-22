@@ -666,8 +666,20 @@ test('pedir avaliação: só o dono liga ou desliga', async () => {
 });
 
 test('nota do cliente: a casa lê por id; ninguém lista nem grava pelo app', async () => {
-  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'notasCliente/ana'), { media: 4.5, total: 2 }));
+  await env.withSecurityRulesDisabled(async ctx => {
+    const db = ctx.firestore();
+    await setDoc(doc(db, 'notasCliente/ana'), { media: 4.5, total: 2 });
+    await setDoc(doc(db, 'users/lucas'), { uid: 'lucas', barbearias: ['b1'] });
+    await setDoc(doc(db, 'users/dono'), { uid: 'dono', barbearias: ['b1'] });
+    // beto diz no próprio perfil que é da b1 (o perfil ele mesmo edita), mas não é da equipe.
+    await setDoc(doc(db, 'users/beto'), { uid: 'beto', barbearias: ['b1'] });
+    await setDoc(doc(db, 'users/caio'), { uid: 'caio', barbearias: [] });
+  });
   await assertSucceeds(getDoc(doc(dbDe('lucas'), 'notasCliente/ana')));
+  await assertSucceeds(getDoc(doc(dbDe('dono'), 'notasCliente/ana')));
+  await assertSucceeds(getDoc(doc(dbDe('ana'), 'notasCliente/ana'))); // a própria nota
+  await assertFails(getDoc(doc(dbDe('beto'), 'notasCliente/ana'))); // LGPD L02: cliente não vê a reputação de outro
+  await assertFails(getDoc(doc(dbDe('caio'), 'notasCliente/ana')));
   await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), 'notasCliente/ana')));
   await assertFails(getDocs(collection(dbDe('lucas'), 'notasCliente')));
   await assertFails(setDoc(doc(dbDe('ana'), 'notasCliente/ana'), { media: 5, total: 99 }));
