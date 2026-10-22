@@ -11,15 +11,16 @@ import { MotivoCancelamento, textoCancelamento } from '../../components/agenda/M
 import { Encaixe } from '../../components/agenda/Encaixe';
 import { PainelNotificacoes } from '../../components/agenda/PainelNotificacoes';
 import { avisarAgendamento } from '../../services/avisos';
-import { notaDoCliente } from '../../services/avaliacoes';
+import { NotaDoCliente } from '../../components/agenda/NotaDoCliente';
 import { AvaliarCliente } from '../../components/agenda/Avaliar';
 import { useAuth } from '../../auth/AuthProvider';
 import { useMinhaBarbearia } from '../../hooks/useMinhaBarbearia';
 import { db } from '../../services/firebase';
-import { cancelar, concluir, definirStatus, ouvirAgendaDoDia, registrarEvento } from '../../services/agendamentos';
+import { cancelar, concluir, definirStatus, iniciarCorte, ouvirAgendaDoDia, registrarEvento } from '../../services/agendamentos';
+import { corteAberto, emAtendimento, podeIniciar } from '../../lib/atendimento';
 import { escolherEEnviar } from '../../services/fotos';
 import { dataLocal, expedienteEfetivo, diaDaSemana, formatarHora, formatarPreco, proximosDias, somarDias } from '../../lib/agenda';
-import { colors, space, type } from '../../theme';
+import { colors, radius, space, type } from '../../theme';
 import type { Agendamento, ISODate } from '../../types/models';
 
 export default function AgendaBarbeiro() {
@@ -62,6 +63,7 @@ export default function AgendaBarbeiro() {
   // Mesma conta do painel (ativos + concluídos): o total do dia não encolhe à medida que o barbeiro atende.
   const confirmados = visiveis.filter(a => ATIVOS.includes(a.status) || a.status === 'concluido');
   const total = confirmados.reduce((s, a) => s + a.precoCentavos, 0);
+  const meuCorte = dia === hoje ? corteAberto(lista ?? [], uid) : undefined;
 
   if (encaixando && barbeiroDoEncaixe) {
     return <Encaixe barbearia={barbearia} barbeiro={barbeiroDoEncaixe} dia={dia} aoSair={() => setEncaixando(false)} />;
@@ -96,25 +98,32 @@ export default function AgendaBarbeiro() {
           icone={<Ionicons name="time-outline" size={18} color={colors.text} />} />
       </View>
 
+      {/* Seguir cortes: o corte aberto do usuário fica no topo; tocar volta para a tela do corte. */}
+      {meuCorte ? (
+        <Pressable onPress={() => router.push({ pathname: '/atendimento/[id]', params: { id: meuCorte.id } })} accessibilityRole="button"
+          accessibilityLabel={`Corte em andamento: ${meuCorte.clienteNome}. Abrir`}
+          style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: space(3), padding: space(4), borderRadius: radius.card,
+            backgroundColor: colors.accent, opacity: pressed ? 0.85 : 1 })}>
+          <Ionicons name="cut" size={20} color={colors.accentText} />
+          <View style={{ flex: 1 }}>
+            <Text style={[type.body, { fontWeight: '600', color: colors.accentText }]}>Corte em andamento</Text>
+            <Text style={[type.caption, { color: colors.accentText }]}>{meuCorte.clienteNome} · {meuCorte.servicoNome}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.accentText} />
+        </Pressable>
+      ) : null}
+
       {erro ? <Aviso texto={erro} tom="erro" /> : null}
       {lista === null ? <Carregando /> : visiveis.length === 0 ? (
         <Cartao><Text style={type.caption}>Nenhum cliente marcado {dia === hoje ? 'hoje' : 'neste dia'}.</Text></Cartao>
       ) : visiveis.map(a => (
-        <ItemAgenda key={a.id} a={a} barbeiro={!filtro ? nomeDe(a.barbeiroId) : undefined} uid={uid} />
+        <ItemAgenda key={a.id} a={a} barbeiro={!filtro ? nomeDe(a.barbeiroId) : undefined} uid={uid} lista={lista} />
       ))}
     </Tela>
   );
 }
 
-/** Média do cliente nas avaliações das barbearias (1 leitura por cliente, guardada 5 min). */
-function NotaDoCliente({ uid }: { uid: string }) {
-  const [nota, setNota] = useState<{ media: number; total: number } | null>(null);
-  useEffect(() => { notaDoCliente(db, uid).then(setNota).catch(() => setNota(null)); }, [uid]);
-  if (!nota?.total) return null;
-  return <Text style={type.caption}>{`★ ${nota.media.toFixed(1).replace('.', ',')} como cliente (${nota.total})`}</Text>;
-}
-
-function ItemAgenda({ a, barbeiro, uid }: { a: Agendamento; barbeiro?: string; uid: string }) {
+function ItemAgenda({ a, barbeiro, uid, lista }: { a: Agendamento; barbeiro?: string; uid: string; lista: Agendamento[] }) {
   const [ocupado, setOcupado] = useState(false);
   const [confirmarCancelamento, setConfirmarCancelamento] = useState(false);
   const [motivo, setMotivo] = useState('');
@@ -164,7 +173,12 @@ function ItemAgenda({ a, barbeiro, uid }: { a: Agendamento; barbeiro?: string; u
       {cancelamento ? <Aviso texto={cancelamento} /> : null}
       {ativo && !confirmarCancelamento && !concluindo ? (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space(2) }}>
-          {comecou ? <Chip rotulo="Concluído" ativo onPress={() => setConcluindo(true)} /> : null}
+          {emAtendimento(a) ? <Chip rotulo="Corte em andamento" ativo onPress={() => router.push({ pathname: '/atendimento/[id]', params: { id: a.id } })} />
+            : podeIniciar(a, lista, Date.now()) ? <Chip rotulo="Iniciar corte" ativo onPress={() => agir(async () => {
+              await iniciarCorte(db, a.id);
+              router.push({ pathname: '/atendimento/[id]', params: { id: a.id } });
+            })} /> : null}
+          {comecou && !emAtendimento(a) ? <Chip rotulo="Concluído" onPress={() => setConcluindo(true)} /> : null}
           {comecou ? <Chip rotulo="Faltou" onPress={() => agir(async () => {
             await definirStatus(db, a.id, 'faltou');
             registrarEvento(db, { tipo: 'faltou', uid, barbeariaId: a.barbeariaId, em: Date.now() });
@@ -175,7 +189,7 @@ function ItemAgenda({ a, barbeiro, uid }: { a: Agendamento; barbeiro?: string; u
       ) : null}
       {concluindo ? (
         <View style={{ gap: space(2) }}>
-          <Aviso texto="Fotografe o corte: o cliente recebe a foto no histórico dele." />
+          <Aviso texto="Fotografe o corte: a foto vai para o histórico do cliente." />
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space(2) }}>
             <Botao titulo="Tirar foto" style={{ flex: 1 }} carregando={ocupado} onPress={() => concluirCom('camera')}
               icone={<Ionicons name="camera" size={18} color={colors.accentText} />} />

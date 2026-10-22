@@ -1,5 +1,7 @@
 # Roteiro: avaliações, perfis com banner, splash e seguir cortes (pedido do dono, 22/out/2026)
 
+**Status (22/out): as 7 etapas estão feitas, testadas e com commit; falta publicar regras, índices e Worker.**
+
 Ordem do mais fácil para o mais difícil. Cada etapa termina com regressão completa (testes, typecheck,
 regras, Worker, export web) e conferência no navegador (roteiro do dogfood + expo-design-system). Commit por etapa.
 

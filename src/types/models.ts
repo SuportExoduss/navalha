@@ -197,6 +197,8 @@ export interface Agendamento {
   avaliacao?: { estrelas: number; em: Millis };
   /** Avaliações deste atendimento por direção (gravadas só pelo Worker). */
   avaliacoes?: Partial<Record<AlvoAvaliacao, { estrelas: number; em: Millis }>>;
+  /** Seguir cortes: quando o barbeiro iniciou o corte (o app abre a tela do corte atual). */
+  iniciadoEm?: Millis;
   /** A casa pede avaliação e o barbeiro finalizou: o cliente vê o pedido em destaque (só o Worker grava). */
   pedidoAvaliacao?: boolean;
   criadoEm: Millis;

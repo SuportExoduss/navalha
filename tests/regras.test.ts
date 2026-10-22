@@ -669,6 +669,12 @@ test('nota do cliente: a casa lê por id; ninguém lista nem grava pelo app', as
   await assertFails(setDoc(doc(dbDe('ana'), 'notasCliente/ana'), { media: 5, total: 99 }));
 });
 
+test('seguir cortes: a casa inicia o corte; o cliente não', async () => {
+  const id = await reservar(dbDe('ana'), novaReserva('ana', inicio));
+  await assertFails(updateDoc(doc(dbDe('ana'), 'agendamentos', id), { iniciadoEm: 1, atualizadoEm: 1 }));
+  await assertSucceeds(updateDoc(doc(dbDe('lucas'), 'agendamentos', id), { status: 'confirmado', iniciadoEm: 1, atualizadoEm: 1 }));
+});
+
 test('marcas de avaliação no agendamento: só o Worker', async () => {
   const id = await reservar(dbDe('ana'), novaReserva('ana', inicio));
   await assertFails(updateDoc(doc(dbDe('ana'), 'agendamentos', id), { avaliacoes: { barbeiro: { estrelas: 5, em: 1 } }, atualizadoEm: 1 }));

@@ -115,7 +115,17 @@ Requisitos da Google Play: `docs/publicar-google-play.md`. Pacote definitivo `co
 - [x] Ranking "Mais bem avaliadas" (Início e Explorar): média bayesiana app + Google, calculada pelo Worker
 - [x] Regras: notas, total de avaliações, nota do Google e ranking só o servidor grava; casa não nasce com nota; ninguém cria avaliação pelo app
 - [x] Testes: lógica 45, regras 39, Worker 13; conferido no navegador (avaliar, página da casa, ranking)
-- Avaliação do cliente pelo barbeiro (mútua, dupla-cega) ficou de fora: só se o dono pedir
+- [x] 22/out (pedido do dono, roteiro em `docs/roadmap-avaliacoes.md`): avaliações em três direções. Cliente → barbeiro
+  (nota interna, `equipePrivado`), cliente → barbearia (pública, ranking) e barbeiro → cliente (o cliente vê no Perfil;
+  a casa vê a média no agendamento); cancelamento também avalia (quem foi cancelado avalia quem cancelou); aba
+  Avaliações no modo casa; "Pedir avaliação ao cliente" em Configurações; "Publicar também no Google" (copia o
+  comentário e abre a janela do Google: o Google não aceita preenchimento automático nem publicação por app)
+- [x] 22/out, mesmo roteiro: contorno âmbar em todos os campos; sino com bolinha no Início; abertura nova (transição,
+  1,35 s logado, toque pula); capa (banner) no perfil do cliente e no cartão do barbeiro; ficha do barbeiro para o
+  dono (foto, capa, telefone, nota, avaliações); seguir cortes (iniciar → tela do corte atual → finalizar → avaliar
+  o cliente; um corte aberto por barbeiro). Testes: lógica 50, regras 47, Worker 13; conferido no navegador
+- [ ] **Publicar regras + índices e o Worker** (capa, avaliações novas e pedido de avaliação dependem deles) e gerar
+  APK/AAB novo (entrou o módulo nativo `expo-clipboard`)
 - [ ] Dono: chave da Places API (Google Cloud com faturamento ativo + `npx wrangler secret put GOOGLE_PLACES_KEY` em `worker/`); sem ela, só a nota do Navalha aparece
 
 ## Extras de 20/out/2026 (fora do roadmap original, no ar)

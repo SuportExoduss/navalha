@@ -87,6 +87,16 @@ export async function cancelar(
   });
 }
 
+/** Seguir cortes: o barbeiro inicia o corte (a reserva vira confirmada) e o app abre a tela do corte atual. */
+export async function iniciarCorte(db: Firestore, id: string) {
+  const agora = Date.now();
+  await updateDoc(doc(db, 'agendamentos', id), { status: 'confirmado', iniciadoEm: agora, atualizadoEm: agora });
+}
+
+export function ouvirAgendamento(db: Firestore, id: string, cb: (a: Agendamento | null) => void): Unsubscribe {
+  return onSnapshot(doc(db, 'agendamentos', id), s => cb(s.exists() ? (s.data() as Agendamento) : null), () => cb(null));
+}
+
 export async function concluir(db: Firestore, id: string, fotos: string[]) {
   await updateDoc(doc(db, 'agendamentos', id), { status: 'concluido', fotos, atualizadoEm: Date.now() });
 }
