@@ -2,8 +2,8 @@
 // o agendamento e um documento de ocupação por bloco de horário.
 // Se qualquer bloco já existir, a transação aborta e nada é gravado.
 import {
-  addDoc, collection, deleteDoc, doc, getDocs, limit, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc,
-  where, updateDoc, type Firestore, type Unsubscribe,
+  addDoc, collection, doc, getDocs, limit, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc,
+  where, updateDoc, writeBatch, type Firestore, type Unsubscribe,
 } from 'firebase/firestore';
 import {
   chavesOcupacao, dataLocal, expedienteEfetivo, gerarHorarios, paraMillis, somarDias, type Intervalo,
@@ -213,17 +213,37 @@ export function ouvirFolgas(
     where('fim', '>', Date.now()),
     orderBy('fim'),
   );
-  return onSnapshot(q, s => cb(s.docs.map(d => d.data() as Bloqueio).sort((a, b) => a.inicio - b.inicio)));
+  // O motivo mora à parte (só a equipe lê); junta pelo id do bloqueio.
+  // ponytail: escuta todos os motivos do barbeiro, até os de folgas passadas; filtrar por data se crescer.
+  let folgas: Bloqueio[] = [];
+  let motivos = new Map<string, string>();
+  const avisar = () => cb(folgas.map(f => (motivos.has(f.id) ? { ...f, motivo: motivos.get(f.id) } : f)));
+  const pararFolgas = onSnapshot(q, s => {
+    folgas = s.docs.map(d => d.data() as Bloqueio).sort((a, b) => a.inicio - b.inicio);
+    avisar();
+  });
+  const pararMotivos = onSnapshot(
+    query(collection(db, 'barbearias', barbeariaId, 'motivosFolga'), where('barbeiroId', '==', barbeiroId)),
+    s => { motivos = new Map(s.docs.map(d => [d.id, d.data().motivo as string])); avisar(); },
+    () => {}, // sem permissão para os motivos: a lista sai sem eles
+  );
+  return () => { pararFolgas(); pararMotivos(); };
 }
 
-export async function criarFolga(db: Firestore, barbeariaId: string, b: Omit<Bloqueio, 'id'>) {
+export async function criarFolga(db: Firestore, barbeariaId: string, { motivo, ...b }: Omit<Bloqueio, 'id'>) {
   const ref = doc(collection(db, 'barbearias', barbeariaId, 'bloqueios'));
-  await setDoc(ref, { ...b, id: ref.id });
+  const lote = writeBatch(db);
+  lote.set(ref, { ...b, id: ref.id });
+  if (motivo) lote.set(doc(db, 'barbearias', barbeariaId, 'motivosFolga', ref.id), { barbeiroId: b.barbeiroId, motivo });
+  await lote.commit();
   return ref.id;
 }
 
 export async function removerFolga(db: Firestore, barbeariaId: string, id: string) {
-  await deleteDoc(doc(db, 'barbearias', barbeariaId, 'bloqueios', id));
+  const lote = writeBatch(db);
+  lote.delete(doc(db, 'barbearias', barbeariaId, 'bloqueios', id));
+  lote.delete(doc(db, 'barbearias', barbeariaId, 'motivosFolga', id));
+  await lote.commit();
 }
 
 /** Métricas do piloto: nunca deixam a ação principal falhar. */

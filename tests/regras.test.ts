@@ -13,7 +13,7 @@ import {
 } from 'firebase/firestore';
 import { chavesOcupacao, paraMillis } from '../src/lib/agenda';
 import {
-  agendamentosDaSemana, cancelar, concluir, criarFolga, definirStatus, horariosLivres, reservar, type NovaReserva,
+  agendamentosDaSemana, cancelar, concluir, criarFolga, definirStatus, horariosLivres, removerFolga, reservar, type NovaReserva,
 } from '../src/services/agendamentos';
 import { NOME_REMOVIDO } from '../src/services/usuarios';
 import { MOTIVO_CASA_ENCERRADA, definirBarbeiroAtivo, excluirBarbearia } from '../src/services/barbearias';
@@ -35,7 +35,7 @@ beforeEach(async () => {
     const db = ctx.firestore();
     await setDoc(doc(db, 'barbearias/b1'), {
       id: 'b1', donoUid: 'dono', publicada: true, resumo: {},
-      assinatura: { status: 'teste', venceEm: Date.now() + 86400e3, limiteBarbeiros: 10 }, emDia: true, barbeirosAtivos: 1,
+      assinatura: { status: 'teste', venceEm: Date.now() + 86400e3, limiteBarbeiros: 10 }, emDia: true, barbeirosAtivos: 1, passoMin: 15,
     });
     await setDoc(doc(db, 'barbearias/b1/barbeiros/lucas'), { uid: 'lucas', ativo: true });
     // Cardápio: a reserva precisa bater preço, duração e barbeiro com estes serviços (SEC-003).
@@ -65,6 +65,47 @@ function reservaDe(uid: string, id: string) {
 test('cliente reserva; o segundo cliente no mesmo horário é barrado', async () => {
   await assertSucceeds(reservaDe('ana', 'a1'));
   await assert.rejects(reservaDe('beto', 'a2'));
+});
+
+// Reserva gravada à mão, como um app modificado faria: cria a ocupação de cada chave que mandar.
+function reservaForjada(uid: string, id: string, f: { inicio: number; slots: string[]; duracaoMin?: number; fim?: number; servicoId?: string }) {
+  const db = env.authenticatedContext(uid).firestore();
+  const duracaoMin = f.duracaoMin ?? 30;
+  return runTransaction(db, async tx => {
+    tx.set(doc(db, 'agendamentos', id), {
+      id, barbeariaId: 'b1', barbeiroId: 'lucas', clienteUid: uid, clienteNome: uid,
+      servicoId: f.servicoId ?? 's', servicoNome: 'Corte', precoCentavos: 4500, duracaoMin,
+      data: '2030-01-10', inicio: f.inicio, fim: f.fim ?? f.inicio + duracaoMin * 60_000, slots: f.slots, status: 'reservado', origem: 'app',
+      lembretes: {}, fotos: [], criadoEm: Date.now(), atualizadoEm: Date.now(),
+    });
+    for (const k of f.slots) tx.set(doc(db, 'ocupacao', k), { barbeariaId: 'b1', barbeiroId: 'lucas', agendamentoId: id, inicio: f.inicio });
+    tx.set(doc(db, 'users', uid), { uid, ultimaReserva: serverTimestamp() }, { merge: true });
+  });
+}
+
+test('trava (SEC-017): os blocos precisam ser os do horário reservado', async () => {
+  await reservaDe('ana', 'a1'); // 10:00–10:30
+  const as18 = paraMillis('2030-01-10', 18 * 60);
+  // Por cima da Ana, travando blocos de outro horário: não.
+  await assertFails(reservaForjada('beto', 'f1', { inicio, slots: chavesOcupacao('lucas', as18, 30, 15) }));
+  // 45 min com um bloco só, fim que não bate com a duração, início fora do passo: não.
+  const as11 = paraMillis('2030-01-10', 11 * 60);
+  await assertFails(reservaForjada('beto', 'f2', { inicio: as11, duracaoMin: 45, servicoId: 's1', slots: chavesOcupacao('lucas', as11, 15, 15) }));
+  await assertFails(reservaForjada('beto', 'f3', { inicio: as11, fim: as11 + 15 * 60_000, slots: chavesOcupacao('lucas', as11, 30, 15) }));
+  const as1107 = as11 + 7 * 60_000;
+  await assertFails(reservaForjada('beto', 'f4', { inicio: as1107, slots: chavesOcupacao('lucas', as1107, 30, 15) }));
+  // Com os blocos certos, a mesma gravação passa (45 min = 3 blocos).
+  await assertSucceeds(reservaForjada('beto', 'f5', { inicio: as11, duracaoMin: 45, servicoId: 's1', slots: chavesOcupacao('lucas', as11, 45, 15) }));
+});
+
+test('não reserva serviço desativado nem barbeiro desligado', async () => {
+  await env.withSecurityRulesDisabled(ctx => updateDoc(doc(ctx.firestore(), 'barbearias/b1/servicos/s'), { ativo: false }));
+  await assertFails(reservaDe('ana', 'a1'));
+  await env.withSecurityRulesDisabled(async ctx => {
+    await updateDoc(doc(ctx.firestore(), 'barbearias/b1/servicos/s'), { ativo: true });
+    await updateDoc(doc(ctx.firestore(), 'barbearias/b1/barbeiros/lucas'), { ativo: false });
+  });
+  await assertFails(reservaDe('ana', 'a1'));
 });
 
 test('cliente não lê agendamento de outro; barbeiro da casa lê', async () => {
@@ -290,8 +331,19 @@ test('folgas: barbeiro cuida só das próprias e elas somem dos horários livres
   assert.ok((await livres('2030-01-17')).length > 0);
 
   const folgas = await getDocs(collection(dbDe('lucas'), 'barbearias/b1/bloqueios'));
-  await assertFails(deleteDoc(doc(dbDe('beto'), 'barbearias/b1/bloqueios', folgas.docs[0].id)));
-  await assertSucceeds(deleteDoc(doc(dbDe('lucas'), 'barbearias/b1/bloqueios', folgas.docs[0].id)));
+  const fid = folgas.docs[0].id;
+  // O motivo não vai no bloqueio (que todo cliente lê): fica à parte, só para a equipe.
+  assert.equal(folgas.docs[0].data().motivo, undefined);
+  await assertFails(setDoc(doc(dbDe('lucas'), 'barbearias/b1/bloqueios/x'), { id: 'x', barbeiroId: 'lucas', inicio: ini, fim, motivo: 'Médico' }));
+  await assertFails(getDoc(doc(dbDe('ana'), 'barbearias/b1/motivosFolga', fid)));
+  await assertSucceeds(getDoc(doc(dbDe('dono'), 'barbearias/b1/motivosFolga', fid)));
+  assert.equal((await getDoc(doc(dbDe('lucas'), 'barbearias/b1/motivosFolga', fid))).data()?.motivo, 'Médico');
+
+  await assertFails(deleteDoc(doc(dbDe('beto'), 'barbearias/b1/bloqueios', fid)));
+  await assertSucceeds(removerFolga(dbDe('lucas'), 'b1', fid));
+  // Folga sem motivo também sai (o lote apaga um motivo que não existe).
+  const semMotivo = await criarFolga(dbDe('lucas'), 'b1', { barbeiroId: 'lucas', inicio: ini, fim });
+  await assertSucceeds(removerFolga(dbDe('lucas'), 'b1', semMotivo));
 });
 
 test('horários livres descontam o que já foi reservado', async () => {

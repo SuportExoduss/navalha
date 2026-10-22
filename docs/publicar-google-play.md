@@ -17,7 +17,7 @@ Legenda: ✅ o app já cumpre · 🔧 falta no código/projeto · 👤 só o don
 - ✅ Suporte a páginas de memória de 16 KB (exigido para quem tem código nativo): React Native 0.88 já atende.
 - ✅ **Play Billing Library 8 ou superior** (exigida desde 31/ago/2026): o expo-iap usa a versão atual (openiap-google 4).
 - 🔧 Enviar **AAB** (Android App Bundle), não APK: `cd android && gradlew bundleRelease`.
-- 🔧 **Chave de upload própria** (SEC-002). Hoje o release é assinado com a chave pública de debug, que serve só para teste.
+- 🔧 **Chave de upload própria** (SEC-002). Sem `android/keystore.properties` o release não é gerado (o Gradle para com o aviso).
   Gerar uma vez (e guardar em dois lugares seguros): `keytool -genkeypair -v -keystore navalha-upload.jks -alias navalha -keyalg RSA -keysize 2048 -validity 10000`,
   ligar no `android/app/build.gradle` e cadastrar o SHA-1 dela no Firebase. A Play guarda a chave final (Play App Signing):
   cadastrar também o SHA-1 da "chave de assinatura do app" que a Play Console mostra, senão o login Google falha nas cópias baixadas da loja.

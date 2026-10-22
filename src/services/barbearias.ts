@@ -332,7 +332,7 @@ export async function excluirBarbearia(db: Firestore, barbeariaId: string, donoU
     }
   }
   // Equipe por último: as regras de cardápio e folgas ainda olham quem é da casa.
-  for (const sub of ['servicos', 'bloqueios']) {
+  for (const sub of ['servicos', 'bloqueios', 'motivosFolga']) {
     const docs = (await getDocs(collection(db, 'barbearias', barbeariaId, sub))).docs;
     for (let i = 0; i < docs.length; i += 400) {
       const lote = writeBatch(db);

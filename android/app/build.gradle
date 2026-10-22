@@ -83,10 +83,17 @@ def enableMinifyInReleaseBuilds = (findProperty('android.enableMinifyInReleaseBu
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
 // Chave de upload da Play Store (SEC-002): lida de android/keystore.properties, que fica FORA do git.
-// Sem esse arquivo o release cai na chave de debug (serve para testar, não para a loja).
+// Sem esse arquivo o release não é gerado: a chave de debug é pública e a loja recusa.
 def chaveUpload = new Properties()
 def arquivoChave = rootProject.file('keystore.properties')
 if (arquivoChave.exists()) arquivoChave.withInputStream { chaveUpload.load(it) }
+// Falha na hora, com o motivo, em vez de gerar um release sem assinatura.
+gradle.taskGraph.whenReady { grafo ->
+    def geraRelease = grafo.allTasks.any { t -> t.project == project && t.name ==~ /(assemble|bundle|package|install)Release/ }
+    if (geraRelease && !arquivoChave.exists()) {
+        throw new GradleException('Release precisa de android/keystore.properties (chave de upload, ver docs/publicar-google-play.md). Para testar no celular, gere o debug.')
+    }
+}
 
 android {
     ndkVersion = rootProject.ext.ndkVersion
@@ -123,8 +130,8 @@ android {
             signingConfig = signingConfigs.debug
         }
         release {
-            // Com android/keystore.properties: chave de upload (loja). Sem ele: chave de debug (só teste).
-            signingConfig = arquivoChave.exists() ? signingConfigs.upload : signingConfigs.debug
+            // Só com android/keystore.properties (chave de upload). APK de teste: use o debug.
+            if (arquivoChave.exists()) signingConfig = signingConfigs.upload
             def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
             shrinkResources = enableShrinkResources.toBoolean()
             minifyEnabled enableMinifyInReleaseBuilds

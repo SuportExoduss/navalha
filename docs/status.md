@@ -83,6 +83,12 @@ Requisitos da Google Play: `docs/publicar-google-play.md`. Pacote definitivo `co
 - [x] Lembrete na web/iPhone: PWA (manifesto + service worker do FCM); no iPhone exige o Navalha na Tela de Início e o toque em Perfil › Lembretes
 - [x] Identidade: títulos em Barlow Condensed; vibração curta ao confirmar reserva/encaixe
 - [x] SEC-002: chave de upload própria (`navalha-upload`, fora do git; SHA-1/256 no Firebase)
+- [x] Revisão da auditoria externa (21/out), com testes (regras 41, falhavam antes): SEC-017 os blocos da reserva precisam
+  ser os do horário (1º = início, último = o que cobre o fim, quantidade certa, início no passo da casa; antes dava para
+  travar blocos de outro horário e marcar por cima de alguém); serviço desativado e barbeiro desligado não recebem reserva;
+  motivo da folga saiu de `bloqueios` (todo cliente lê) para `motivosFolga` (só dono e barbeiro); release sem
+  `android/keystore.properties` agora falha no Gradle em vez de assinar com a chave de debug. **Falta publicar as regras**
+  (`npx firebase deploy --only firestore:rules --project prod`). Brecha restante (ponytail): blocos do meio não são lidos.
 - [ ] App Check: API ligada, **não** ativar a obrigatoriedade antes de integrar no app
 - [ ] `npm audit`: avisos restantes vêm de dependências do Expo; resolver na próxima atualização do SDK
 

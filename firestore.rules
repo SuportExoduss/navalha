@@ -138,11 +138,22 @@ service cloud.firestore {
       }
 
       // Folgas e pausas pontuais: o barbeiro cuida das próprias; o dono, de todas.
+      // Qualquer cliente lê (os horários livres descontam as folgas), então aqui não vai o motivo.
       match /bloqueios/{id} {
         allow read: if logado();
         allow create, update: if (ehDono(bid) || (ehBarbeiro(bid) && request.resource.data.barbeiroId == eu()))
-          && request.resource.data.fim > request.resource.data.inicio;
+          && request.resource.data.fim > request.resource.data.inicio
+          && !('motivo' in request.resource.data);
         allow delete: if ehDono(bid) || (ehBarbeiro(bid) && resource.data.barbeiroId == eu());
+      }
+      // Motivo da folga (ex.: "médico"), mesmo id do bloqueio: só o dono e o próprio barbeiro leem.
+      match /motivosFolga/{id} {
+        allow read: if ehDono(bid) || (ehBarbeiro(bid) && resource.data.barbeiroId == eu());
+        // Folga sem motivo não tem este doc, e remover a folga apaga os dois no mesmo lote.
+        allow delete: if ehDono(bid) || (ehBarbeiro(bid) && (resource == null || resource.data.barbeiroId == eu()));
+        allow create, update: if (ehDono(bid) || (ehBarbeiro(bid) && request.resource.data.barbeiroId == eu()))
+          && request.resource.data.keys().hasOnly(['barbeiroId', 'motivo'])
+          && request.resource.data.motivo is string && request.resource.data.motivo.size() <= 100;
       }
     }
 
@@ -191,11 +202,31 @@ service cloud.firestore {
       // Preço, duração e barbeiro vêm do cardápio, não do que o app manda (SEC-003).
       function bateComCardapio(n) {
         let s = get(/databases/$(database)/documents/barbearias/$(n.barbeariaId)/servicos/$(n.servicoId)).data;
-        return s.barbeiroId == n.barbeiroId && s.precoCentavos == n.precoCentavos && s.duracaoMin == n.duracaoMin;
+        return s.barbeiroId == n.barbeiroId && s.precoCentavos == n.precoCentavos && s.duracaoMin == n.duracaoMin
+          && s.get('ativo', true) != false;
       }
       // Bloco é do barbeiro quando o prefixo da chave é literalmente o id dele. Nada de regex com
       // dado do usuário: barbeiroId ".*" casaria com a agenda de qualquer um (SEC-001).
       function blocoDoBarbeiro(chave, barbeiroId) { return chave.split('_')[0] == barbeiroId; }
+      // Chave do bloco que começa em `ms`, no mesmo formato de chavesOcupacao (barbeiro_AAAA-MM-DD_HHMM, Brasília).
+      function dois(n) { return (n < 10 ? '0' : '') + string(n); }
+      function chaveDoBloco(barbeiroId, ms) {
+        let t = timestamp.value(ms - 10800000);
+        return barbeiroId + '_' + string(t.year()) + '-' + dois(t.month()) + '-' + dois(t.day()) + '_' + dois(t.hours()) + dois(t.minutes());
+      }
+      // Os blocos são os do horário reservado (SEC-017): início no passo da casa, primeiro bloco = início,
+      // último = o que cobre o fim, e quantidade certa. Sem isto, slots de outro horário passavam por cima
+      // de quem já tinha marcado. ponytail: os blocos do meio não são lidos (limite de leituras das regras);
+      // quem pular um deles só abre buraco na própria reserva. Fechar de vez = reservar pelo Worker.
+      function blocosDoHorario(n) {
+        let passo = barbearia(n.barbeariaId).passoMin * 60000;
+        let total = n.slots.size();
+        return n.inicio is int && n.inicio % passo == 0
+          && n.fim == n.inicio + n.duracaoMin * 60000
+          && (total - 1) * passo < n.duracaoMin * 60000 && total * passo >= n.duracaoMin * 60000
+          && n.slots[0] == chaveDoBloco(n.barbeiroId, n.inicio)
+          && n.slots[total - 1] == chaveDoBloco(n.barbeiroId, n.inicio + (total - 1) * passo);
+      }
       // Motivo do cancelamento: só junto com o cancelar, assinado por quem cancela (ninguém se passa pelo outro lado).
       function cancelamentoOk(por) {
         let c = request.resource.data.get('cancelamento', null);
@@ -225,11 +256,12 @@ service cloud.firestore {
           || (request.resource.data.origem == 'balcao' && daCasaParaEste(request.resource.data)
              && request.resource.data.clienteUid == null && request.resource.data.status == 'confirmado')
         )
-        // O barbeiro é da casa, e os blocos travados são dele (ninguém trava a agenda com chaves falsas).
-        && exists(/databases/$(database)/documents/barbearias/$(request.resource.data.barbeariaId)/barbeiros/$(request.resource.data.barbeiroId))
+        // O barbeiro é da casa (e não foi desligado), e os blocos travados são dele (ninguém trava a agenda com chaves falsas).
+        && get(/databases/$(database)/documents/barbearias/$(request.resource.data.barbeariaId)/barbeiros/$(request.resource.data.barbeiroId)).data.get('ativo', true) != false
         && blocoDoBarbeiro(request.resource.data.slots[0], request.resource.data.barbeiroId)
         && blocoDoBarbeiro(request.resource.data.slots[request.resource.data.slots.size() - 1], request.resource.data.barbeiroId)
         && bateComCardapio(request.resource.data)
+        && blocosDoHorario(request.resource.data)
         // A trava: os blocos de ocupação precisam nascer junto, na mesma transação.
         && getAfter(/databases/$(database)/documents/ocupacao/$(request.resource.data.slots[0])).data.agendamentoId == aid
         && getAfter(/databases/$(database)/documents/ocupacao/$(request.resource.data.slots[request.resource.data.slots.size() - 1])).data.agendamentoId == aid;

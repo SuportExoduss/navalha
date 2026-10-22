@@ -107,10 +107,11 @@ Firebase Cloud Messaging (o app guarda o token do FCM; o Worker manda pelo FCM H
   Node 20+ no PATH. Cache do Gradle: `GRADLE_USER_HOME=C:\Users\andre\.gradle` (SSD interno). Não use o HD externo (D:): o Windows
   desliga o disco parado e o Sync falha com "dispositivo não está pronto".
 - **Windows (obrigatório):** caminhos longos ligados (`LongPathsEnabled=1`, PowerShell como administrador) e CMake 4.x do SDK Manager, com `cmake.dir` em `android/local.properties` (o plugin `plugins/local-properties.js` recria esse arquivo em todo `npx expo prebuild`, apontando o SDK e o CMake mais novo instalados). O CMake 3.22 traz um ninja que não aceita caminhos acima de 260 caracteres. Com isso o projeto pode ficar em `C:\Users\andre\AndroidStudioProjects\navalha` (a pasta padrão do Android Studio); sem caminhos longos ligados, o build só passa num caminho curto como `C:\dev\navalha`.
-- **APK pela linha de comando:** `cd android && .\gradlew.bat assembleRelease` →
-  `android/app/build/outputs/apk/release/app-release.apk` (instalar com `adb install -r` ou copiar para o celular).
-- **Assinatura:** por enquanto o release usa a chave de debug do template (SHA-1 `5E:8F:16:...:F6:25`, já
-  cadastrado no Firebase para o login Google). Para o Google Play (Fase 2), gere a chave de upload no Android Studio
+- **APK de teste pela linha de comando:** `cd android && .\gradlew.bat assembleDebug` →
+  `android/app/build/outputs/apk/debug/app-debug.apk` (instalar com `adb install -r` ou copiar para o celular).
+- **Assinatura:** o debug usa a chave do template (SHA-1 `5E:8F:16:...:F6:25`, já cadastrado no Firebase para o
+  login Google). O release (`assembleRelease`/`bundleRelease`) **só sai com `android/keystore.properties`** (chave de
+  upload); sem ele o Gradle para com o aviso, em vez de assinar com a chave pública de debug. Para o Google Play (Fase 2), gere a chave de upload no Android Studio
   (Build › Generate Signed App Bundle) e cadastre o SHA-1 dela e o do Play App Signing no Firebase
   (`firebase apps:android:sha:create <appId> <SHA> --project prod`), senão o login Google falha na versão da loja.
 - Variáveis `EXPO_PUBLIC_*` do `.env.local` entram no bundle na hora do build: mudou o `.env.local`, gere de novo.

@@ -10,7 +10,8 @@ Tipos completos em `src/types/models.ts`; permissões em `firestore.rules`.
 | `barbearias/{id}/barbeiros/{uid}` | dono ou o barbeiro (via convite) | 1 | Barbeiros da casa, expediente próprio, nota |
 | `convites/{código}` | dono | 1 | Código de 6 letras (sem 0/O/1/I), válido 7 dias, uso único; aponta para a barbearia |
 | `barbearias/{id}/servicos/{id}` | barbeiro (o próprio) ou dono | 1 | Cardápio: nome, preço em centavos, duração, até 6 fotos |
-| `barbearias/{id}/bloqueios/{id}` | barbeiro ou dono | 1 | Folgas, férias, pausas pontuais |
+| `barbearias/{id}/bloqueios/{id}` | barbeiro ou dono | 1 | Folgas, férias, pausas pontuais (todo cliente lê; sem motivo) |
+| `barbearias/{id}/motivosFolga/{id}` | barbeiro ou dono | 1 | Motivo da folga, mesmo id do bloqueio; só o dono e o próprio barbeiro leem |
 | `agendamentos/{id}` | cliente (app) ou casa (balcão) | 1 | Status: reservado, confirmado, pago, concluído, faltou, cancelado. O barbeiro lê e mexe só nos próprios; o dono, em todos da casa |
 
 > `cancelamento: { por: 'cliente' | 'casa', motivo, em }` — gravado junto com o status `cancelado`; a regra só aceita o motivo assinado por quem cancela (até 200 caracteres). O outro lado vê o motivo na agenda ou no histórico.
