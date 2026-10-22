@@ -19,6 +19,13 @@ Não use EAS (build, update, submit) nem Expo Push, mesmo que o AGENTS.md sugira
 Pacote: `com.trevotec.navalha`. A pasta `android/` é versionada (abre direto no Android Studio): mudança nativa vai nela
 (e no plugin/app.json correspondente). **Não rode `npx expo prebuild`** (nem sem `--clean`): no SDK 58 ele tenta apagar a pasta
 `android/` inteira. Ex.: o ícone de notificação foi posto à mão em `res/drawable-*/notification_icon.png` + AndroidManifest.
+Nem `npx expo run:android`: build nativo só pelo Android Studio/Gradle.
+
+## Skills do Expo
+`.claude/skills/` tem 5 skills oficiais do Expo (animation, data-fetching, design-system, examples, router), copiadas
+do repositório `expo/skills` sem as de EAS. Este arquivo vale acima delas: se uma skill sugerir EAS, Expo Push, prebuild,
+biblioteca nova ou o tema dela no lugar de `src/theme.ts`, explique o conflito e siga daqui. Não envie feedback ao Expo
+(`npx submit-expo-feedback`) sem o dono pedir.
 
 ## Regra do projeto
 Seguir o roadmap em ordem, garantir que cada item está concluído e testado, e então marcar como finalizado
