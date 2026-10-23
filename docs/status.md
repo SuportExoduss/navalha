@@ -159,8 +159,9 @@ Relatório na conversa de 22/out (12 achados, L01–L12; não é parecer jurídi
   dados ficam e incidentes), Termos de uso com as regras para barbearias (`/termos`, aceitos no login e ao criar a casa),
   idade mínima 18 anos, roteiro e registro de incidentes (`.lgpd/incidentes.md`), registro das decisões
   (`.lgpd/policies/privacy-policy-v2.md`). Firestore confirmado em São Paulo (southamerica-east1)
-- [ ] Dono: conferir no Console do Firebase (Configurações do projeto › Privacidade) se os termos de tratamento de dados
-  estão aceitos; a Cloudflare inclui o DPA no contrato self-serve
+- [x] Termos de tratamento de dados (23/out): no Console do Firebase (Configurações › Privacidade dos dados) não há aceite
+  à parte; valem com os termos do Firebase. A Cloudflare inclui o DPA no contrato self-serve. Opcional: desligar o uso
+  dos "Dados de Serviço do Firebase" para serviços do Google fora do Firebase (mesma tela)
 - [ ] Dono: marca "Navalha" no INPI está livre nas classes de software (9 e 42), mas há registro em vigor na classe 44
   (serviços de barbearia, NAVALHA BARBEARIA LTDA): consultar advogado antes de pedir o registro
 - [ ] Revisão jurídica recomendada (não bloqueia): itens no fim de `.lgpd/policies/privacy-policy-v2.md`
