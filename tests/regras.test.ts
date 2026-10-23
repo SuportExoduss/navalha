@@ -586,11 +586,11 @@ test('capa (banner): só do nosso Worker, no perfil e no cartão do barbeiro', a
   await assertFails(updateDoc(doc(dbDe('ana'), 'barbearias/b1/barbeiros/lucas'), { bannerUrl: capa }));
 });
 
-test('equipe privada: telefone e nota do barbeiro só para o dono e o próprio barbeiro', async () => {
+test('equipe privada: telefone do barbeiro só para o dono e o próprio barbeiro', async () => {
   const ref = (uid: string) => doc(dbDe(uid), 'barbearias/b1/equipePrivado/lucas');
   await assertSucceeds(setDoc(ref('lucas'), { telefone: '15999990000' }, { merge: true }));
   await assertSucceeds(setDoc(ref('lucas'), { telefone: '15988880000' }, { merge: true }));
-  // Nota é do Worker; ninguém grava pelo app. Outro barbeiro e cliente não leem nem gravam.
+  // Só o telefone: outro campo não entra. Outro barbeiro e cliente não leem nem gravam.
   await assertFails(setDoc(ref('lucas'), { nota: { media: 5, total: 10 } }, { merge: true }));
   await assertFails(setDoc(ref('dono'), { telefone: '1' }, { merge: true }));
   await assertSucceeds(getDoc(ref('dono')));
@@ -608,8 +608,8 @@ test('erros: o app só grava, com campos e tamanhos fixos', async () => {
   await assertFails(getDoc(doc(dbDe('ana'), 'erros/e1')));
 });
 
-test('avaliações e notas: só o servidor grava; ninguém infla a própria nota', async () => {
-  // Casa já nasce com nota: barrado. Sem nota: passa.
+test('avaliação da barbearia: só o servidor grava; pública para ler; ninguém infla a própria nota', async () => {
+  // Casa já nasce com nota (ou com soma e ranking): barrado. Sem nota: passa.
   const novo = dbDe('novo2');
   const criar = (id: string, resumo: object) => {
     const b = writeBatch(novo);
@@ -618,47 +618,37 @@ test('avaliações e notas: só o servidor grava; ninguém infla a própria nota
     return b.commit();
   };
   await assertFails(criar('b8', { notaApp: 5, totalAvaliacoesApp: 80 }));
-  await assertFails(criar('b8', { notaGoogle: 5, totalAvaliacoesGoogle: 900 }));
+  await assertFails(criar('b8', { notaApp: 0, totalAvaliacoesApp: 0, somaEstrelasApp: 400 }));
   await assertSucceeds(criar('b8', { notaApp: 0, totalAvaliacoesApp: 0 }));
 
-  // O dono muda o nome, mas não as notas da casa nem a dos barbeiros.
+  // O dono muda o nome, mas não a nota da casa.
   const dono = dbDe('dono');
   await assertSucceeds(updateDoc(doc(dono, 'barbearias/b1'), { nome: 'Nova' }));
   await assertFails(updateDoc(doc(dono, 'barbearias/b1'), { 'resumo.notaApp': 5, 'resumo.totalAvaliacoesApp': 99 }));
   await assertFails(updateDoc(doc(dono, 'barbearias/b1'), { 'resumo.notaRanking': 5 }));
-  await assertFails(updateDoc(doc(dono, 'barbearias/b1'), { googleAtualizadoEm: 1 }));
-  await assertFails(updateDoc(doc(dono, 'barbearias/b1/barbeiros/lucas'), { nota: { media: 5, total: 50 } }));
-  await assertFails(updateDoc(doc(dbDe('lucas'), 'barbearias/b1/barbeiros/lucas'), { nota: { media: 5, total: 50 } }));
-  await assertSucceeds(updateDoc(doc(dbDe('lucas'), 'barbearias/b1/barbeiros/lucas'), { apelido: 'Lu' }));
+  await assertFails(updateDoc(doc(dono, 'barbearias/b1'), { 'resumo.somaEstrelasApp': 500 }));
 
-  // Avaliação: o app não cria; a da barbearia qualquer um lê; a do barbeiro e a do cliente, só a casa e o cliente.
-  await assertFails(setDoc(doc(dbDe('ana'), 'avaliacoes/a1_barbearia'), {
-    id: 'a1_barbearia', clienteUid: 'ana', barbeariaId: 'b1', barbeiroId: 'lucas', direcao: 'cliente_para_barbearia', estrelas: 5, visivel: true,
-  }));
-  const base = { barbeariaId: 'b1', barbeiroId: 'lucas', clienteUid: 'ana', estrelas: 5, visivel: true };
+  // O cliente não marca no próprio perfil que avaliou (o Worker marca junto com a nota).
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'users/ana'), { uid: 'ana' }));
+  await assertFails(updateDoc(doc(dbDe('ana'), 'users/ana'), { 'avaliouBarbearias.b1': { estrelas: 5, em: 1 } }));
+
+  // Avaliação: o app não cria nem edita; a da barbearia qualquer um lê; as antigas entre cliente e barbeiro, ninguém.
+  await assertFails(setDoc(doc(dbDe('ana'), 'avaliacoes/x'), { id: 'x', barbeariaId: 'b1', clienteNome: 'Ana', direcao: 'cliente_para_barbearia', estrelas: 5, visivel: true }));
   await env.withSecurityRulesDisabled(async ctx => {
-    // A pública não guarda o uid do cliente (qualquer um lê o documento): as listas da casa continuam funcionando sem ele.
-    const { clienteUid: _, ...semUid } = base;
-    await setDoc(doc(ctx.firestore(), 'avaliacoes/v1_barbearia'), { ...semUid, direcao: 'cliente_para_barbearia', criadoEm: 2 });
-    await setDoc(doc(ctx.firestore(), 'avaliacoes/o1'), { ...base, direcao: 'cliente_para_barbearia', visivel: false, criadoEm: 1 });
-    await setDoc(doc(ctx.firestore(), 'avaliacoes/v1_barbeiro'), { ...base, direcao: 'cliente_para_barbeiro', criadoEm: 3 });
-    await setDoc(doc(ctx.firestore(), 'avaliacoes/v1_cliente'), { ...base, direcao: 'barbeiro_para_cliente', criadoEm: 4 });
+    const db = ctx.firestore();
+    await setDoc(doc(db, 'avaliacoes/v1'), { id: 'v1', barbeariaId: 'b1', clienteNome: 'Ana', direcao: 'cliente_para_barbearia', estrelas: 5, visivel: true, criadoEm: 2 });
+    await setDoc(doc(db, 'avaliacoes/o1'), { id: 'o1', barbeariaId: 'b1', clienteNome: 'Ana', direcao: 'cliente_para_barbearia', estrelas: 1, visivel: false, criadoEm: 1 });
+    await setDoc(doc(db, 'avaliacoes/antiga_barbeiro'), { barbeariaId: 'b1', barbeiroId: 'lucas', clienteUid: 'ana', direcao: 'cliente_para_barbeiro', estrelas: 5, visivel: true, criadoEm: 3 });
+    await setDoc(doc(db, 'avaliacoes/antiga_cliente'), { barbeariaId: 'b1', barbeiroId: 'lucas', clienteUid: 'ana', direcao: 'barbeiro_para_cliente', estrelas: 1, visivel: true, criadoEm: 4 });
   });
   const publicas = getDocs(query(collection(env.unauthenticatedContext().firestore(), 'avaliacoes'),
     where('barbeariaId', '==', 'b1'), where('visivel', '==', true), where('direcao', '==', 'cliente_para_barbearia'), orderBy('criadoEm', 'desc')));
   assert.equal((await assertSucceeds(publicas)).size, 1);
   await assertFails(getDoc(doc(dbDe('beto'), 'avaliacoes/o1')));
-  for (const id of ['v1_barbeiro', 'v1_cliente']) {
-    await assertFails(getDoc(doc(dbDe('beto'), 'avaliacoes', id))); // outro cliente
-    await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), 'avaliacoes', id)));
-    for (const quem of ['ana', 'lucas', 'dono']) await assertSucceeds(getDoc(doc(dbDe(quem), 'avaliacoes', id)));
+  for (const id of ['antiga_barbeiro', 'antiga_cliente']) {
+    for (const quem of ['ana', 'lucas', 'dono']) await assertFails(getDoc(doc(dbDe(quem), 'avaliacoes', id)));
   }
-  // Listas das telas: dono pela casa, barbeiro pelas dele, cliente pelas dele.
-  await assertSucceeds(getDocs(query(collection(dbDe('dono'), 'avaliacoes'), where('barbeariaId', '==', 'b1'), orderBy('criadoEm', 'desc'))));
-  await assertSucceeds(getDocs(query(collection(dbDe('lucas'), 'avaliacoes'), where('barbeiroId', '==', 'lucas'), orderBy('criadoEm', 'desc'))));
-  await assertSucceeds(getDocs(query(collection(dbDe('ana'), 'avaliacoes'), where('clienteUid', '==', 'ana'), orderBy('criadoEm', 'desc'))));
-  await assertFails(getDocs(query(collection(dbDe('beto'), 'avaliacoes'), where('barbeariaId', '==', 'b1'))));
-  await assertFails(updateDoc(doc(dbDe('dono'), 'avaliacoes/v1_barbearia'), { estrelas: 1 }));
+  await assertFails(updateDoc(doc(dbDe('dono'), 'avaliacoes/v1'), { estrelas: 1 }));
 });
 
 test('pedir avaliação: só o dono liga ou desliga', async () => {
@@ -667,23 +657,9 @@ test('pedir avaliação: só o dono liga ou desliga', async () => {
   await assertFails(updateDoc(doc(dbDe('ana'), 'barbearias/b1'), { pedirAvaliacao: false }));
 });
 
-test('nota do cliente: a casa lê por id; ninguém lista nem grava pelo app', async () => {
-  await env.withSecurityRulesDisabled(async ctx => {
-    const db = ctx.firestore();
-    await setDoc(doc(db, 'notasCliente/ana'), { media: 4.5, total: 2 });
-    await setDoc(doc(db, 'users/lucas'), { uid: 'lucas', barbearias: ['b1'] });
-    await setDoc(doc(db, 'users/dono'), { uid: 'dono', barbearias: ['b1'] });
-    // beto diz no próprio perfil que é da b1 (o perfil ele mesmo edita), mas não é da equipe.
-    await setDoc(doc(db, 'users/beto'), { uid: 'beto', barbearias: ['b1'] });
-    await setDoc(doc(db, 'users/caio'), { uid: 'caio', barbearias: [] });
-  });
-  await assertSucceeds(getDoc(doc(dbDe('lucas'), 'notasCliente/ana')));
-  await assertSucceeds(getDoc(doc(dbDe('dono'), 'notasCliente/ana')));
-  await assertSucceeds(getDoc(doc(dbDe('ana'), 'notasCliente/ana'))); // a própria nota
-  await assertFails(getDoc(doc(dbDe('beto'), 'notasCliente/ana'))); // LGPD L02: cliente não vê a reputação de outro
-  await assertFails(getDoc(doc(dbDe('caio'), 'notasCliente/ana')));
-  await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), 'notasCliente/ana')));
-  await assertFails(getDocs(collection(dbDe('lucas'), 'notasCliente')));
+test('nota do cliente saiu do app: ninguém lê nem grava', async () => {
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'notasCliente/ana'), { media: 4.5, total: 2 }));
+  for (const quem of ['ana', 'lucas', 'dono']) await assertFails(getDoc(doc(dbDe(quem), 'notasCliente/ana')));
   await assertFails(setDoc(doc(dbDe('ana'), 'notasCliente/ana'), { media: 5, total: 99 }));
 });
 

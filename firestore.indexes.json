@@ -195,48 +195,6 @@
           "order": "DESCENDING"
         }
       ]
-    },
-    {
-      "collectionGroup": "avaliacoes",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "barbeariaId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "criadoEm",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "avaliacoes",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "barbeiroId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "criadoEm",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "avaliacoes",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "clienteUid",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "criadoEm",
-          "order": "DESCENDING"
-        }
-      ]
     }
   ],
   "fieldOverrides": []

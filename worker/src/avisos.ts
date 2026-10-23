@@ -26,8 +26,12 @@ export async function avisarAgendamento(db: Firestore, tokenSA: string, projectI
   const clienteUid = (ag.clienteUid as string | null) ?? undefined; // balcão: sem cliente no app
   // Só quem faz parte do agendamento avisa, e só logo depois (um aviso velho reenviado não vira notificação).
   if (![clienteUid, ag.barbeiroId, donoUid].includes(uid)) return { status: 403, corpo: { erro: 'Sem permissão.' } };
-  // Finalizado pela casa: se o dono ligou "pedir avaliação", só o cliente recebe o pedido.
-  const pedir = ag.status === 'concluido' && casa?.pedirAvaliacao === true && !!clienteUid && uid !== clienteUid;
+  // Finalizado pela casa: se o dono ligou "pedir avaliação", só o cliente recebe o pedido, e só se ainda não avaliou a casa.
+  let pedir = ag.status === 'concluido' && casa?.pedirAvaliacao === true && !!clienteUid && uid !== clienteUid;
+  if (pedir) {
+    const avaliou = (await db.varios([`users/${clienteUid}`])).get(`users/${clienteUid}`)?.avaliouBarbearias as Record<string, unknown> | undefined;
+    pedir = !avaliou?.[ag.barbeariaId as string];
+  }
   const tipo = ag.status === 'cancelado' ? 'cancelado' : ['reservado', 'confirmado'].includes(ag.status as string) ? 'agendado' : pedir ? 'avaliar' : null;
   const quando = Number(tipo === 'agendado' ? ag.criadoEm : ag.atualizadoEm);
   if (!tipo || !(agora - quando < RECENTE_MS)) return { status: 409, corpo: { erro: 'Nada a avisar.' } };

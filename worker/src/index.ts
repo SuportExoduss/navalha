@@ -4,14 +4,14 @@
 //  GET  /saude                 → verificação simples
 //  POST /assinatura/verificar → confere no Google Play a compra do plano e libera a casa
 //  POST /admin/migrar-assinaturas → migração única das casas antigas (exige ADMIN_TOKEN)
-//  POST /avaliacoes            → avaliações: cliente → barbeiro e barbearia, barbeiro → cliente (notas só mudam por aqui)
+//  POST /avaliacoes            → o cliente avalia a barbearia (uma por casa; de novo, edita). A nota só muda por aqui
 //  POST /avisos/agendamento    → avisa cliente, barbeiro e dono (push + painel) quando alguém marca ou cancela
 //  POST /conta/excluir         → apaga ou anonimiza os dados da pessoa (LGPD); o app apaga o login em seguida
-//  cron a cada hora            → lembretes de 24 h e 2 h, casas com plano/teste vencido, nota do Google, prazos de guarda e, no dia 1, resumo do mês
+//  cron a cada hora            → lembretes de 24 h e 2 h, casas com plano/teste vencido, prazos de guarda e, no dia 1, resumo do mês
 import { verificarIdToken } from './auth';
 import { conferirVencimentos, migrarAssinaturas, verificarCompra } from './assinatura';
 import { avisarAgendamento, resumoDoMes } from './avisos';
-import { atualizarNotasGoogle, avaliar } from './avaliacoes';
+import { avaliar } from './avaliacoes';
 import { excluirConta, limparAntigos } from './conta';
 import { Firestore, tokenGoogle } from './firestore';
 import { chaveFoto, janelasLembrete, mensagemFcm, mensagemLembrete, tipoDaImagem, TIPOS } from './util';
@@ -27,8 +27,6 @@ export interface Env {
   // Segredos (wrangler secret put):
   GOOGLE_SA_EMAIL?: string;
   GOOGLE_SA_PRIVATE_KEY?: string;
-  /** Chave da Places API (New) para a nota do Google; sem ela, a nota do Google fica de fora. */
-  GOOGLE_PLACES_KEY?: string;
   /** Só para rotas de manutenção (migração). */
   ADMIN_TOKEN?: string;
 }
@@ -126,14 +124,13 @@ export default {
       const uid = token ? await verificarIdToken(token, env.FIREBASE_PROJECT_ID) : null;
       if (!uid) return json({ erro: 'Entre na sua conta.' }, 401, h);
       const corpo = (await req.json().catch(() => null)) as { agendamentoId?: unknown; alvo?: unknown; estrelas?: unknown; comentario?: unknown } | null;
-      // App antigo não manda o alvo: era a avaliação do cliente para o barbeiro.
-      const alvo = corpo?.alvo === undefined ? 'barbeiro' : corpo.alvo;
-      if (alvo !== 'barbeiro' && alvo !== 'barbearia' && alvo !== 'cliente') return json({ erro: 'Avaliação inválida.' }, 400, h);
+      // Só existe a avaliação da barbearia. Apps antigos mandam "barbeiro" (ou nada): vale como a da casa.
+      if (corpo?.alvo === 'cliente') return json({ erro: 'A avaliação de clientes saiu do app.' }, 410, h);
       const agendamentoId = typeof corpo?.agendamentoId === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(corpo.agendamentoId) ? corpo.agendamentoId : '';
       if (!agendamentoId) return json({ erro: 'Agendamento inválido.' }, 400, h);
       if (!env.GOOGLE_SA_EMAIL || !env.GOOGLE_SA_PRIVATE_KEY) return json({ erro: 'Servidor sem credenciais.' }, 503, h);
       const tokenSA = await tokenGoogle(env.GOOGLE_SA_EMAIL, env.GOOGLE_SA_PRIVATE_KEY);
-      const r = await avaliar(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA), uid, agendamentoId, alvo,
+      const r = await avaliar(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA), uid, agendamentoId,
         Number(corpo?.estrelas), typeof corpo?.comentario === 'string' ? corpo.comentario : '');
       return json(r.corpo, r.status, h);
     }
@@ -172,7 +169,6 @@ async function vencimentos(env: Env) {
   await conferirVencimentos(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA), tokenSA).catch(e => console.error('Vencimentos falhou', e));
   // Dia 1: resumo do mês anterior para cada dono (só faz as casas que ainda não receberam).
   await resumoDoMes(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA), tokenSA, env.FIREBASE_PROJECT_ID).catch(e => console.error('Resumo do mês falhou', e));
-  await atualizarNotasGoogle(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA), env.GOOGLE_PLACES_KEY).catch(e => console.error('Nota do Google falhou', e));
   await limparAntigos(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA)).catch(e => console.error('Limpeza por prazo falhou', e));
 }
 

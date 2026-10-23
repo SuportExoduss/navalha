@@ -29,9 +29,10 @@ service cloud.firestore {
       allow read: if logado() && eu() == uid;
       allow create: if logado() && eu() == uid
         && request.resource.data.uid == uid
-        && !('notaCliente' in request.resource.data) && fotoOk(request.resource.data, 'fotoUrl') && fotoOk(request.resource.data, 'bannerUrl');
+        && !request.resource.data.keys().hasAny(['notaCliente', 'avaliouBarbearias']) && fotoOk(request.resource.data, 'fotoUrl') && fotoOk(request.resource.data, 'bannerUrl');
       // A nota como cliente é calculada pelo servidor.
-      allow update: if logado() && eu() == uid && !mudou(['uid', 'notaCliente', 'criadoEm'])
+      // As avaliações que a pessoa deu (avaliouBarbearias) só o Worker grava, junto com a nota da casa.
+      allow update: if logado() && eu() == uid && !mudou(['uid', 'notaCliente', 'avaliouBarbearias', 'criadoEm'])
         // Marca da última reserva: só o horário do servidor (serverTimestamp), nunca uma data escolhida pelo app.
         && (!mudou(['ultimaReserva']) || request.resource.data.ultimaReserva == request.time)
         && fotoOk(request.resource.data, 'fotoUrl') && fotoOk(request.resource.data, 'bannerUrl');
@@ -71,18 +72,16 @@ service cloud.firestore {
         return d.assinatura.keys().hasOnly(['status', 'limiteBarbeiros'])
           && d.assinatura.status == 'rascunho' && d.assinatura.limiteBarbeiros == 1 && d.emDia == false;
       }
-      // Notas (app, Google e ranking) só o Worker grava: ninguém cria a casa já com nota nem mexe na própria.
+      // Nota da casa (média, quantidade, soma e ranking) só o Worker grava: ninguém cria a casa já com nota nem mexe na própria.
       function notasZeradas(d) {
         return d.resumo.get('notaApp', 0) == 0 && d.resumo.get('totalAvaliacoesApp', 0) == 0
-          && !d.resumo.keys().hasAny(['notaGoogle', 'totalAvaliacoesGoogle', 'notaRanking']) && !('googleAtualizadoEm' in d);
+          && !d.resumo.keys().hasAny(['somaEstrelasApp', 'notaRanking']);
       }
       function notasIntactas(antes, depois) {
         return depois.resumo.get('notaApp', 0) == antes.resumo.get('notaApp', 0)
           && depois.resumo.get('totalAvaliacoesApp', 0) == antes.resumo.get('totalAvaliacoesApp', 0)
-          && depois.resumo.get('notaGoogle', null) == antes.resumo.get('notaGoogle', null)
-          && depois.resumo.get('totalAvaliacoesGoogle', null) == antes.resumo.get('totalAvaliacoesGoogle', null)
-          && depois.resumo.get('notaRanking', null) == antes.resumo.get('notaRanking', null)
-          && depois.get('googleAtualizadoEm', null) == antes.get('googleAtualizadoEm', null);
+          && depois.resumo.get('somaEstrelasApp', null) == antes.resumo.get('somaEstrelasApp', null)
+          && depois.resumo.get('notaRanking', null) == antes.resumo.get('notaRanking', null);
       }
       // Na busca só aparece casa publicada E em dia (teste ou mensalidade); a equipe sempre vê a sua.
       allow read: if (resource.data.publicada == true && resource.data.get('emDia', false) == true) || ehDaCasa(bid);
@@ -155,8 +154,8 @@ service cloud.firestore {
           && request.resource.data.keys().hasOnly(['barbeiroId', 'motivo'])
           && request.resource.data.motivo is string && request.resource.data.motivo.size() <= 100;
       }
-      // Dados do barbeiro que não podem ir no documento público dele: telefone (o barbeiro grava) e a nota das
-      // avaliações dos clientes (só o Worker). Leem o dono e o próprio barbeiro.
+      // Dado do barbeiro que não pode ir no documento público dele: o telefone (o barbeiro grava).
+      // Leem o dono e o próprio barbeiro.
       match /equipePrivado/{uid} {
         allow read: if ehDono(bid) || (ehBarbeiro(bid) && eu() == uid);
         allow create: if ehBarbeiro(bid) && eu() == uid && request.resource.data.keys().hasOnly(['telefone'])
@@ -316,24 +315,12 @@ service cloud.firestore {
       allow read: if logado() && (resource.data.clienteUid == eu() || ehDono(resource.data.barbeariaId));
       allow write: if false;
     }
-    // A da barbearia é pública (página da casa). A do barbeiro e a do cliente ficam entre a casa e o cliente:
-    // o dono vê todas da casa; o barbeiro, as dele; o cliente, as do atendimento dele.
+    // Só existe a avaliação da barbearia, e ela é pública (aba Avaliações da casa). As antigas entre cliente e
+    // barbeiro (até 23/out) ninguém lê mais.
     match /avaliacoes/{id} {
-      allow read: if (resource.data.visivel == true && resource.data.direcao == 'cliente_para_barbearia')
-        || (logado() && (resource.data.clienteUid == eu() || resource.data.barbeiroId == eu() || ehDono(resource.data.barbeariaId)));
-      // Só o Worker grava (POST /avaliacoes): confere que o atendimento foi concluído e é de quem avalia.
+      allow read: if resource.data.visivel == true && resource.data.direcao == 'cliente_para_barbearia';
+      // Só o Worker grava (POST /avaliacoes): confere o corte concluído e quem avalia.
       allow write: if false;
-    }
-    // Média do cliente (só o Worker grava): a casa lê ao ver o agendamento. Só por id (sem listar).
-    // Só quem é de alguma barbearia (e o próprio cliente): outro cliente não consulta a reputação alheia (LGPD L02).
-    // A lista `barbearias` do perfil o próprio usuário edita, então a casa é conferida de verdade (até as 2 primeiras).
-    match /notasCliente/{uid} {
-      function daAlgumaCasa() {
-        let casas = get(/databases/$(database)/documents/users/$(eu())).data.get('barbearias', []);
-        return (casas.size() > 0 && ehDaCasa(casas[0])) || (casas.size() > 1 && ehDaCasa(casas[1]));
-      }
-      allow get: if logado() && (eu() == uid || daAlgumaCasa());
-      allow list, write: if false;
     }
     match /clubes/{id} {
       allow read: if true;

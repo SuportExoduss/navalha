@@ -2,6 +2,7 @@
 // (nota do cliente, avaliações, avisos que outras pessoas receberam, fotos no R2) as regras não deixam o app apagar.
 import { idAviso } from '../../src/lib/notificacoes';
 import { APAGAR, type Firestore } from './firestore';
+import { idAvaliacao } from './avaliacoes';
 
 /** O mesmo texto que as regras aceitam quando o próprio cliente anonimiza o histórico (apps antigos). */
 export const NOME_REMOVIDO = 'Cliente removido';
@@ -28,7 +29,8 @@ export function chaveDaFoto(url: string): string | null {
 /**
  * POST /conta/excluir — apaga ou anonimiza tudo da pessoa, menos o login (o app apaga depois, com login recente).
  * Os horários futuros o app já cancelou antes (a transação libera os blocos de ocupação).
- * Barbearia de quem é dono continua de pé: a política pede para excluí-la antes.
+ * Dono de barbearia não exclui a conta: primeiro exclui a casa (Configurações › Excluir barbearia), senão a casa e os
+ * horários dos clientes ficariam sem responsável.
  */
 export async function excluirConta(db: Firestore, fotos: Fotos, uid: string, agora = Date.now()) {
   const [ags, avs, avisos] = await Promise.all([
@@ -39,12 +41,15 @@ export async function excluirConta(db: Firestore, fotos: Fotos, uid: string, ago
   const perfil = (await db.varios([`users/${uid}`])).get(`users/${uid}`);
   const ondeAtende = (perfil?.barbearias as string[] | undefined) ?? [];
   const casas = [...new Set([...ags.map(a => a.dados.barbeariaId as string), ...ondeAtende])];
-  // A avaliação pública da barbearia não guarda o uid do cliente: acha-se pelo id (agendamento + alvo).
-  const publicas = ags.map(a => `avaliacoes/${a.id}_barbearia`);
+  // A avaliação pública da barbearia não guarda o uid do cliente: o id é o resumo de casa + cliente.
+  const publicas = await Promise.all(casas.map(async b => `avaliacoes/${await idAvaliacao(b, uid)}`));
   const docs = await db.varios([...casas.map(b => `barbearias/${b}`), ...ondeAtende.map(b => `barbearias/${b}/barbeiros/${uid}`), ...publicas]);
+  if (ondeAtende.some(b => docs.get(`barbearias/${b}`)?.donoUid === uid)) {
+    return { status: 409, corpo: { erro: 'Você é dono de uma barbearia. Exclua a barbearia em Configurações antes de excluir a conta.' } };
+  }
 
   const gravar: Gravacao[] = [];
-  const apagar = [`users/${uid}`, `notasCliente/${uid}`, ...avisos.map(n => `notificacoes/${n.id}`)];
+  const apagar = [`users/${uid}`, ...avisos.map(n => `notificacoes/${n.id}`)];
   const cortes: string[] = [];
 
   for (const { id, dados } of ags) {
@@ -56,10 +61,10 @@ export async function excluirConta(db: Firestore, fotos: Fotos, uid: string, ago
       for (const para of [dados.barbeiroId as string, dono]) if (para && para !== uid) apagar.push(`notificacoes/${idAviso(id, tipo, para)}`);
     }
   }
-  // As antigas (de antes de 23/out) ainda têm o uid; as públicas novas só o primeiro nome.
+  // As estrelas e o comentário continuam na nota da casa, assinados só como "Cliente". As antigas (com uid) também.
   const avaliacoes = new Set([...avs.map(a => `avaliacoes/${a.id}`), ...publicas.filter(c => docs.has(c))]);
   for (const caminho of avaliacoes) {
-    gravar.push({ caminho, campos: { clienteNome: NOME_REMOVIDO, clienteFotoUrl: APAGAR, clienteBannerUrl: APAGAR } });
+    gravar.push({ caminho, campos: { clienteNome: 'Cliente', clienteFotoUrl: APAGAR, clienteBannerUrl: APAGAR } });
   }
   // Barbeiro (não dono) de alguma casa: o cartão público perde nome e fotos e sai da equipe ativa; o telefone some.
   for (const b of ondeAtende) {
