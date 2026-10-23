@@ -160,6 +160,22 @@ Relatório na conversa de 22/out (12 achados, L01–L12; não é parecer jurídi
   papel da TrevoTec e das barbearias + termo com as barbearias (L09), faixa etária / ECA Digital (L10), base legal da nota do cliente (L11)
 - [ ] Etapa 3 (antes da publicação aberta): mapa de dados e ROPA em `.lgpd/`, script de acesso e portabilidade (L05)
 
+## Reestruturação das avaliações (decisão do dono, 22/out/2026)
+Substitui a seção "Avaliações, nota Google e ranking" acima e o `docs/roadmap-avaliacoes.md`.
+- [x] Saíram as avaliações cliente → barbeiro e barbeiro → cliente, a nota do cliente (`notasCliente`, `users.notaCliente`),
+  a nota do barbeiro e a aba Avaliações do modo casa. O Worker responde 410 a `alvo: 'cliente'` (app antigo)
+- [x] Saiu tudo do Google: nota, Place ID nas Configurações, cron do Places, "Publicar no Google" e o `expo-clipboard`
+- [x] Uma avaliação por cliente por barbearia (id = hash de casa + cliente, sem uid no documento público). Avaliar de novo
+  edita ("Salvar nova avaliação" / "Cancelar edição"); "Como foi o corte?" só aparece para quem ainda não avaliou a casa
+- [x] Nota mostrada = média pura 0,0–5,0 com a quantidade; a busca ordena pela média bayesiana (1 avaliação 5★ não passa 80 de 4,8)
+- [x] Aba "Avaliações (n)" na página pública da barbearia (primeiro nome e dia do corte; carrega só ao abrir a aba)
+- [x] Exclusão de conta: a avaliação fica assinada "Cliente"; fotos no R2 apagadas; o barbeiro sai da equipe; o dono precisa
+  excluir a barbearia antes (o app confere antes de cancelar qualquer horário)
+- [x] Política de privacidade e página de exclusão atualizadas
+- [x] Testes: lógica 50, regras 47, Worker 15, typecheck e export web; conferido no navegador com o emulador
+- [ ] Publicar regras + índices, Worker e web (aprovação do dono)
+- [ ] Depois de publicar: apagar em produção as avaliações e notas de teste e zerar a nota das barbearias (irreversível)
+
 ## Fase 1 — o que falta para o portão da Fase 2
 O código do MVP está completo. O portão é "3 barbearias amigas usando por 1 semana sem erro grave e nenhum horário duplicado".
 Para isso, nesta ordem:

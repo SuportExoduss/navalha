@@ -2,6 +2,10 @@
 
 **Status (22/out): as 7 etapas estão feitas, testadas, com commit e publicadas (regras, índices, Worker e web).**
 
+> **Substituído em 22/out (decisão do dono):** saíram as avaliações cliente → barbeiro e barbeiro → cliente, a nota do
+> cliente e tudo do Google (nota, Place ID, cron). Ficou só a avaliação da barbearia, uma por cliente (editável), nota
+> pura 0,0–5,0 e ranking ponderado. Ver `docs/status.md` › Reestruturação das avaliações.
+
 Ordem do mais fácil para o mais difícil. Cada etapa termina com regressão completa (testes, typecheck,
 regras, Worker, export web) e conferência no navegador (roteiro do dogfood + expo-design-system). Commit por etapa.
 

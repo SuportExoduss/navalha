@@ -6,7 +6,7 @@ Tipos completos em `src/types/models.ts`; permissões em `firestore.rules`.
 | Coleção | Quem grava | Fase | Para quê |
 | --- | --- | --- | --- |
 | `users/{uid}` | o próprio usuário | 1 | Nome, apelido, foto, papéis (cliente/barbeiro/dono), modo ativo, favoritos, token de push |
-| `barbearias/{id}` | dono | 1 | Perfil, endereço + geohash, expediente, política, **resumo** (nota, preço, próximo horário), Place ID do Google, pagamento, assinatura |
+| `barbearias/{id}` | dono | 1 | Perfil, endereço + geohash, expediente, política, **resumo** (nota do app, preço, próximo horário), pagamento, assinatura |
 | `barbearias/{id}/barbeiros/{uid}` | dono ou o barbeiro (via convite) | 1 | Barbeiros da casa, expediente próprio, nota |
 | `convites/{código}` | dono | 1 | Código de 6 letras (sem 0/O/1/I), válido 7 dias, uso único; aponta para a barbearia |
 | `barbearias/{id}/servicos/{id}` | barbeiro (o próprio) ou dono | 1 | Cardápio: nome, preço em centavos, duração, até 6 fotos |
@@ -19,9 +19,9 @@ Tipos completos em `src/types/models.ts`; permissões em `firestore.rules`.
 | `eventos/{id}` | app | 1 | Métricas do piloto: agendou, cancelou, faltou, tempo até agendar |
 | `notificacoes/{id}` | Worker | 1 | Sino na Agenda (casa) e em Agendamentos (cliente): marcado e cancelado avisam os outros lados (cliente, barbeiro, dono), nunca quem fez (id `agendamento_tipo_uid`, nunca duplica) e resumo do mês no dia 1 (`resumo_AAAA-MM_casa`). O destinatário só lê e marca como lida |
 | `pagamentos/{id}` | Worker (webhook Asaas) | 3 | Pix, cartão, split, assinatura |
-| `avaliacoes/{agendamentoId}_{alvo}` | Worker (`POST /avaliacoes`) | 1 | Três direções (1–5★ + comentário, uma vez cada): `cliente_para_barbearia` (pública; soma `resumo.notaApp` e `resumo.notaRanking`), `cliente_para_barbeiro` (casa e cliente leem; soma `equipePrivado.nota`) e `barbeiro_para_cliente` (casa e cliente leem; soma `notaCliente`). Guarda nome, foto e capa do cliente, dia e horário do corte; a pública guarda só o primeiro nome (sem foto, capa nem uid: qualquer um lê o documento). As de antes de 22/out têm id = agendamentoId (direção cliente → barbeiro). A nota do Google vem do cron, 1 vez por dia |
-| `barbearias/{id}/equipePrivado/{uid}` | barbeiro (telefone) e Worker (nota) | 1 | Telefone e nota do barbeiro, fora do cartão público dele; só o dono e o próprio barbeiro leem |
-| `notasCliente/{uid}` | Worker | 1 | Média do cliente nas avaliações das barbearias; a casa lê por id ao ver o agendamento (sem listar) |
+| `avaliacoes/{hash}` | Worker (`POST /avaliacoes`) | 1 | Só a avaliação da barbearia (1–5★ + comentário), **uma por cliente por casa**: o id é SHA-256(`barbeariaId:clienteUid`) (24 hex), então avaliar de novo edita a mesma. Pública: primeiro nome, dia do corte, estrelas e comentário (sem foto, capa nem uid). O Worker atualiza `resumo.notaApp` (média pura), `totalAvaliacoesApp`, `somaEstrelasApp` (soma inteira, para editar sem erro) e `notaRanking` (média bayesiana, prior 4 com peso 10: só ordena a busca). Na exclusão de conta vira "Cliente" |
+| `users/{uid}.avaliouBarbearias` | Worker | — | `{barbeariaId: {estrelas, comentario?, em}}`: o app mostra "Editar" e não pede de novo; o aviso "Como foi o corte?" só vai a quem ainda não avaliou a casa |
+| `barbearias/{id}/equipePrivado/{uid}` | barbeiro | 1 | Telefone do barbeiro, fora do cartão público; só o dono e o próprio barbeiro leem |
 | `clubes/{id}`, `assinaturasClube/{id}` | dono / Worker | 4 | Clube de assinatura do cliente |
 
 ## Trava contra horário duplo
