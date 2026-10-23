@@ -173,8 +173,9 @@ Substitui a seção "Avaliações, nota Google e ranking" acima e o `docs/roadma
   excluir a barbearia antes (o app confere antes de cancelar qualquer horário)
 - [x] Política de privacidade e página de exclusão atualizadas
 - [x] Testes: lógica 50, regras 47, Worker 15, typecheck e export web; conferido no navegador com o emulador
-- [ ] Publicar regras + índices, Worker e web (aprovação do dono)
-- [ ] Depois de publicar: apagar em produção as avaliações e notas de teste e zerar a nota das barbearias (irreversível)
+- [x] Publicado em 22/out: regras + índices, Worker (versão 3f5e37f6) e web. Conferido no ar: rotas recusam sem login,
+  site com a tela nova, `notasCliente` fechada. Ficaram 4 índices antigos sem uso no Firebase (só saem com `--force`)
+- [x] Limpeza em produção (22/out): 1 avaliação de teste apagada, marca antiga tirada de 1 agendamento, nota da casa zerada
 
 ## Fase 1 — o que falta para o portão da Fase 2
 O código do MVP está completo. O portão é "3 barbearias amigas usando por 1 semana sem erro grave e nenhum horário duplicado".
