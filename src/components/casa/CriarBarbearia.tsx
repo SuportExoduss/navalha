@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { Aviso, Botao, Campo, Cartao, Titulo } from '../ui';
 import { criarBarbearia, jaUsouTeste } from '../../services/barbearias';
 import { db } from '../../services/firebase';
@@ -89,6 +90,13 @@ export function CriarBarbearia({ perfil }: { perfil: UserProfile }) {
 
       {erro ? <Aviso texto={erro} tom="erro" /> : null}
       <Botao titulo="Criar barbearia" onPress={salvar} carregando={salvando} />
+      {/* Aceite das regras para barbearias, principalmente o uso dos dados dos clientes. */}
+      <Text style={[type.caption, { textAlign: 'center' }]}>
+        Ao criar, você aceita os{' '}
+        <Text accessibilityRole="link" onPress={() => router.push('/termos')} style={{ color: colors.accent, textDecorationLine: 'underline' }}>
+          Termos de uso
+        </Text>, incluindo as regras para barbearias sobre os dados dos clientes.
+      </Text>
       {testeUsado === null ? null : <Aviso texto={testeUsado
         ? 'Sua conta já usou os 60 dias grátis: a barbearia entra na busca depois de escolher um plano em Configurações.'
         : 'Os primeiros 60 dias são grátis, com até 10 barbeiros. Depois, escolha um plano em Configurações.'} />}

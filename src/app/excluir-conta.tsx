@@ -41,7 +41,7 @@ export default function ExcluirConta() {
         <Paragrafo>Quer apagar algum dado específico sem excluir a conta? Peça pelo mesmo e-mail.</Paragrafo>
       </Topico>
 
-      <Paragrafo>Veja também a <Link href="/privacidade">Política de privacidade</Link>.</Paragrafo>
+      <Paragrafo>Veja também a <Link href="/privacidade">Política de privacidade</Link> e os <Link href="/termos">Termos de uso</Link>.</Paragrafo>
     </Documento>
   );
 }

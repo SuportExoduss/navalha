@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Redirect, router } from 'expo-router';
+import { IDADE_MINIMA } from '../lib/legal';
 import { Ionicons } from '@expo/vector-icons';
 import { Aviso, Botao, Campo, Tela, Titulo } from '../components/ui';
 import { entrarComGoogle } from '../services/googleSignIn';
@@ -41,7 +42,10 @@ export default function Entrar() {
         />
         {erro ? <Aviso texto={erro} tom="erro" /> : null}
         <Text style={[type.caption, { textAlign: 'center' }]}>
-          Ao continuar você aceita a{' '}
+          Ao continuar você confirma ter {IDADE_MINIMA} anos ou mais e aceita os{' '}
+          <Text accessibilityRole="link" onPress={() => router.push('/termos')} style={{ color: colors.accent, textDecorationLine: 'underline' }}>
+            Termos de uso
+          </Text> e a{' '}
           <Text accessibilityRole="link" onPress={() => router.push('/privacidade')} style={{ color: colors.accent, textDecorationLine: 'underline' }}>
             Política de privacidade
           </Text>.

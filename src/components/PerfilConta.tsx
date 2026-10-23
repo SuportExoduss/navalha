@@ -121,6 +121,9 @@ export function PerfilConta() {
       <Pressable onPress={() => router.push('/privacidade')} hitSlop={8} accessibilityRole="link" style={{ alignSelf: 'center' }}>
         <Text style={[type.caption, { color: colors.textMuted, textDecorationLine: 'underline' }]}>Política de privacidade</Text>
       </Pressable>
+      <Pressable onPress={() => router.push('/termos')} hitSlop={8} accessibilityRole="link" style={{ alignSelf: 'center' }}>
+        <Text style={[type.caption, { color: colors.textMuted, textDecorationLine: 'underline' }]}>Termos de uso</Text>
+      </Pressable>
     </Tela>
   );
 }

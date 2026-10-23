@@ -155,9 +155,15 @@ Relatório na conversa de 22/out (12 achados, L01–L12; não é parecer jurídi
   As públicas gravadas antes disso ainda têm esses campos (limpeza única, se precisar)
 - [x] Rascunho da política de privacidade v2 em `.lgpd/policies/privacy-policy-v2-draft.md` (para o advogado)
 - [ ] Dono: testar a exclusão com uma conta descartável (cliente com avaliação e foto de corte) e conferir no console e no R2
-- [ ] Etapa 2 (documentos, depende do dono e de advogado): política v2 (L03), roteiro e registro de incidentes (L06),
-  encarregado (L07), aceite dos termos de tratamento de dados do Firebase e da Cloudflare + região do Firestore (L08),
-  papel da TrevoTec e das barbearias + termo com as barbearias (L09), faixa etária / ECA Digital (L10), base legal da nota do cliente (L11)
+- [x] Etapa 2 (23/out, decisões do dono): política v2 publicada (`/privacidade`, com bases legais, encarregado, onde os
+  dados ficam e incidentes), Termos de uso com as regras para barbearias (`/termos`, aceitos no login e ao criar a casa),
+  idade mínima 18 anos, roteiro e registro de incidentes (`.lgpd/incidentes.md`), registro das decisões
+  (`.lgpd/policies/privacy-policy-v2.md`). Firestore confirmado em São Paulo (southamerica-east1)
+- [ ] Dono: conferir no Console do Firebase (Configurações do projeto › Privacidade) se os termos de tratamento de dados
+  estão aceitos; a Cloudflare inclui o DPA no contrato self-serve
+- [ ] Dono: marca "Navalha" no INPI está livre nas classes de software (9 e 42), mas há registro em vigor na classe 44
+  (serviços de barbearia, NAVALHA BARBEARIA LTDA): consultar advogado antes de pedir o registro
+- [ ] Revisão jurídica recomendada (não bloqueia): itens no fim de `.lgpd/policies/privacy-policy-v2.md`
 - [ ] Etapa 3 (antes da publicação aberta): mapa de dados e ROPA em `.lgpd/`, script de acesso e portabilidade (L05)
 
 ## Reestruturação das avaliações (decisão do dono, 22/out/2026)
