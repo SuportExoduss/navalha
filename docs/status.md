@@ -1,16 +1,16 @@
 # Navalha — Status da execução
 
-Atualizado em 20/out/2026, noite (roadmap validado: MVP completo e testado no celular; mensalidades, notificações e poderes separados no ar).
+Atualizado em 23/out/2026 (MVP completo e testado no celular; avaliação única da barbearia, política v2 e termos de uso no ar).
 
 Código no computador: `C:\Users\andre\AndroidStudioProjects\navalha` (no Android Studio: File › Open › pasta `android`).
 
-## Onde estamos (20/out/2026, validado contra o código)
+## Onde estamos (23/out/2026, validado contra o código)
 | Fase | Calendário | Código | Falta |
 | --- | --- | --- | --- |
-| 0 · Fundação | 19/out – 1/nov | modelo de dados e contas técnicas prontos | dono: entrevistas, INPI/nome, termos/LGPD, landing, contador |
+| 0 · Fundação | 19/out – 1/nov | modelo de dados e contas técnicas prontos | dono: entrevistas, INPI/nome (conflito na classe 44), landing, contador; termos e política v2 no ar |
 | 1 · MVP | 2/nov – 27/dez | **100%** (adiantado ~6 semanas) + extras | portão: 3 barbearias amigas por 1 semana; cronometrar um dono montando a casa |
 | 2 · Piloto | jan – fev/2027 | código pronto (AAB assinado, privacidade, exclusão de conta, acesso de revisão) | dono: teste fechado com 12 testadores/14 dias, onboarding das 10 barbearias, cartaz com QR |
-| 3 · Lançamento | — | **fora do plano** (decisão do dono, 20/out) | ficam, já feitos: mensalidades pelo Google Play e avaliações + nota Google + ranking |
+| 3 · Lançamento | — | **fora do plano** (decisão do dono, 20/out) | ficam, já feitos: mensalidades pelo Google Play e avaliação da barbearia + ranking (sem Google) |
 | 4 · Crescimento | — | **fora do plano** | — |
 | 5 · Escala | — | **fora do plano** | — |
 
@@ -93,8 +93,13 @@ Requisitos da Google Play: `docs/publicar-google-play.md`. Pacote definitivo `co
   motivo da folga saiu de `bloqueios` (todo cliente lê) para `motivosFolga` (só dono e barbeiro); release sem
   `android/keystore.properties` agora falha no Gradle em vez de assinar com a chave de debug. **Falta publicar as regras**
   (`npx firebase deploy --only firestore:rules --project prod`). Brecha restante (ponytail): blocos do meio não são lidos.
-- [ ] App Check: API ligada, **não** ativar a obrigatoriedade antes de integrar no app
-- [ ] `npm audit`: avisos restantes vêm de dependências do Expo; resolver na próxima atualização do SDK
+- [ ] App Check (avaliado em 23/out): fica para depois do app estar no teste interno do Play. No Android ele usa o Play
+  Integrity, que só aprova o app instalado pelo Play, e pede um módulo nativo novo (`@react-native-firebase/app-check`,
+  ligado ao SDK web por um CustomProvider); na web, uma chave reCAPTCHA. API ligada; **não** ativar a obrigatoriedade
+  antes de integrar no app e no Worker
+- [x] `npm audit` (23/out): correções sem quebra aplicadas (Expo 58 e Firebase 13 em versões de correção, pacotes do Expo
+  alinhados com `expo install --fix`). Os 24 avisos restantes estão em ferramentas de build (Expo CLI, Firebase CLI) e em
+  código só do Node; não vão no app. O `--force` rebaixaria para Expo 44 e Firebase 9: não usar
 
 ## Adiantado da Fase 3: mensalidades (decisão do dono, 20/out/2026)
 - [x] Planos Solo R$ 25 (1), Equipe R$ 70 (3), R$ 100 (6) e R$ 150 (10) em `src/lib/planos.ts`; 60 dias grátis na primeira casa da conta
@@ -109,6 +114,7 @@ Requisitos da Google Play: `docs/publicar-google-play.md`. Pacote definitivo `co
 - [x] Plano A (custo zero): em Configurações, link da casa (`navalha.web.app/barbearia/{id}`) e texto pronto para a saudação do WhatsApp Business / IA da Meta, com botão Compartilhar (decisão do dono: só o plano A)
 
 ## Avaliações, nota Google e ranking (da Fase 3, trazidos de volta pelo dono em 20/out/2026)
+> Histórico. Substituído em 22/out pela seção "Reestruturação das avaliações" abaixo: sem Google, sem avaliar cliente ou barbeiro.
 - [x] Cliente avalia o atendimento concluído (1–5 estrelas + comentário opcional, até 30 dias, uma vez) no histórico; o Worker (`POST /avaliacoes`) confere e soma as notas da casa e do barbeiro
 - [x] Página da casa: nota do Navalha e do Google, nota de cada barbeiro e as 5 avaliações mais recentes (primeiro nome do cliente)
 - [x] Nota do Google: o cron do Worker consulta a Places API (New) 1 vez por dia por casa com o código do Google em Configurações (5 casas por hora)
@@ -126,9 +132,7 @@ Requisitos da Google Play: `docs/publicar-google-play.md`. Pacote definitivo `co
   o cliente; um corte aberto por barbeiro). Testes: lógica 50, regras 47, Worker 13; conferido no navegador
 - [x] Publicado em 22/out: regras + índices, Worker (versão 65f47711) e web (navalha.web.app). Conferido sem login:
   Worker recusa sem token; regras liberam só a avaliação pública da barbearia; site com a página nova de link quebrado
-- [ ] Dono: testar com a conta real (avaliar, capa, seguir cortes, "Publicar também no Google") e gerar APK/AAB novo
-  (entrou o módulo nativo `expo-clipboard`)
-- [ ] Dono: chave da Places API (Google Cloud com faturamento ativo + `npx wrangler secret put GOOGLE_PLACES_KEY` em `worker/`); sem ela, só a nota do Navalha aparece
+- [ ] Dono: gerar APK/AAB novo (subir `versionCode`) e testar com a conta real: avaliar e editar, capa, seguir cortes
 
 ## Extras de 20/out/2026 (fora do roadmap original, no ar)
 - [x] Notificações: sino com painel lateral na Agenda (dono e barbeiro) e em Agendamentos (cliente); push na hora de marcado/cancelado para os outros lados (cliente, barbeiro, dono); resumo do mês no dia 1 para o dono
@@ -165,7 +169,9 @@ Relatório na conversa de 22/out (12 achados, L01–L12; não é parecer jurídi
 - [ ] Dono: marca "Navalha" no INPI está livre nas classes de software (9 e 42), mas há registro em vigor na classe 44
   (serviços de barbearia, NAVALHA BARBEARIA LTDA): consultar advogado antes de pedir o registro
 - [ ] Revisão jurídica recomendada (não bloqueia): itens no fim de `.lgpd/policies/privacy-policy-v2.md`
-- [ ] Etapa 3 (antes da publicação aberta): mapa de dados e ROPA em `.lgpd/`, script de acesso e portabilidade (L05)
+- [x] Etapa 3 (23/out): mapa de dados (`.lgpd/data-map.md`) e registro das operações com teste de legítimo interesse
+  (`.lgpd/ropa.md`), conferidos com o código. A política deixou de dizer que a barbearia vê a foto do cliente (não vê)
+- [ ] Script de acesso e portabilidade (L05): hoje o pedido é atendido à mão pelo console, em até 15 dias
 
 ## Reestruturação das avaliações (decisão do dono, 22/out/2026)
 Substitui a seção "Avaliações, nota Google e ranking" acima e o `docs/roadmap-avaliacoes.md`.

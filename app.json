@@ -24,8 +24,16 @@
         {
           "action": "VIEW",
           "autoVerify": true,
-          "data": [{ "scheme": "https", "host": "navalha.web.app" }],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "data": [
+            {
+              "scheme": "https",
+              "host": "navalha.web.app"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ],
       "adaptiveIcon": {
@@ -96,7 +104,8 @@
           "backgroundColor": "#0E0F11"
         }
       ],
-      "expo-iap"
+      "expo-iap",
+      "expo-status-bar"
     ],
     "experiments": {
       "typedRoutes": true

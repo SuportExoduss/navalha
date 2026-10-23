@@ -58,7 +58,7 @@ export default function Privacidade() {
       </Topico>
 
       <Topico titulo="Quem vê os seus dados">
-        <Item forte="A barbearia em que você marca:">o seu nome ou apelido, a sua foto, o horário, o serviço, a foto do corte
+        <Item forte="A barbearia em que você marca:">o seu nome ou apelido, o horário, o serviço, a foto do corte
           e, se você preencheu, o WhatsApp. Ela só pode usar esses dados para atender você (regra dos Termos de uso).</Item>
         <Item forte="Qualquer pessoa:">os dados públicos das barbearias e a sua avaliação de uma barbearia, com o seu primeiro
           nome, o dia do corte, as estrelas e o comentário. Não mostramos sobrenome, foto, horário nem contato.</Item>
