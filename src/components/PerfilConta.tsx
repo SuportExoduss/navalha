@@ -4,34 +4,19 @@ import { useEffect, useState } from 'react';
 import { Image, Platform, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Aviso, Botao, Campo, Carregando, Cartao, Chip, Linha, Secao, Tela, Titulo } from './ui';
-import { ItemAvaliacao } from './agenda/ListaAvaliacoes';
-import { avaliacoesRecebidasPeloCliente } from '../services/avaliacoes';
+import { Aviso, Botao, Campo, Cartao, Chip, Linha, Secao, Tela, Titulo } from './ui';
 import { AceitarConvite } from './casa/AceitarConvite';
 import { Capa } from './Capa';
 import { useAuth } from '../auth/AuthProvider';
 import { auth, db } from '../services/firebase';
-import { atualizarPerfil, escolherPapel, excluirConta, refletirNaEquipe } from '../services/usuarios';
+import { DONO_NAO_EXCLUI, atualizarPerfil, escolherPapel, excluirConta, refletirNaEquipe } from '../services/usuarios';
 import { reautenticarGoogle, sairDoGoogle } from '../services/googleSignIn';
 import { escolherEEnviar } from '../services/fotos';
 import { telefoneNaEquipe } from '../services/barbearias';
 import { colors, radius, space, type, type PreferenciaTema } from '../theme';
 import { useTema } from './TemaProvider';
 import { ativarLembretesWeb, estadoLembretesWeb, type EstadoLembretesWeb } from '../services/push';
-import type { Avaliacao, Role } from '../types/models';
-
-/** O que os barbeiros acharam do cliente: estrelas, comentário, dia e horário do corte. */
-function MinhasAvaliacoes({ uid }: { uid: string }) {
-  const [lista, setLista] = useState<Avaliacao[] | null>(null);
-  useEffect(() => { avaliacoesRecebidasPeloCliente(db, uid).then(setLista).catch(() => setLista([])); }, [uid]);
-  return (
-    <Secao titulo="Minhas avaliações">
-      {lista === null ? <Carregando />
-        : lista.length === 0 ? <Text style={type.caption}>Depois de um corte, o barbeiro pode avaliar você. A nota aparece aqui.</Text>
-        : lista.map(a => <ItemAvaliacao key={a.id} a={a} vista="cliente" />)}
-    </Secao>
-  );
-}
+import type { Role } from '../types/models';
 
 const NOMES: Record<Role, string> = { cliente: 'Cliente', barbeiro: 'Barbeiro', dono: 'Dono' };
 const ORDEM_MODOS: Role[] = ['cliente', 'barbeiro', 'dono'];
@@ -111,9 +96,6 @@ export function PerfilConta() {
         </Pressable>
         <View style={{ flex: 1 }}>
           <Titulo>{perfil.apelido || perfil.nome}</Titulo>
-          {perfil.notaCliente?.total ? (
-            <Text style={type.caption}>{`★ ${perfil.notaCliente.media.toFixed(1).replace('.', ',')} como cliente · ${perfil.notaCliente.total} ${perfil.notaCliente.total === 1 ? 'avaliação' : 'avaliações'}`}</Text>
-          ) : null}
           <Text style={type.caption}>{perfil.email}</Text>
         </View>
       </View>
@@ -127,8 +109,6 @@ export function PerfilConta() {
         {erro ? <Aviso texto={erro} tom="erro" /> : null}
         <Botao titulo={salvo ? 'Salvo' : 'Salvar'} onPress={salvar} carregando={salvando} />
       </Cartao>
-
-      {perfil.papelAtivo === 'cliente' ? <MinhasAvaliacoes uid={perfil.uid} /> : null}
 
       <Modo />
 
@@ -206,10 +186,11 @@ function ExcluirConta() {
     try {
       // O Firebase exige login recente para apagar a conta. Conta de revisão (e-mail) acabou de entrar: dispensa.
       if (user.providerData.some(p => p.providerId === 'google.com')) await reautenticarGoogle();
-      await excluirConta(db, user);
+      await excluirConta(db, user, perfil?.barbearias ?? []);
       router.replace('/entrar');
     } catch (e) {
-      setErro(e instanceof Error && /cancel|popup-closed/i.test(e.message) ? 'Exclusão cancelada.' : 'Não foi possível excluir agora. Tente de novo.');
+      const msg = e instanceof Error ? e.message : '';
+      setErro(/cancel|popup-closed/i.test(msg) ? 'Exclusão cancelada.' : msg === DONO_NAO_EXCLUI ? msg : 'Não foi possível excluir agora. Tente de novo.');
       setExcluindo(false);
     }
   }
@@ -227,7 +208,7 @@ function ExcluirConta() {
       <Text style={type.caption}>
         Seus horários futuros serão cancelados, seu nome sai do histórico das barbearias e seus dados de perfil são apagados.
         Isso não pode ser desfeito. Vamos pedir para você confirmar com o Google.
-        {dono ? ' Sua barbearia continua no ar; para tirá-la, despublique antes na aba Barbearia.' : ''}
+        {dono ? ' Se você é dono de uma barbearia, exclua a barbearia primeiro em Configurações.' : ''}
       </Text>
       {erro ? <Aviso texto={erro} tom="erro" /> : null}
       <View style={{ flexDirection: 'row', gap: space(2) }}>

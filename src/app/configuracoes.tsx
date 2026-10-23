@@ -12,7 +12,6 @@ import { escolherEEnviar } from '../services/fotos';
 import { db } from '../services/firebase';
 import { colors, radius, space, type, sobreFoto } from '../theme';
 import { PLANOS } from '../lib/planos';
-import { placeIdValido } from '../lib/avaliacoes';
 import { SITE } from '../lib/legal';
 import type { Barbearia } from '../types/models';
 
@@ -37,7 +36,6 @@ export default function Configuracoes() {
       </Secao>
       <WhatsApp b={b} />
       <PedirAvaliacao b={b} />
-      <PlaceIdGoogle b={b} />
       <ExcluirBarbearia b={b} />
     </Tela>
   );
@@ -56,7 +54,7 @@ function PedirAvaliacao({ b }: { b: Barbearia }) {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space(3) }}>
           <View style={{ flex: 1, gap: 2 }}>
             <Text style={type.body}>Pedir avaliação ao cliente</Text>
-            <Text style={type.caption}>Quando o barbeiro finaliza o corte, o cliente recebe "Como foi o corte?" e avalia o barbeiro e, se quiser, a barbearia.</Text>
+            <Text style={type.caption}>Quando o barbeiro finaliza o corte, o cliente recebe "Como foi o corte?" para avaliar a barbearia (só quem ainda não avaliou).</Text>
           </View>
           <Interruptor value={!!b.pedirAvaliacao} onValueChange={alternar} rotulo="Pedir avaliação ao cliente" />
         </View>
@@ -180,29 +178,6 @@ function WhatsApp({ b }: { b: Barbearia }) {
 }
 
 /** Place ID do Google: o Worker busca a nota do Google 1 vez por dia e ela entra no card e no ranking. */
-function PlaceIdGoogle({ b }: { b: Barbearia }) {
-  const [valor, setValor] = useState(b.googlePlaceId ?? '');
-  const [msg, setMsg] = useState<string | null>(null);
-  async function salvar() {
-    const id = valor.trim();
-    if (id && !placeIdValido(id)) return setMsg('Cole só o código, ex.: ChIJN1t_tDeuEmsRUsoyG83frY4.');
-    // ponytail: trocar ou apagar o código não zera a nota do Google já gravada (a nova chega em até 1 dia; apagada, fica a última).
-    await atualizarBarbearia(db, b.id, { googlePlaceId: id });
-    setMsg('Salvo.');
-  }
-  return (
-    <Secao titulo="Google">
-      <Cartao style={{ gap: space(3) }}>
-        <Campo rotulo="Código da barbearia no Google (opcional)" value={valor} onChangeText={t => { setMsg(null); setValor(t); }}
-          placeholder="ChIJ…" autoCapitalize="none"
-          dica="Com o código, a nota do Google aparece na sua página e conta no ranking (atualiza 1 vez por dia). Ache o código pesquisando sua barbearia em developers.google.com/maps/documentation/places/web-service/place-id." />
-        {msg ? <Aviso texto={msg} tom={msg === 'Salvo.' ? 'ok' : 'erro'} /> : null}
-        <Botao titulo="Salvar código" variante="secundario" onPress={salvar} />
-      </Cartao>
-    </Secao>
-  );
-}
-
 /** Último item, de propósito: apaga a casa. Pede o nome digitado para não acontecer por engano. */
 function ExcluirBarbearia({ b }: { b: Barbearia }) {
   const [aberto, setAberto] = useState(false);

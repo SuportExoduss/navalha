@@ -22,6 +22,8 @@ export default function Privacidade() {
           ao concluir o atendimento, que vai para o seu histórico.</Item>
         <Item forte="Agendamentos:">barbearia, barbeiro, serviço, preço, data, situação (marcado, concluído, faltou, cancelado) e o
           motivo do cancelamento escolhido na lista.</Item>
+        <Item forte="Avaliação da barbearia:">se você quiser avaliar, as estrelas (1 a 5) e o comentário. É uma por barbearia;
+          avaliar de novo substitui a anterior.</Item>
         <Item forte="Barbearia (para donos e barbeiros):">nome, endereço, telefone, Instagram, horários, equipe e cardápio.</Item>
         <Item forte="Assinatura da barbearia:">plano, situação e vencimento. O pagamento é feito e processado pelo Google Play;
           não vemos nem guardamos dados do seu cartão.</Item>
@@ -34,6 +36,8 @@ export default function Privacidade() {
         <Item>Criar e manter a sua conta e entrar no app.</Item>
         <Item>Mostrar barbearias perto de você, marcar, lembrar e cancelar horários sem que dois clientes peguem o mesmo horário.</Item>
         <Item>Permitir que a barbearia organize a agenda, a equipe e o cardápio, e veja o resumo do próprio movimento.</Item>
+        <Item>Permitir que o barbeiro do seu horário mande um lembrete pelo WhatsApp dele, se você informou o seu número.</Item>
+        <Item>Mostrar a nota da barbearia (média das avaliações) e ordenar as barbearias mais bem avaliadas.</Item>
         <Item>Cobrar e controlar a assinatura das barbearias.</Item>
         <Item>Garantir a segurança, evitar abuso e corrigir falhas.</Item>
         <Paragrafo>Não vendemos seus dados e não mostramos anúncios.</Paragrafo>
@@ -42,6 +46,8 @@ export default function Privacidade() {
       <Topico titulo="Quem vê os seus dados">
         <Item forte="A barbearia em que você marca:">o seu nome ou apelido, o horário, o serviço e, se você preencheu, o WhatsApp.</Item>
         <Item forte="Os clientes:">os dados públicos da barbearia (nome, endereço, horários, cardápio, fotos e equipe).</Item>
+        <Item forte="Qualquer pessoa:">a sua avaliação de uma barbearia aparece na página dela com o seu primeiro nome, o dia
+          do corte, as estrelas e o comentário. Não mostramos sobrenome, foto, horário nem contato. Não avaliamos clientes.</Item>
         <Item forte="Serviços que operam o app para nós:">Google Firebase (login, banco de dados, notificações e site),
           Cloudflare (armazenamento das fotos e servidor) e Google Play (pagamento das assinaturas). Eles tratam os dados
           só para prestar esse serviço.</Item>

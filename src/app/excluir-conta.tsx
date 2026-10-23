@@ -23,7 +23,7 @@ export default function ExcluirConta() {
       <Topico titulo="O que é apagado">
         <Item>Seu perfil: nome, apelido, e-mail, foto, capa, WhatsApp e o identificador de notificações.</Item>
         <Item>As fotos: do perfil, da capa e dos seus cortes.</Item>
-        <Item>A nota que as barbearias deram a você e os avisos ligados aos seus horários.</Item>
+        <Item>Os avisos ligados aos seus horários.</Item>
         <Item>Seu acesso: a conta de login deixa de existir.</Item>
         <Item>Seus horários futuros são cancelados e liberados para outras pessoas.</Item>
         <Item>Se você atende numa barbearia (sem ser o dono): você sai da equipe, e o seu nome, foto e telefone somem do cartão.</Item>
@@ -32,12 +32,12 @@ export default function ExcluirConta() {
       <Topico titulo="O que fica, e por quê">
         <Item forte="Atendimentos que já aconteceram:">continuam no histórico da barbearia (data, serviço e preço), com o
           seu nome trocado por "Cliente removido".</Item>
-        <Item forte="Avaliações:">as estrelas e os comentários continuam valendo na nota da barbearia e do barbeiro, mas sem o
-          seu nome e sem a sua foto.</Item>
+        <Item forte="Avaliações:">as estrelas e o comentário que você deu às barbearias continuam valendo na nota delas, mas
+          assinados só como "Cliente".</Item>
         <Item forte="Registros técnicos de uso e de erros:">ficam ligados só a um identificador que não leva mais a você.</Item>
         <Item forte="Dados de compra de assinatura:">pelo prazo que a lei exigir.</Item>
-        <Item forte="Barbearia:">se você é dono, a barbearia não some junto com a conta. Exclua antes em Barbearia ›
-          Configurações › Excluir barbearia, ou peça pelo e-mail.</Item>
+        <Item forte="Barbearia:">se você é dono, exclua antes a barbearia em Barbearia › Configurações › Excluir barbearia
+          (o app só deixa excluir a conta depois disso), ou peça pelo e-mail.</Item>
         <Paragrafo>Quer apagar algum dado específico sem excluir a conta? Peça pelo mesmo e-mail.</Paragrafo>
       </Topico>
 

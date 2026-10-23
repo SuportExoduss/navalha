@@ -86,8 +86,8 @@ export function ouvirBarbeiros(db: Firestore, barbeariaId: string, cb: (l: Barbe
   return onSnapshot(collection(db, 'barbearias', barbeariaId, 'barbeiros'), s => cb(s.docs.map(d => d.data() as Barbeiro)));
 }
 
-/** Parte privada do barbeiro (telefone e nota das avaliações): só o dono e ele mesmo leem. */
-export interface EquipePrivado { telefone?: string; nota?: { media: number; total: number } }
+/** Parte privada do barbeiro (telefone): só o dono e ele mesmo leem. */
+export interface EquipePrivado { telefone?: string }
 
 export function ouvirEquipePrivado(db: Firestore, barbeariaId: string, uid: string, cb: (d: EquipePrivado) => void): Unsubscribe {
   return onSnapshot(doc(db, 'barbearias', barbeariaId, 'equipePrivado', uid), s => cb((s.data() ?? {}) as EquipePrivado), () => cb({}));
@@ -187,7 +187,7 @@ export async function criarBarbearia(
   const barbeiro: Barbeiro = {
     uid: dono.uid, barbeariaId: ref.id, nome: dono.nome,
     ...(dono.fotoUrl ? { fotoUrl: dono.fotoUrl } : {}),
-    especialidades: [], expediente: EXPEDIENTE_PADRAO, ativo: true, nota: { media: 0, total: 0 },
+    especialidades: [], expediente: EXPEDIENTE_PADRAO, ativo: true,
   };
   const batch = writeBatch(db);
   batch.set(ref, b);
@@ -200,7 +200,7 @@ export async function criarBarbearia(
 }
 
 export async function atualizarBarbearia(db: Firestore, id: string, dados: Partial<Pick<Barbearia,
-  'nome' | 'endereco' | 'cidade' | 'telefone' | 'instagram' | 'capaUrl' | 'logoUrl' | 'fotos' | 'publicada' | 'comodidades' | 'googlePlaceId' | 'pedirAvaliacao'>>) {
+  'nome' | 'endereco' | 'cidade' | 'telefone' | 'instagram' | 'capaUrl' | 'logoUrl' | 'fotos' | 'publicada' | 'comodidades' | 'pedirAvaliacao'>>) {
   await updateDoc(doc(db, 'barbearias', id), dados);
   casaMudou(id);
 }
@@ -239,7 +239,7 @@ export async function aceitarConvite(db: Firestore, codigoDigitado: string, eu: 
   batch.update(doc(db, 'convites', codigo), { usadoPor: eu.uid });
   batch.set(doc(db, 'barbearias', c.barbeariaId, 'barbeiros', eu.uid), {
     uid: eu.uid, barbeariaId: c.barbeariaId, nome: eu.nome, ...(eu.fotoUrl ? { fotoUrl: eu.fotoUrl } : {}),
-    especialidades: [], expediente: EXPEDIENTE_PADRAO, ativo: true, nota: { media: 0, total: 0 }, conviteCodigo: codigo,
+    especialidades: [], expediente: EXPEDIENTE_PADRAO, ativo: true, conviteCodigo: codigo,
   });
   batch.update(doc(db, 'users', eu.uid), { barbearias: arrayUnion(c.barbeariaId) });
   // Contador de ativos no mesmo lote: as regras recusam se o plano da casa já está cheio.

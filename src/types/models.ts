@@ -2,7 +2,6 @@
 // Já inclui as coleções das Fases 3 a 5 (pagamentos, avaliações, assinaturas),
 // para que nenhuma fase futura exija migração. Ver docs/modelo-de-dados.md.
 import type { PlanoId } from '../lib/planos';
-import type { AlvoAvaliacao } from '../lib/avaliacoes';
 
 export type Role = 'cliente' | 'barbeiro' | 'dono';
 
@@ -32,8 +31,8 @@ export interface UserProfile {
   privacidade: { fotosNoPortfolio: boolean };
   /** Token do FCM (Firebase Cloud Messaging) para lembretes. */
   pushToken?: string;
-  /** Média das avaliações recebidas como cliente (Fase 3). */
-  notaCliente?: { media: number; total: number; faltas90d: number };
+  /** A avaliação que o cliente deu a cada barbearia (só o Worker grava): o app mostra "Editar" e não pede de novo. */
+  avaliouBarbearias?: Record<string, { estrelas: number; comentario?: string; em: Millis }>;
   provedores: ('google' | 'apple')[];
   criadoEm: Millis;
 }
@@ -79,18 +78,15 @@ export interface Barbearia {
   passoMin: 10 | 15 | 20 | 30;
   antecedenciaMin: number;
   janelaDias: number;
-  /** Place ID do Google: o Worker busca a nota do Google 1 vez por dia. */
-  googlePlaceId?: string;
   /** O app pede ao cliente para avaliar quando o barbeiro finaliza o corte (o dono liga em Configurações). */
   pedirAvaliacao?: boolean;
-  /** Última consulta da nota do Google (só o Worker grava). */
-  googleAtualizadoEm?: Millis;
   /** Resumo desnormalizado: a lista "Perto de você" custa 1 leitura por card. */
   resumo: {
+    /** Média simples das avaliações do app (0,0 a 5,0) e quantas são; a soma evita arredondar a cada edição. */
     notaApp: number;
     totalAvaliacoesApp: number;
-    notaGoogle?: number;
-    totalAvaliacoesGoogle?: number;
+    somaEstrelasApp?: number;
+    /** Só para ordenar "Mais bem avaliadas" (pesa a quantidade). */
     notaRanking?: number;
     precoMin?: number;
     precoMax?: number;
@@ -125,7 +121,6 @@ export interface Barbeiro {
   /** Expediente próprio dentro do horário da casa. */
   expediente: Expediente;
   ativo: boolean;
-  nota: { media: number; total: number };
   // Comissão não fica aqui: este documento é público (leitura aberta). Na Fase 4 vai para um doc só do dono.
 }
 
@@ -193,10 +188,6 @@ export interface Agendamento {
   fotosAprovadas?: boolean;
   /** Quem cancelou e por quê: a barbearia vê o motivo do cliente e o cliente vê o da barbearia. */
   cancelamento?: { por: 'cliente' | 'casa'; motivo: string; em: Millis };
-  /** Avaliação do cliente (gravada só pelo Worker): o card mostra as estrelas no lugar do botão Avaliar. */
-  avaliacao?: { estrelas: number; em: Millis };
-  /** Avaliações deste atendimento por direção (gravadas só pelo Worker). */
-  avaliacoes?: Partial<Record<AlvoAvaliacao, { estrelas: number; em: Millis }>>;
   /** WhatsApp do cliente no momento da reserva (do perfil dele): o barbeiro do horário pode mandar um lembrete. */
   clienteTelefone?: string;
   /** Seguir cortes: quando o barbeiro iniciou o corte (o app abre a tela do corte atual). */
@@ -235,38 +226,23 @@ export interface Pagamento {
 }
 
 /**
- * avaliacoes/{agendamentoId}_{alvo} — gravada só pelo Worker (POST /avaliacoes). A da barbearia é pública
- * (página da casa); a do barbeiro, só a casa e o cliente veem; a do cliente, o cliente e a casa.
- * (As de antes de 22/out têm id = agendamentoId e direção cliente_para_barbeiro.)
+ * avaliacoes/{id} — a avaliação de um cliente para uma barbearia (uma por cliente por casa; avaliar de novo edita).
+ * Gravada só pelo Worker (POST /avaliacoes) e pública (página da casa): por isso só o primeiro nome, sem uid, foto
+ * nem capa do cliente. O id é um resumo (hash) de casa + cliente, que só o Worker calcula.
  */
 export interface Avaliacao {
   id: string;
-  /** Na da barbearia (pública), só o primeiro nome; nas outras, o nome todo. */
-  clienteNome?: string;
-  /** Foto e capa do cliente no momento da avaliação, para a lista mostrar quem avaliou (nunca na pública). */
-  clienteFotoUrl?: string;
-  clienteBannerUrl?: string;
-  barbeiroNome?: string;
-  agendamentoId: string;
   barbeariaId: string;
-  barbeiroId: string;
-  /** Fica de fora da pública (a da barbearia), que qualquer um lê: a exclusão de conta a acha pelo id. */
-  clienteUid?: string;
-  alvo?: AlvoAvaliacao;
-  direcao: 'cliente_para_barbeiro' | 'cliente_para_barbearia' | 'barbeiro_para_cliente';
-  /** Dia e horário do corte e o serviço (para listar "Degradê · ter 21/10, 15:00"). */
-  inicio?: Millis;
-  servicoNome?: string;
-  /** Avaliação feita num cancelamento (e não depois do atendimento). */
-  origem?: 'atendimento' | 'cancelamento';
-  autorUid?: string;
+  /** Primeiro nome; "Cliente" depois que a pessoa exclui a conta. */
+  clienteNome: string;
+  direcao: 'cliente_para_barbearia';
   estrelas: 1 | 2 | 3 | 4 | 5;
-  chips: string[];
   comentario?: string;
-  /** Revelada quando o outro lado avalia ou após 7 dias. */
+  /** Dia do corte que deu direito à avaliação (a página mostra só o dia). */
+  inicio?: Millis;
   visivel: boolean;
-  resposta?: string;
   criadoEm: Millis;
+  atualizadoEm?: Millis;
 }
 
 /** clubes/{clubeId} e assinaturasClube/{id} — Fase 4 */

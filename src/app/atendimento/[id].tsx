@@ -1,12 +1,10 @@
 // Corte atual (seguir cortes): cliente, corte, tempo correndo e "Finalizar". Finalizar é o mesmo "Concluído" da
-// agenda (com ou sem foto); depois oferece avaliar o cliente. Enquanto este estiver aberto, não dá para iniciar outro.
+// agenda (com ou sem foto). Enquanto este estiver aberto, não dá para iniciar outro.
 import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Aviso, Botao, Cartao, Carregando, Tela, Titulo } from '../../components/ui';
-import { NotaDoCliente } from '../../components/agenda/NotaDoCliente';
-import { AvaliarCliente } from '../../components/agenda/Avaliar';
 import { useAuth } from '../../auth/AuthProvider';
 import { db } from '../../services/firebase';
 import { concluir, ouvirAgendamento, registrarEvento } from '../../services/agendamentos';
@@ -56,7 +54,6 @@ export default function CorteAtual() {
       <Titulo>{aberto ? 'Corte em andamento' : a.status === 'concluido' ? 'Corte finalizado' : 'Corte'}</Titulo>
       <Cartao style={{ gap: space(2) }}>
         <Text style={type.heading}>{a.clienteNome}</Text>
-        {a.clienteUid ? <NotaDoCliente uid={a.clienteUid} /> : null}
         <Text style={type.body}>{a.servicoNome}{a.barbeiroNome ? ` com ${a.barbeiroNome}` : ''}</Text>
         <Text style={[type.caption, type.number]}>Marcado {formatarHora(a.inicio)}–{formatarHora(a.fim)} · {a.duracaoMin} min · {formatarPreco(a.precoCentavos)}</Text>
       </Cartao>
@@ -79,7 +76,6 @@ export default function CorteAtual() {
         </>
       ) : a.status === 'concluido' ? (
         <>
-          {a.clienteUid ? <AvaliarCliente a={a} abrirJa /> : null}
           <Botao titulo="Voltar à agenda" variante="secundario" onPress={voltar} />
         </>
       ) : (

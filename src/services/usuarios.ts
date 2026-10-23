@@ -4,6 +4,7 @@ import {
 } from 'firebase/firestore';
 import { deleteUser, type User } from 'firebase/auth';
 import { cancelar } from './agendamentos';
+import { lerBarbearia } from './barbearias';
 import type { Agendamento, Role, UserProfile } from '../types/models';
 
 /** Cria o perfil no primeiro login, com nome e foto vindos do Google. Só é chamado quando a escuta não acha o documento. */
@@ -63,13 +64,19 @@ export async function refletirNaEquipe(db: Firestore, uid: string, barbearias: s
 /** Nome que fica no histórico da barbearia depois da exclusão (o Worker grava; as regras aceitam do próprio cliente). */
 export const NOME_REMOVIDO = 'Cliente removido';
 
+/** Mensagem quando o dono tenta excluir a conta com a barbearia de pé (a casa e os clientes ficariam sem responsável). */
+export const DONO_NAO_EXCLUI = 'Você é dono de uma barbearia. Exclua a barbearia em Configurações antes de excluir a conta.';
+
 /**
  * Exclusão de conta (LGPD e exigência das lojas): cancela os horários futuros (a transação libera os blocos),
- * pede ao Worker para apagar ou anonimizar o resto (histórico, avaliações, nota, avisos, fotos no R2, perfil)
- * e por fim apaga a conta de login. Se o Worker falhar, o login fica: dá para tentar de novo.
- * Quem é dono continua dono da barbearia até transferi-la (o documento da casa não é apagado).
+ * pede ao Worker para apagar ou anonimizar o resto (histórico, avaliação vira "Cliente", avisos, fotos no R2, perfil,
+ * vaga na equipe) e por fim apaga a conta de login. Se o Worker falhar, o login fica: dá para tentar de novo.
+ * Dono precisa excluir a barbearia antes.
  */
-export async function excluirConta(db: Firestore, user: User, agora = Date.now()) {
+export async function excluirConta(db: Firestore, user: User, barbearias: string[], agora = Date.now()) {
+  // Confere antes de cancelar qualquer horário: o Worker também recusa, mas aí os horários já teriam sido cancelados.
+  const casas = await Promise.all(barbearias.map(b => lerBarbearia(db, b).catch(() => null)));
+  if (casas.some(c => c?.donoUid === user.uid)) throw new Error(DONO_NAO_EXCLUI);
   const meus = (await getDocs(query(collection(db, 'agendamentos'), where('clienteUid', '==', user.uid))))
     .docs.map(d => d.data() as Agendamento);
   for (const a of meus) {
@@ -79,6 +86,6 @@ export async function excluirConta(db: Firestore, user: User, agora = Date.now()
   const r = await fetch(`${process.env.EXPO_PUBLIC_WORKER_URL}/conta/excluir`, {
     method: 'POST', headers: { Authorization: `Bearer ${await user.getIdToken()}` },
   });
-  if (!r.ok) throw new Error(`Falha ao apagar os dados (${r.status}).`);
+  if (!r.ok) throw new Error(((await r.json().catch(() => null)) as { erro?: string } | null)?.erro ?? `Falha ao apagar os dados (${r.status}).`);
   await deleteUser(user);
 }

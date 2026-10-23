@@ -12,7 +12,6 @@ const nota = (n: number) => n.toFixed(1).replace('.', ',');
 
 export function CardBarbearia({ b }: { b: BarbeariaPerto }) {
   const capa = b.capaUrl ?? b.fotos[0];
-  const notaRanking = b.resumo.notaRanking ?? b.resumo.notaApp;
   return (
     <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/barbearia/[id]', params: { id: b.id } })} style={{ borderRadius: radius.card, overflow: 'hidden', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
       <View style={{ height: 150, backgroundColor: colors.surfaceRaised }}>
@@ -27,7 +26,8 @@ export function CardBarbearia({ b }: { b: BarbeariaPerto }) {
         <View style={{ flexDirection: 'row', gap: space(4), flexWrap: 'wrap' }}>
           <Text style={type.caption}>
             <Text style={{ color: colors.accent }}>★ </Text>
-            {notaRanking > 0 ? `${nota(notaRanking)} (${b.resumo.totalAvaliacoesApp + (b.resumo.totalAvaliacoesGoogle ?? 0)})` : 'Novo'}
+            {/* Média simples do app e quantas; o ranking (que pesa a quantidade) só ordena a lista. */}
+            {b.resumo.totalAvaliacoesApp ? `${nota(b.resumo.notaApp)} (${b.resumo.totalAvaliacoesApp})` : 'Novo'}
           </Text>
           {b.resumo.precoMin ? <Text style={type.caption}>a partir de {formatarPreco(b.resumo.precoMin)}</Text> : null}
           {abertaAgora(b, Date.now()) ? <Text style={[type.caption, { color: colors.success }]}>Aberta agora</Text> : null}

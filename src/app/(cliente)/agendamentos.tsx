@@ -12,8 +12,8 @@ import { lerBarbearia } from '../../services/barbearias';
 import { cancelamentoGratis, dataLocal, formatarHora, formatarPreco, rotuloDia } from '../../lib/agenda';
 import { avisarAgendamento } from '../../services/avisos';
 import { PainelNotificacoes, VAZIO_CLIENTE } from '../../components/agenda/PainelNotificacoes';
-import { AvaliacoesDoCliente } from '../../components/agenda/Avaliar';
-import { podeAvaliarAlvo } from '../../lib/avaliacoes';
+import { AvaliarBarbearia } from '../../components/agenda/Avaliar';
+import { podeAvaliarCasa } from '../../lib/avaliacoes';
 import { colors, space, type } from '../../theme';
 import type { Agendamento } from '../../types/models';
 
@@ -31,8 +31,15 @@ export default function Agendamentos() {
   const agora = Date.now();
   const proximos = lista.filter(a => ATIVOS.includes(a.status) && a.fim > agora).sort((a, b) => a.inicio - b.inicio);
   // A casa pediu avaliação (barbeiro finalizou com "pedir avaliação" ligado): vem em destaque, já aberta.
-  const pedidos = lista.filter(a => a.pedidoAvaliacao && podeAvaliarAlvo(a, 'barbeiro', agora));
+  // Pede uma vez por casa: quem já avaliou aquela barbearia não vê o pedido de novo (só "Editar" no histórico).
+  const pedidos = lista.filter(a => a.pedidoAvaliacao && podeAvaliarCasa(a) && !perfil.avaliouBarbearias?.[a.barbeariaId]);
   const historico = lista.filter(a => !proximos.includes(a) && !pedidos.includes(a));
+  // Uma avaliação por casa: o "Avaliar"/"Editar" aparece só no corte concluído mais recente de cada barbearia.
+  const ultimoPorCasa = new Map<string, Agendamento>();
+  for (const a of lista) {
+    const atual = ultimoPorCasa.get(a.barbeariaId);
+    if (podeAvaliarCasa(a) && (!atual || a.inicio > atual.inicio)) ultimoPorCasa.set(a.barbeariaId, a);
+  }
 
   return (
     <Tela>
@@ -57,14 +64,14 @@ export default function Agendamentos() {
       ) : null}
       {historico.length ? (
         <Secao titulo="Histórico">
-          {historico.map(a => <ItemAgendamento key={a.id} a={a} uid={perfil.uid} />)}
+          {historico.map(a => <ItemAgendamento key={a.id} a={a} uid={perfil.uid} avaliar={ultimoPorCasa.get(a.barbeariaId)?.id === a.id} />)}
         </Secao>
       ) : null}
     </Tela>
   );
 }
 
-function ItemAgendamento({ a, uid, podeCancelar, pedido }: { a: Agendamento; uid: string; podeCancelar?: boolean; pedido?: boolean }) {
+function ItemAgendamento({ a, uid, podeCancelar, pedido, avaliar }: { a: Agendamento; uid: string; podeCancelar?: boolean; pedido?: boolean; avaliar?: boolean }) {
   const [confirmando, setConfirmando] = useState<string | null>(null);
   const [cancelando, setCancelando] = useState(false);
   const [motivo, setMotivo] = useState('');
@@ -106,7 +113,7 @@ function ItemAgendamento({ a, uid, podeCancelar, pedido }: { a: Agendamento; uid
           {a.fotos.map(f => <Image key={f} source={{ uri: f }} accessibilityLabel="Foto do corte" style={{ width: 96, height: 120, borderRadius: 12 }} />)}
         </ScrollView>
       ) : null}
-      <AvaliacoesDoCliente a={a} pedido={pedido} />
+      {pedido || avaliar ? <AvaliarBarbearia a={a} pedido={pedido} /> : null}
       {/* Agendar de novo começa na casa, pela etapa 1 (barbeiro): agendar é sempre barbeiro → corte → horário. */}
       <Pressable onPress={() => router.push({ pathname: '/barbearia/[id]', params: { id: a.barbeariaId } })} hitSlop={8}>
         <Text style={[type.caption, { color: colors.accent }]}>{podeCancelar ? 'Ver barbearia' : 'Agendar de novo'}</Text>
