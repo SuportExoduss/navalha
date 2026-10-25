@@ -51,7 +51,8 @@ export function aplicarPaleta(nome: NomePaleta) {
 }
 
 // Sobre fotos o véu é sempre escuro e o texto sempre claro, nos dois temas (a foto não muda com o tema).
-export const sobreFoto = { veu: 'rgba(14,15,17,0.8)', texto: '#F4F2EE' } as const;
+// `destaque`: o âmbar do tema escuro, fixo, porque o véu é escuro nos dois temas (só para texto grande: ≥ 3:1).
+export const sobreFoto = { veu: 'rgba(14,15,17,0.8)', texto: '#F4F2EE', destaque: '#C8A24A' } as const;
 
 export const radius = { card: 16, chip: 999, input: 12 } as const;
 

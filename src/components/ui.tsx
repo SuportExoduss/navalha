@@ -12,11 +12,13 @@ import { colors, minTouch, radius, space, type } from '../theme';
  * Com as barras ocultas (modo imersivo) o Android não redimensiona a janela para o teclado; o
  * KeyboardAvoidingView empurra o conteúdo para o campo em foco não ficar escondido.
  */
-export function Tela({ children, rolar = true, rodape }: { children: ReactNode; rolar?: boolean; rodape?: ReactNode }) {
+/** `transparente`: sem o fundo do tema, para uma foto de fundo atrás (tela de entrar). */
+export function Tela({ children, rolar = true, rodape, transparente }: { children: ReactNode; rolar?: boolean; rodape?: ReactNode; transparente?: boolean }) {
   return (
-    <SafeAreaView style={s.tela} edges={rodape ? ['top', 'bottom'] : ['top']}>
+    <SafeAreaView style={[s.tela, transparente && { backgroundColor: 'transparent' }]} edges={rodape ? ['top', 'bottom'] : ['top']}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'web' ? undefined : 'padding'}>
-        {rolar ? <ScrollView contentContainerStyle={s.conteudo} keyboardShouldPersistTaps="handled">{children}</ScrollView>
+        {/* flexGrow: conteúdo curto ainda ocupa a altura toda (a tela de entrar alinha o cartão embaixo). */}
+        {rolar ? <ScrollView contentContainerStyle={[s.conteudo, { flexGrow: 1 }]} keyboardShouldPersistTaps="handled">{children}</ScrollView>
           : <View style={[s.conteudo, { flex: 1 }]}>{children}</View>}
         {rodape ? <View style={s.rodape}>{rodape}</View> : null}
       </KeyboardAvoidingView>

@@ -2,7 +2,7 @@
 // Os dois temas precisam ser legíveis: texto ≥ 4,5:1 e o âmbar das ações ≥ 4,5:1 com o texto dele (WCAG AA).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { paletas } from '../theme';
+import { paletas, sobreFoto } from '../theme';
 
 function luminancia(hex: string) {
   const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255)
@@ -25,3 +25,11 @@ for (const [nome, p] of Object.entries(paletas)) {
     assert.ok(contraste(p.danger, p.surface) >= 4.5, 'erro sobre o cartão');
   });
 }
+
+test('sobre foto: legível mesmo com a foto clara atrás do véu', () => {
+  // Pior caso: véu (80% de #0E0F11) sobre branco puro.
+  const [r, g, b, a] = sobreFoto.veu.match(/[\d.]+/g)!.map(Number);
+  const pior = '#' + [r, g, b].map(c => Math.round(c * a + 255 * (1 - a)).toString(16).padStart(2, '0')).join('');
+  assert.ok(contraste(sobreFoto.texto, pior) >= 4.5, `texto sobre ${pior}`);
+  assert.ok(contraste(sobreFoto.destaque, pior) >= 3, `destaque (texto grande) sobre ${pior}`);
+});
