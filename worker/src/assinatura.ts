@@ -1,7 +1,12 @@
 // Assinatura da barbearia pelo Google Play Billing. O app compra; o Worker confere no Google
 // (Android Publisher API, subscriptionsv2) e só então grava plano, vencimento e "em dia" — campos
 // que as regras do Firestore não deixam o dono mexer.
-import { DIAS_TESTE, LIMITE_TESTE, bloqueiaEm, emDiaPeloPlay, planoPorProduto, renovaSozinha, type Plano } from '../../src/lib/planos';
+import {
+  DIAS_TESTE, LIMITE_TESTE, bloqueiaEm, conferirCupom, cupomValido, emDiaPeloPlay, excedentesPara, normalizarCupom, planoPorProduto,
+  renovaSozinha, type Cupom, type Plano,
+} from '../../src/lib/planos';
+import { dataLocal, formatarData } from '../../src/lib/agenda';
+import { enviarPush } from './avisos';
 import type { Firestore } from './firestore';
 
 export const PACOTE = 'com.trevotec.navalha';
@@ -75,7 +80,7 @@ export async function verificarCompra(db: Firestore, tokenSA: string, uid: strin
  * busca, as regras barram agendamentos e o app trava a agenda). Durante os 5 dias a casa volta aqui a cada hora.
  * ponytail: até 15 por execução (limite de chamadas do plano grátis); acima disso, RTDN do Play ou Workers pago.
  */
-export async function conferirVencimentos(db: Firestore, tokenSA: string, agora = Date.now()) {
+export async function conferirVencimentos(db: Firestore, tokenSA: string, agora = Date.now(), projectId?: string) {
   const vencidas = await db.query({
     from: [{ collectionId: 'barbearias' }],
     where: { compositeFilter: { op: 'AND', filters: [
@@ -87,17 +92,78 @@ export async function conferirVencimentos(db: Firestore, tokenSA: string, agora 
   if (!vencidas.length) return;
   const compras = await db.varios(vencidas.map(v => `assinaturas/${v.id}`));
   const escritas: { caminho: string; campos: Record<string, unknown> }[] = [];
-  for (const { id } of vencidas) {
-    const token = compras.get(`assinaturas/${id}`)?.purchaseToken as string | undefined;
+  const avisos: { id: string; casa: Record<string, unknown>; ate: number }[] = [];
+  for (const { id, dados } of vencidas) {
+    // Cortesia (cupom) não passa pelo Google: um token antigo do Play não pode decidir o fim do cupom.
+    const cortesia = (dados.assinatura as { status?: string } | undefined)?.status === 'cortesia';
+    const token = cortesia ? undefined : compras.get(`assinaturas/${id}`)?.purchaseToken as string | undefined;
     const compra = token ? await consultarPlay(tokenSA, token).catch(() => null) : null;
     const r = compra ? lerCompra(compra, id, agora) : null;
     const venceEm = r?.ok ? r.venceEm : Number((vencidas.find(v => v.id === id)?.dados.assinatura as { venceEm?: number } | undefined)?.venceEm ?? 0);
     const liberada = agora < bloqueiaEm(venceEm); // dentro dos 5 dias de regularização
-    escritas.push({ caminho: `barbearias/${id}`, campos: r?.ok
-      ? { ...camposDaCasa(r), emDia: r.emDia || liberada }
-      : { 'assinatura.status': 'vencida', emDia: liberada } });
+    const campos = r?.ok ? { ...camposDaCasa(r), emDia: r.emDia || liberada } : { 'assinatura.status': 'vencida', emDia: liberada };
+    escritas.push({ caminho: `barbearias/${id}`, campos });
+    if (!(r?.ok && r.emDia) && liberada) avisos.push({ id, casa: dados, ate: bloqueiaEm(venceEm) });
   }
   await db.escrever(escritas);
+  await avisarPlanoVencido(db, tokenSA, projectId, avisos, agora);
+}
+
+/**
+ * Venceu e entrou nos 5 dias: aviso no sino e push para o dono, uma vez por vencimento (id fixo: o cron passa
+ * pela casa a cada hora durante os 5 dias e não repete).
+ */
+async function avisarPlanoVencido(db: Firestore, tokenSA: string, projectId: string | undefined,
+  avisos: { id: string; casa: Record<string, unknown>; ate: number }[], agora: number) {
+  const lista = avisos.filter(a => a.casa.donoUid).map(a => ({ ...a, nid: `plano_${a.id}_${a.ate}`, dono: a.casa.donoUid as string }));
+  if (!lista.length) return;
+  const ja = await db.varios(lista.map(a => `notificacoes/${a.nid}`));
+  const novos = lista.filter(a => !ja.has(`notificacoes/${a.nid}`));
+  if (!novos.length) return;
+  const notifs = novos.map(a => ({
+    id: a.nid, paraUid: a.dono, barbeariaId: a.id, tipo: 'plano', em: agora, lida: false,
+    titulo: 'Plano vencido',
+    corpo: `O plano da ${String(a.casa.nome ?? 'sua barbearia')} venceu. Assine até ${formatarData(dataLocal(a.ate))} para a barbearia não ficar bloqueada.`,
+  }));
+  await db.escrever(notifs.map(n => ({ caminho: `notificacoes/${n.id}`, criar: true, campos: n })));
+  if (!projectId) return;
+  const perfis = await db.varios(novos.map(a => `users/${a.dono}`));
+  for (const n of notifs) {
+    const token = perfis.get(`users/${n.paraUid}`)?.pushToken as string | undefined;
+    if (token) await enviarPush(projectId, tokenSA, { token, title: n.titulo, body: n.corpo, agendamentoId: n.id, link: 'https://navalha.web.app/plano' });
+  }
+}
+
+/**
+ * POST /cupom/resgatar — cupom do Navalha (cortesia): libera o plano do cupom pelos dias dele, sem Google Play e sem
+ * cobrança. Só o dono; um uso por barbearia; respeita limite, validade e o limite de barbeiros do plano.
+ * ponytail: o contador de usos é lido e somado sem transação; dois resgates no mesmo instante podem passar 1 do limite.
+ */
+export async function resgatarCupom(db: Firestore, uid: string, barbeariaId: string, codigoBruto: string, agora = Date.now()) {
+  const codigo = normalizarCupom(codigoBruto);
+  if (!cupomValido(codigo)) return { status: 400, corpo: { erro: 'Código inválido.' } };
+  const docs = await db.varios([`barbearias/${barbeariaId}`, `cupons/${codigo}`, `cupons/${codigo}/usos/${barbeariaId}`]);
+  const casa = docs.get(`barbearias/${barbeariaId}`);
+  if (!casa || casa.donoUid !== uid) return { status: 403, corpo: { erro: 'Só o dono da barbearia usa cupom.' } };
+  const a = (casa.assinatura ?? {}) as { status?: string; renovaSozinha?: boolean };
+  // Plano pago renovando pela Play: o cupom não para a cobrança; o dono cancela na Play Store antes.
+  if (casa.emDia === true && a.status === 'ativa' && a.renovaSozinha !== false) {
+    return { status: 409, corpo: { erro: 'Você tem um plano pago ativo no Google Play. Cancele a renovação na Play Store e use o cupom depois.' } };
+  }
+  const c = conferirCupom(docs.get(`cupons/${codigo}`) as Cupom | undefined, docs.has(`cupons/${codigo}/usos/${barbeariaId}`), agora);
+  if (!c.ok) return { status: 404, corpo: { erro: c.erro } };
+  const excedentes = excedentesPara(c.plano, Number(casa.barbeirosAtivos ?? 1));
+  if (excedentes > 0) return { status: 409, corpo: { erro: `O cupom é do plano ${c.plano.nome} (até ${c.plano.barbeiros}). Desligue ${excedentes} na equipe e tente de novo.` } };
+  const venceEm = agora + c.dias * 86_400_000;
+  await db.escrever([
+    { caminho: `barbearias/${barbeariaId}`, campos: {
+      'assinatura.status': 'cortesia', 'assinatura.plano': c.plano.id, 'assinatura.venceEm': venceEm,
+      'assinatura.limiteBarbeiros': c.plano.barbeiros, 'assinatura.renovaSozinha': false, 'assinatura.cupom': codigo, emDia: true,
+    } },
+    { caminho: `cupons/${codigo}`, campos: { usos: Number(docs.get(`cupons/${codigo}`)?.usos ?? 0) + 1 } },
+    { caminho: `cupons/${codigo}/usos/${barbeariaId}`, criar: true, campos: { uid, em: agora, venceEm } },
+  ]);
+  return { status: 200, corpo: { plano: c.plano.id, nome: c.plano.nome, venceEm } };
 }
 
 /**

@@ -328,6 +328,11 @@ service cloud.firestore {
     }
     // Avaliação da barbearia: privada. O app mostra só a média e a quantidade da casa (resumo); ninguém vê quem avaliou.
     // Só o Worker lê e grava (POST /avaliacoes): confere que quem avalia teve corte concluído na casa.
+    // Cupons do Navalha (cortesia): só o Worker lê e grava (POST /cupom/resgatar). Ninguém lista nem adivinha códigos pelo app.
+    match /cupons/{codigo} {
+      allow read, write: if false;
+      match /usos/{barbeariaId} { allow read, write: if false; }
+    }
     match /avaliacoes/{id} {
       allow read, write: if false;
     }

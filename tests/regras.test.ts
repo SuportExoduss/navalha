@@ -707,3 +707,16 @@ test('barbeiro desligado ou fora da casa perde o acesso aos agendamentos (nome e
   await assertSucceeds(getDoc(doc(dbDe('dono'), 'agendamentos', id)));
   await assertSucceeds(getDoc(doc(dbDe('ana'), 'agendamentos', id)));
 });
+
+test('cupons: o app não lê, não lista, não cria nem gasta cupom (só o servidor)', async () => {
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'cupons/PARCEIRO'), { plano: 'casa_cheia', dias: 365, limite: 1, usos: 0 }));
+  for (const quem of ['dono', 'ana']) {
+    await assertFails(getDoc(doc(dbDe(quem), 'cupons/PARCEIRO')));
+    await assertFails(getDocs(collection(dbDe(quem), 'cupons')));
+    await assertFails(setDoc(doc(dbDe(quem), 'cupons/MEU'), { plano: 'casa_cheia', dias: 9999, limite: 99, usos: 0 }));
+    await assertFails(updateDoc(doc(dbDe(quem), 'cupons/PARCEIRO'), { usos: 0, limite: 99 }));
+    await assertFails(setDoc(doc(dbDe(quem), 'cupons/PARCEIRO/usos/b1'), { uid: quem }));
+  }
+  // E a cortesia não se dá pelo app: assinatura e "em dia" só o servidor grava.
+  await assertFails(updateDoc(doc(dbDe('dono'), 'barbearias/b1'), { 'assinatura.status': 'cortesia', 'assinatura.venceEm': Date.now() + 365 * 86_400_000 }));
+});

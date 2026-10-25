@@ -124,4 +124,6 @@ test('data digitada vira YYYY-MM-DD, pulando para o próximo ano se já passou',
   assert.equal(normalizarData('31/02', '2026-10-17'), null);
   assert.equal(normalizarData('10/12/2026', '2026-10-17'), '2026-12-10');
   assert.equal(formatarData('2026-11-06'), 'Sex 06/11');
+  assert.equal(formatarData('2026-11-06', '2026-01-01'), 'Sex 06/11');
+  assert.equal(formatarData('2027-10-25', '2026-10-25'), 'Seg 25/10/2027');
 });

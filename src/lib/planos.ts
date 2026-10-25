@@ -90,3 +90,41 @@ export function emDiaPeloPlay(estado: string, venceEm: Millis, agora: Millis): b
 export function modoDeTroca(atual: Plano, novo: Plano): 'charge-prorated-price' | 'deferred' {
   return novo.precoCentavos > atual.precoCentavos ? 'charge-prorated-price' : 'deferred';
 }
+
+// ---------- Selo do plano (aba Barbearia) ----------
+
+/** Verde = em dia; amarelo = perto de vencer; vermelho = vencido, bloqueado ou sem plano. */
+export function seloAssinatura(s: SituacaoAssinatura): 'ok' | 'alerta' | 'vencido' {
+  if (s.tipo === 'ok') return 'ok';
+  return s.tipo === 'vence_logo' ? 'alerta' : 'vencido';
+}
+
+/** Nome curto da situação, para a linha do plano. */
+export function tituloDoPlano(b: { emDia: boolean; assinatura: Pick<AssinaturaCasa, 'status' | 'plano'> }): string {
+  const nome = PLANOS.find(p => p.id === b.assinatura.plano)?.nome ?? '';
+  if (b.assinatura.status === 'rascunho') return 'Sem plano · fora da busca';
+  if (!b.emDia) return 'Barbearia bloqueada';
+  if (b.assinatura.status === 'teste') return 'Teste grátis';
+  if (b.assinatura.status === 'cortesia') return `Cupom · ${nome}`;
+  return nome ? `Plano ${nome}` : 'Teste grátis encerrado'; // venceu o teste sem nunca ter assinado
+}
+
+// ---------- Cupons do Navalha (cortesia, sem Google Play) ----------
+
+/** Código: letras, números e hífen; maiúsculas, sem espaço (o dono pode digitar em minúsculas). */
+export const normalizarCupom = (codigo: string) => codigo.trim().toUpperCase().replace(/\s+/g, '');
+export const cupomValido = (codigo: string) => /^[A-Z0-9-]{4,32}$/.test(codigo);
+
+export interface Cupom { plano: PlanoId; dias: number; limite: number; usos: number; validoAte?: Millis; ativo?: boolean }
+
+/** O cupom pode ser usado por esta barbearia agora? Puro: o Worker lê os documentos e decide aqui. */
+export function conferirCupom(c: Cupom | undefined, jaUsou: boolean, agora: Millis):
+  { ok: true; plano: Plano; dias: number } | { ok: false; erro: string } {
+  if (!c || c.ativo === false) return { ok: false, erro: 'Cupom não encontrado.' };
+  if (c.validoAte && c.validoAte < agora) return { ok: false, erro: 'Este cupom expirou.' };
+  if (jaUsou) return { ok: false, erro: 'Esta barbearia já usou este cupom.' };
+  if (c.usos >= c.limite) return { ok: false, erro: 'Este cupom já foi usado o número máximo de vezes.' };
+  const plano = planoPorId(c.plano);
+  if (!plano || !(c.dias > 0)) return { ok: false, erro: 'Cupom inválido.' };
+  return { ok: true, plano, dias: c.dias };
+}

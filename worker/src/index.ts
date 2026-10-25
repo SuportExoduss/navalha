@@ -3,6 +3,7 @@
 //  GET  /fotos/<chave>         → serve a foto (fallback; em produção use o domínio público do bucket)
 //  GET  /saude                 → verificação simples
 //  POST /assinatura/verificar → confere no Google Play a compra do plano e libera a casa
+//  POST /cupom/resgatar      → cupom do Navalha: libera o plano do cupom (cortesia, sem Google Play), só o dono
 //  POST /admin/migrar-assinaturas → migração única das casas antigas (exige ADMIN_TOKEN)
 //  POST /avaliacoes            → o cliente avalia a barbearia (uma por casa; de novo, edita). A nota só muda por aqui
 //  POST /avisos/agendamento    → avisa cliente, barbeiro e dono (push + painel) quando alguém marca ou cancela
@@ -11,7 +12,7 @@
 //  POST /barbearia/excluir     → antes de o dono apagar a casa: avaliações públicas e fotos da casa e do cardápio
 //  cron a cada hora            → lembretes de 24 h e 2 h, casas com plano/teste vencido, prazos de guarda, WhatsApp do cliente 24 h após o horário e, no dia 1, resumo do mês
 import { verificarIdToken } from './auth';
-import { conferirVencimentos, migrarAssinaturas, verificarCompra } from './assinatura';
+import { conferirVencimentos, migrarAssinaturas, resgatarCupom, verificarCompra } from './assinatura';
 import { avisarAgendamento, resumoDoMes } from './avisos';
 import { avaliar } from './avaliacoes';
 import { excluirConta, excluirDadosBarbearia, exportarDados, limparAntigos, limparLegado, tirarTelefonesVencidos } from './conta';
@@ -108,6 +109,22 @@ export default {
       return json(r.corpo, r.status, h);
     }
 
+    if (url.pathname === '/cupom/resgatar' && req.method === 'POST') {
+      const token = req.headers.get('Authorization')?.replace(/^Bearer /, '') ?? '';
+      const uid = token ? await verificarIdToken(token, env.FIREBASE_PROJECT_ID) : null;
+      if (!uid) return json({ erro: 'Entre na sua conta.' }, 401, h);
+      // Mesmo limitador das fotos (por conta): barra quem tenta adivinhar códigos.
+      if (env.LIMITE_FOTOS && !(await env.LIMITE_FOTOS.limit({ key: `cupom:${uid}` })).success) return json({ erro: 'Muitas tentativas. Espere um minuto.' }, 429, h);
+      const corpo = (await req.json().catch(() => null)) as { barbeariaId?: unknown; codigo?: unknown } | null;
+      const barbeariaId = typeof corpo?.barbeariaId === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(corpo.barbeariaId) ? corpo.barbeariaId : '';
+      const codigo = typeof corpo?.codigo === 'string' && corpo.codigo.length <= 64 ? corpo.codigo : '';
+      if (!barbeariaId || !codigo) return json({ erro: 'Dados inválidos.' }, 400, h);
+      if (!env.GOOGLE_SA_EMAIL || !env.GOOGLE_SA_PRIVATE_KEY) return json({ erro: 'Servidor sem credenciais.' }, 503, h);
+      const tokenSA = await tokenGoogle(env.GOOGLE_SA_EMAIL, env.GOOGLE_SA_PRIVATE_KEY);
+      const r = await resgatarCupom(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA), uid, barbeariaId, codigo);
+      return json(r.corpo, r.status, h);
+    }
+
     if (url.pathname === '/avisos/agendamento' && req.method === 'POST') {
       const token = req.headers.get('Authorization')?.replace(/^Bearer /, '') ?? '';
       const uid = token ? await verificarIdToken(token, env.FIREBASE_PROJECT_ID) : null;
@@ -192,7 +209,7 @@ export default {
 async function vencimentos(env: Env) {
   if (!env.GOOGLE_SA_EMAIL || !env.GOOGLE_SA_PRIVATE_KEY) return;
   const tokenSA = await tokenGoogle(env.GOOGLE_SA_EMAIL, env.GOOGLE_SA_PRIVATE_KEY);
-  await conferirVencimentos(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA), tokenSA).catch(e => console.error('Vencimentos falhou', e));
+  await conferirVencimentos(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA), tokenSA, Date.now(), env.FIREBASE_PROJECT_ID).catch(e => console.error('Vencimentos falhou', e));
   // Dia 1: resumo do mês anterior para cada dono (só faz as casas que ainda não receberam).
   await resumoDoMes(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA), tokenSA, env.FIREBASE_PROJECT_ID).catch(e => console.error('Resumo do mês falhou', e));
   await limparAntigos(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA)).catch(e => console.error('Limpeza por prazo falhou', e));

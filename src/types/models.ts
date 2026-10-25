@@ -48,7 +48,8 @@ export interface Expediente {
 }
 
 /** rascunho = sem teste nem plano; teste = 60 dias grátis; vencida = teste ou plano acabou. */
-export type StatusAssinatura = 'rascunho' | 'teste' | 'ativa' | 'inadimplente' | 'cancelada' | 'vencida';
+/** cortesia = liberada por cupom do Navalha (sem Google Play, sem cobrança). */
+export type StatusAssinatura = 'rascunho' | 'teste' | 'ativa' | 'cortesia' | 'inadimplente' | 'cancelada' | 'vencida';
 
 /** Assinatura da casa. Só o Worker grava (depois de conferir a compra no Google Play); o dono só lê. */
 export interface AssinaturaCasa {
@@ -60,6 +61,8 @@ export interface AssinaturaCasa {
   limiteBarbeiros: number;
   /** Plano pago com renovação automática ligada no Google Play (gravado pelo Worker). */
   renovaSozinha?: boolean;
+  /** Código do cupom que liberou a cortesia. */
+  cupom?: string;
   fundador?: boolean;
 }
 

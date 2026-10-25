@@ -11,7 +11,8 @@ import { PainelDono } from './PainelDono';
 import { db } from '../../services/firebase';
 import { colors, minTouch, radius, space, type, sobreFoto } from '../../theme';
 import type { Barbearia, Barbeiro } from '../../types/models';
-import { situacaoAssinatura } from '../../lib/planos';
+import { seloAssinatura, situacaoAssinatura, tituloDoPlano } from '../../lib/planos';
+import { dataLocal, formatarData } from '../../lib/agenda';
 import { AvisoAssinatura, BarbeariaBloqueada } from './AvisoAssinatura';
 
 export function PainelCasa({ b, equipe, ehDono, uid }: { b: Barbearia; equipe: Barbeiro[]; ehDono: boolean; uid: string }) {
@@ -70,9 +71,6 @@ export function PainelCasa({ b, equipe, ehDono, uid }: { b: Barbearia; equipe: B
       </View>
 
       {/* O que tira a casa da busca vem primeiro: plano vencido, depois rascunho. */}
-      {ehDono && assinatura.tipo === 'rascunho' ? (
-        <Linha icone="alert-circle-outline" titulo="Fora da busca: sem plano ativo" dica="Toque para escolher um plano" onPress={() => router.push('/plano')} />
-      ) : null}
       {ehDono ? <AvisoAssinatura s={assinatura} /> : null}
       {ehDono && b.emDia && !b.publicada ? (
         <Linha icone="eye-off-outline" titulo="Rascunho: ainda fora da busca" dica="Toque para completar e publicar" onPress={() => router.push('/configuracoes')} />
@@ -83,6 +81,7 @@ export function PainelCasa({ b, equipe, ehDono, uid }: { b: Barbearia; equipe: B
       {ehDono ? <PainelDono barbeariaId={b.id} /> : null}
 
       <Linha icone="cut-outline" titulo="Cardápio de cortes" dica="Seus cortes, preços e fotos" onPress={() => router.push('/cardapio')} />
+      {ehDono ? <LinhaPlano b={b} /> : null}
 
       <Secao titulo={`Equipe (${ativos} de ${limite})`} acao={ehDono ? (gerando ? 'Gerando…' : 'Convidar barbeiro') : undefined} onAcao={convidar}>
         {convite ? (
@@ -116,5 +115,31 @@ export function PainelCasa({ b, equipe, ehDono, uid }: { b: Barbearia; equipe: B
         ))}
       </Secao>
     </>
+  );
+}
+
+/** Plano da casa com o selo ao lado: verde em dia, amarelo perto de vencer, vermelho vencido/bloqueado/sem plano. */
+function LinhaPlano({ b }: { b: Barbearia }) {
+  const s = situacaoAssinatura(b, Date.now());
+  const selo = seloAssinatura(s);
+  const cor = selo === 'ok' ? colors.success : selo === 'alerta' ? colors.alerta : colors.danger;
+  const dica = s.tipo === 'vence_logo' ? `Vence em ${s.dias === 1 ? '1 dia' : `${s.dias} dias`} (${formatarData(dataLocal(s.ate), dataLocal(Date.now()))})`
+    : s.tipo === 'regularizar' ? `Venceu: assine até ${formatarData(dataLocal(s.ate), dataLocal(Date.now()))}`
+    : s.tipo === 'bloqueada' ? 'Assine um plano para liberar'
+    : s.tipo === 'rascunho' ? 'Escolha um plano para aparecer na busca'
+    : b.assinatura.venceEm ? `${b.assinatura.status === 'ativa' && b.assinatura.renovaSozinha !== false ? 'Renova' : 'Até'} ${formatarData(dataLocal(b.assinatura.venceEm), dataLocal(Date.now()))} · cupom e troca de plano`
+    : 'Mensalidade, cupom e troca de plano';
+  const rotulo = selo === 'ok' ? 'em dia' : selo === 'alerta' ? 'perto de vencer' : 'vencido';
+  return (
+    <Pressable onPress={() => router.push('/plano')} accessibilityRole="button" accessibilityLabel={`${tituloDoPlano(b)}, ${rotulo}. ${dica}`}>
+      <Cartao style={{ flexDirection: 'row', alignItems: 'center', gap: space(3), minHeight: 56, borderColor: selo === 'ok' ? colors.border : cor }}>
+        <Ionicons name="card-outline" size={22} color={colors.accent} />
+        <View style={{ flex: 1 }}>
+          <Text style={type.body}>{tituloDoPlano(b)}</Text>
+          <Text style={type.caption}>{dica}</Text>
+        </View>
+        <Ionicons name={selo === 'ok' ? 'checkmark-circle' : selo === 'alerta' ? 'warning' : 'alert-circle'} size={24} color={cor} />
+      </Cartao>
+    </Pressable>
   );
 }

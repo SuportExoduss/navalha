@@ -259,7 +259,8 @@ export function normalizarData(texto: string, hoje: ISODate): ISODate | null {
 }
 
 /** "Sex 06/11" sem o "Hoje/Amanhã", para listas. */
-export function formatarData(data: ISODate): string {
-  const [, mo, d] = data.split('-');
-  return `${NOMES_DIAS[diaDaSemana(data)].slice(0, 3)} ${d}/${mo}`;
+/** "Sex 06/11"; com `hoje` de outro ano, leva o ano ("Seg 25/10/2027"): vencimentos de cupom de 1 ano. */
+export function formatarData(data: ISODate, hoje?: ISODate): string {
+  const [ano, mo, d] = data.split('-');
+  return `${NOMES_DIAS[diaDaSemana(data)].slice(0, 3)} ${d}/${mo}${hoje && hoje.slice(0, 4) !== ano ? `/${ano}` : ''}`;
 }

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { PLANOS, bloqueiaEm, cabeMaisUm, emDiaPeloPlay, excedentesPara, modoDeTroca, planoPorId, planoPorProduto, renovaSozinha, situacaoAssinatura } from './planos';
+import { PLANOS, bloqueiaEm, cabeMaisUm, emDiaPeloPlay, excedentesPara, modoDeTroca, planoPorId, planoPorProduto, renovaSozinha, situacaoAssinatura, seloAssinatura, tituloDoPlano, conferirCupom, normalizarCupom, cupomValido } from './planos';
 
 test('planos: preços e limites decididos pelo dono', () => {
   assert.deepEqual(PLANOS.map(p => [p.precoCentavos, p.barbeiros]), [[2500, 1], [7000, 3], [10000, 6], [15000, 10]]);
@@ -52,4 +52,31 @@ test('assinatura: aviso 7 dias antes, 5 dias para regularizar, depois bloqueada'
   assert.equal(bloqueiaEm(agora), agora + 5 * D);
   assert.equal(renovaSozinha('SUBSCRIPTION_STATE_ACTIVE'), true);
   assert.equal(renovaSozinha('SUBSCRIPTION_STATE_CANCELED'), false);
+});
+
+test('selo do plano: verde em dia, amarelo perto de vencer, vermelho vencido/bloqueado/sem plano', () => {
+  assert.equal(seloAssinatura({ tipo: 'ok' }), 'ok');
+  assert.equal(seloAssinatura({ tipo: 'vence_logo', ate: 0, dias: 3 }), 'alerta');
+  for (const t of ['regularizar', 'bloqueada', 'rascunho'] as const) assert.equal(seloAssinatura({ tipo: t, ate: 0, dias: 1 } as never), 'vencido');
+  assert.equal(tituloDoPlano({ emDia: true, assinatura: { status: 'cortesia', plano: 'casa_cheia' } }), 'Cupom · Casa cheia');
+  assert.equal(tituloDoPlano({ emDia: false, assinatura: { status: 'vencida', plano: 'solo' } }), 'Barbearia bloqueada');
+  assert.equal(tituloDoPlano({ emDia: true, assinatura: { status: 'vencida' } }), 'Teste grátis encerrado');
+  // Cortesia avisa 7 dias antes, como o teste (não renova sozinha).
+  const D = 86_400_000;
+  assert.equal(situacaoAssinatura({ emDia: true, assinatura: { status: 'cortesia', venceEm: 10 * D } }, 5 * D).tipo, 'vence_logo');
+});
+
+test('cupom: válido, expirado, esgotado, já usado pela casa', () => {
+  const agora = 1_000_000;
+  const c = { plano: 'casa_cheia' as const, dias: 365, limite: 1, usos: 0 };
+  const r = conferirCupom(c, false, agora);
+  assert.ok(r.ok && r.plano.id === 'casa_cheia' && r.dias === 365);
+  assert.equal(conferirCupom(undefined, false, agora).ok, false);
+  assert.equal(conferirCupom({ ...c, usos: 1 }, false, agora).ok, false);
+  assert.equal(conferirCupom(c, true, agora).ok, false);
+  assert.equal(conferirCupom({ ...c, validoAte: agora - 1 }, false, agora).ok, false);
+  assert.equal(conferirCupom({ ...c, ativo: false }, false, agora).ok, false);
+  assert.equal(normalizarCupom(' parceiro-1 ano '), 'PARCEIRO-1ANO');
+  assert.equal(cupomValido('PARCEIRO-1ANO'), true);
+  assert.equal(cupomValido('../x'), false);
 });

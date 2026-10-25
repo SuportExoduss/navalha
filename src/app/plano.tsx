@@ -5,12 +5,13 @@ import { useEffect, useState } from 'react';
 import { Image, Modal, Platform, Pressable, Text, View } from 'react-native';
 import { Redirect, router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Aviso, Botao, Carregando, Cartao, Secao, Tela, Titulo } from '../components/ui';
+import { Aviso, Botao, Campo, Carregando, Cartao, Secao, Tela, Titulo } from '../components/ui';
 import { useMinhaBarbearia } from '../hooks/useMinhaBarbearia';
 import {
   assinar, assinaturaDisponivel, carregarPlanos, compraAtual, restaurar, type OfertaPlano,
 } from '../services/assinatura';
-import { PLANOS, bloqueiaEm, excedentesPara, type Plano } from '../lib/planos';
+import { PLANOS, bloqueiaEm, cupomValido, excedentesPara, normalizarCupom, type Plano } from '../lib/planos';
+import { usarCupom } from '../services/cupom';
 import { dataLocal, formatarData, formatarPreco } from '../lib/agenda';
 import { colors, radius, space, sobreFoto, type } from '../theme';
 import { definirBarbeiroAtivo } from '../services/barbearias';
@@ -111,6 +112,8 @@ export default function PlanoTela() {
         </>
       )}
 
+      <UsarCupom barbeariaId={b.id} />
+
       <Text style={type.caption}>
         Cobrança mensal pelo Google Play, renovada sozinha. Subir de plano vale na hora (paga só a diferença do mês);
         descer vale na próxima renovação. Cancele quando quiser em Play Store › Pagamentos e assinaturas.
@@ -172,17 +175,65 @@ function QuemSai({ equipe, barbeariaId }: { equipe: Barbeiro[]; barbeariaId: str
   );
 }
 
+/** Cupom do Navalha: o dono digita, confirma no popup e o servidor libera o plano do cupom (sem Google Play). */
+function UsarCupom({ barbeariaId }: { barbeariaId: string }) {
+  const [codigo, setCodigo] = useState('');
+  const [confirmar, setConfirmar] = useState(false);
+  const [usando, setUsando] = useState(false);
+  const [msg, setMsg] = useState<{ texto: string; tom: 'erro' | 'ok' } | null>(null);
+  const limpo = normalizarCupom(codigo);
+
+  async function usar() {
+    setUsando(true);
+    try {
+      const r = await usarCupom(barbeariaId, limpo);
+      setMsg({ texto: `Cupom aplicado: plano ${r.nome} liberado até ${formatarData(dataLocal(r.venceEm), dataLocal(Date.now()))}, sem cobrança.`, tom: 'ok' });
+      setCodigo('');
+    } catch (e) { setMsg({ texto: e instanceof Error ? e.message : 'Não foi possível usar o cupom.', tom: 'erro' }); }
+    finally { setUsando(false); setConfirmar(false); }
+  }
+
+  return (
+    <Secao titulo="Tenho um cupom">
+      <Cartao style={{ gap: space(3) }}>
+        <Campo rotulo="Código do cupom" value={codigo} onChangeText={t => { setMsg(null); setCodigo(t); }} autoCapitalize="characters"
+          autoCorrect={false} maxLength={32} placeholder="Ex.: PARCEIRO-2026" />
+        {msg ? <Aviso texto={msg.texto} tom={msg.tom} /> : null}
+        <Botao titulo="Usar cupom" variante="secundario" disabled={!cupomValido(limpo)} onPress={() => { setMsg(null); setConfirmar(true); }}
+          icone={<Ionicons name="pricetag-outline" size={18} color={colors.text} />} />
+      </Cartao>
+      <Modal visible={confirmar} transparent animationType="fade" onRequestClose={() => { if (!usando) setConfirmar(false); }}>
+        <View style={{ flex: 1, backgroundColor: sobreFoto.veu, justifyContent: 'center', padding: space(5) }}>
+          <View accessibilityViewIsModal style={{ backgroundColor: colors.surface, borderRadius: radius.card, padding: space(5), gap: space(4),
+            borderWidth: 1, borderColor: colors.border, width: '100%', maxWidth: 420, alignSelf: 'center' }}>
+            <Titulo>Usar o cupom {limpo}?</Titulo>
+            <Text style={type.body}>
+              O plano do cupom é liberado na hora, pelo tempo do cupom, sem cartão e sem cobrança. Cada barbearia usa um cupom
+              uma vez só.
+            </Text>
+            <View style={{ flexDirection: 'row', gap: space(2) }}>
+              <Botao titulo="Cancelar" variante="secundario" style={{ flex: 1 }} disabled={usando} onPress={() => setConfirmar(false)} />
+              <Botao titulo="Usar cupom" style={{ flex: 1 }} carregando={usando} onPress={usar} />
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </Secao>
+  );
+}
+
 /** A situação em uma frase: o que o dono precisa saber antes de qualquer número. */
 function Situacao({ b }: { b: Barbearia }) {
   const a = b.assinatura;
-  const ate = a.venceEm ? formatarData(dataLocal(a.venceEm)) : '';
+  const ate = a.venceEm ? formatarData(dataLocal(a.venceEm), dataLocal(Date.now())) : '';
   const plano = PLANOS.find(p => p.id === a.plano);
   const ativos = b.barbeirosAtivos ?? 1;
   const [titulo, detalhe, tom] =
-    a.status === 'teste' && b.emDia ? ['Teste grátis', `Até ${ate}, com até ${a.limiteBarbeiros} barbeiros. Depois, você tem 5 dias para assinar; sem plano, a barbearia fica bloqueada.`, 'ok']
-    : a.status === 'vencida' && b.emDia ? ['Venceu: regularize', `Tudo funciona até ${formatarData(dataLocal(bloqueiaEm(a.venceEm ?? 0)))}. Depois, a barbearia sai da busca e a agenda fica bloqueada.`, 'erro']
+    a.status === 'cortesia' && b.emDia ? [`Cupom · ${plano?.nome ?? ''}`, `Liberado pelo cupom ${a.cupom ?? ''} até ${ate}, sem cobrança. Antes do fim, assine um plano para não parar.`, 'ok']
+    : a.status === 'teste' && b.emDia ? ['Teste grátis', `Até ${ate}, com até ${a.limiteBarbeiros} barbeiros. Depois, você tem 5 dias para assinar; sem plano, a barbearia fica bloqueada.`, 'ok']
+    : a.status === 'vencida' && b.emDia ? ['Venceu: regularize', `Tudo funciona até ${formatarData(dataLocal(bloqueiaEm(a.venceEm ?? 0)), dataLocal(Date.now()))}. Depois, a barbearia sai da busca e a agenda fica bloqueada.`, 'erro']
     : a.status === 'ativa' && b.emDia ? [`Plano ${plano?.nome ?? ''}`, a.renovaSozinha === false ? `Renovação desligada: vale até ${ate}.` : `Em dia. Renova sozinho em ${ate}.`, 'ok']
-    : a.status === 'inadimplente' && b.emDia ? ['Pagamento pendente', `O Google Play não conseguiu cobrar. Acerte na Play Store até ${formatarData(dataLocal(bloqueiaEm(a.venceEm ?? 0)))} para não bloquear a barbearia.`, 'erro']
+    : a.status === 'inadimplente' && b.emDia ? ['Pagamento pendente', `O Google Play não conseguiu cobrar. Acerte na Play Store até ${formatarData(dataLocal(bloqueiaEm(a.venceEm ?? 0)), dataLocal(Date.now()))} para não bloquear a barbearia.`, 'erro']
     : a.status === 'rascunho' ? ['Sem plano ativo', 'Sua barbearia está fora da busca. Escolha um plano para os clientes encontrarem você.', 'erro']
     : ['Barbearia bloqueada', 'O plano venceu e o prazo para regularizar acabou. Assine um plano para liberar a busca e a agenda na hora.', 'erro'];
   return (

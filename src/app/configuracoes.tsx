@@ -11,7 +11,6 @@ import { atualizarBarbearia, excluirBarbearia, listarServicos } from '../service
 import { escolherEEnviar } from '../services/fotos';
 import { auth, db } from '../services/firebase';
 import { colors, radius, space, type, sobreFoto } from '../theme';
-import { PLANOS } from '../lib/planos';
 import { SITE } from '../lib/legal';
 import type { Barbearia } from '../types/models';
 
@@ -26,10 +25,6 @@ export default function Configuracoes() {
       <Titulo>Configurações</Titulo>
       <Identidade b={b} />
       <Publicacao b={b} />
-      <Secao titulo="Plano">
-        <Linha icone="card-outline" titulo={tituloPlano(b)} dica="Mensalidade, limite de barbeiros e troca de plano"
-          onPress={() => router.push('/plano')} />
-      </Secao>
       <Secao titulo="Funcionamento">
         <Linha icone="time-outline" titulo="Horário da casa" dica="Quando a barbearia abre. Nenhum barbeiro atende fora dele."
           onPress={() => router.push({ pathname: '/expediente', params: { alvo: 'casa' } })} />
@@ -62,12 +57,6 @@ function PedirAvaliacao({ b }: { b: Barbearia }) {
       </Cartao>
     </Secao>
   );
-}
-
-function tituloPlano(b: Barbearia) {
-  if (!b.emDia) return 'Sem plano ativo · fora da busca';
-  if (b.assinatura.status === 'teste') return 'Teste grátis';
-  return `Plano ${PLANOS.find(p => p.id === b.assinatura.plano)?.nome ?? ''}`;
 }
 
 function Identidade({ b }: { b: Barbearia }) {

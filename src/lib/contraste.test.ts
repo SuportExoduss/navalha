@@ -23,6 +23,7 @@ for (const [nome, p] of Object.entries(paletas)) {
     assert.ok(contraste(p.accentText, p.accent) >= 4.5, 'texto do botão sobre o âmbar');
     assert.ok(contraste(p.accent, p.surface) >= 3, 'âmbar (chip/ícone) sobre o cartão');
     assert.ok(contraste(p.danger, p.surface) >= 4.5, 'erro sobre o cartão');
+    assert.ok(contraste(p.alerta, p.surface) >= 3, 'amarelo de aviso (ícone) sobre o cartão');
   });
 }
 

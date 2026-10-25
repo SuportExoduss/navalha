@@ -9,7 +9,7 @@ import { mensagemFcm } from './util';
 
 const RECENTE_MS = 15 * 60_000;
 
-async function enviarPush(projectId: string, tokenSA: string, m: { token: string; title: string; body: string; agendamentoId: string; link: string }) {
+export async function enviarPush(projectId: string, tokenSA: string, m: { token: string; title: string; body: string; agendamentoId: string; link: string }) {
   const r = await fetch(`https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenSA}` },
     body: JSON.stringify(mensagemFcm(m)),

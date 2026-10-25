@@ -442,3 +442,56 @@ test('vencimento: renovou segue; teste ou plano vencido tem 5 dias para regulari
   assert.equal(gravado.cancelou.emDia, false);
   assert.equal(gravado.cancelou['assinatura.renovaSozinha'], false);
 });
+
+test('cupom: só o dono, um uso por casa, respeita limite e não passa por cima de plano pago', async () => {
+  const { resgatarCupom } = await import('./assinatura');
+  const agora = 1_800_000_000_000, D = 86_400_000;
+  const docs = new Map<string, Record<string, unknown>>([
+    ['barbearias/b1', { donoUid: 'dono', emDia: true, barbeirosAtivos: 2, assinatura: { status: 'teste', venceEm: agora + D } }],
+    ['barbearias/b2', { donoUid: 'dono2', emDia: true, barbeirosAtivos: 1, assinatura: { status: 'ativa', renovaSozinha: true } }],
+    ['cupons/PARCEIRO-1ANO', { plano: 'casa_cheia', dias: 365, limite: 2, usos: 0 }],
+    ['cupons/SOLO-7', { plano: 'solo', dias: 7, limite: 5, usos: 0 }],
+  ]);
+  const db = {
+    varios: async (cs: string[]) => new Map(cs.filter(c => docs.has(c)).map(c => [c, docs.get(c)!])),
+    escrever: async (l: { caminho: string; campos: Record<string, unknown> }[]) => { for (const w of l) docs.set(w.caminho, { ...(docs.get(w.caminho) ?? {}), ...w.campos }); },
+  } as never;
+  assert.equal((await resgatarCupom(db, 'intruso', 'b1', 'PARCEIRO-1ANO', agora)).status, 403);
+  assert.equal((await resgatarCupom(db, 'dono', 'b1', 'NAOEXISTE', agora)).status, 404);
+  assert.equal((await resgatarCupom(db, 'dono', 'b1', 'SOLO-7', agora)).status, 409); // 2 barbeiros ativos, Solo permite 1
+  assert.equal((await resgatarCupom(db, 'dono2', 'b2', 'PARCEIRO-1ANO', agora)).status, 409); // plano pago renovando
+  const r = await resgatarCupom(db, 'dono', 'b1', ' parceiro-1ano ', agora);
+  assert.deepEqual(r.corpo, { plano: 'casa_cheia', nome: 'Casa cheia', venceEm: agora + 365 * D });
+  const casa = docs.get('barbearias/b1')!;
+  assert.deepEqual([casa['assinatura.status'], casa['assinatura.limiteBarbeiros'], casa.emDia], ['cortesia', 10, true]);
+  assert.equal(docs.get('cupons/PARCEIRO-1ANO')!.usos, 1);
+  assert.equal((await resgatarCupom(db, 'dono', 'b1', 'PARCEIRO-1ANO', agora)).status, 404); // mesma casa, de novo
+});
+
+test('plano vencido: aviso no sino ao entrar nos 5 dias, uma vez só; cortesia não consulta o Google', async () => {
+  const { conferirVencimentos } = await import('./assinatura');
+  const D = 86_400_000, agora = Date.parse('2027-03-01T12:00:00Z');
+  const casas = [
+    { id: 'c1', dados: { nome: 'Navalha de Ouro', donoUid: 'dono', emDia: true, assinatura: { status: 'cortesia', venceEm: agora - D } } },
+  ];
+  const docs = new Map<string, Record<string, unknown>>([['assinaturas/c1', { purchaseToken: 'antigo' }]]);
+  const db = {
+    query: async () => casas,
+    varios: async (cs: string[]) => new Map(cs.filter(c => docs.has(c)).map(c => [c, docs.get(c)!])),
+    escrever: async (l: { caminho: string; campos: Record<string, unknown> }[]) => { for (const w of l) docs.set(w.caminho, w.campos); },
+  } as never;
+  const original = globalThis.fetch;
+  let chamouGoogle = false;
+  globalThis.fetch = (async () => { chamouGoogle = true; return new Response('{}'); }) as typeof fetch;
+  try {
+    await conferirVencimentos(db, 't', agora);
+    await conferirVencimentos(db, 't', agora + 3600_000); // próxima hora: não repete
+  } finally { globalThis.fetch = original; }
+  assert.equal(chamouGoogle, false);
+  assert.deepEqual(docs.get('barbearias/c1'), { 'assinatura.status': 'vencida', emDia: true });
+  const avisos = [...docs.keys()].filter(k => k.startsWith('notificacoes/'));
+  assert.equal(avisos.length, 1);
+  const n = docs.get(avisos[0])!;
+  assert.equal(n.titulo, 'Plano vencido');
+  assert.match(String(n.corpo), /Navalha de Ouro venceu\. Assine até .* para a barbearia não ficar bloqueada\./);
+});

@@ -9,6 +9,8 @@ export interface Paleta {
   bg: string; surface: string; surfaceRaised: string; border: string;
   text: string; textMuted: string; accent: string; accentText: string;
   danger: string; success: string;
+  /** Amarelo de aviso (plano perto de vencer); só ícone e borda, nunca texto corrido. */
+  alerta: string;
 }
 
 export const paletas: Record<NomePaleta, Paleta> = {
@@ -23,6 +25,7 @@ export const paletas: Record<NomePaleta, Paleta> = {
     accentText: '#141210', // texto sobre o âmbar
     danger: '#E5675B',
     success: '#5FBF7F',
+    alerta: '#F2C94C',
   },
   claro: {
     bg: '#F6F3EC',          // papel quente, não branco puro
@@ -35,6 +38,7 @@ export const paletas: Record<NomePaleta, Paleta> = {
     accentText: '#FFFDF8',
     danger: '#B3372B',
     success: '#2E7A4C',
+    alerta: '#9A6A00',
   },
 };
 

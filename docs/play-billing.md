@@ -11,6 +11,8 @@ O código está pronto: tela de planos, compra, conferência no servidor, limite
 | Faltam 7 dias (teste, ou plano com renovação desligada) | O dono vê "Seu acesso vence em N dias" na Agenda e na aba Barbearia. Plano pago renovando sozinho não avisa. |
 | Fim do teste ou do plano sem renovar | Mais **5 dias** de uso normal para regularizar ("Regularize em N dias", em vermelho). |
 | Passaram os 5 dias | O cron do Worker (de hora em hora) bloqueia (`emDia: false`): sai da busca, as regras barram novos horários (app e encaixe) e o app troca a Agenda e a aba Barbearia pela tela "Barbearia bloqueada". Assinou: libera na hora. |
+| Cupom do Navalha | Dono digita o código em Plano › "Tenho um cupom" e confirma; o Worker (`POST /cupom/resgatar`) libera o plano do cupom pelos dias dele, sem Google Play e sem cobrança (`status: cortesia`). Um uso por barbearia, limite de usos e validade por cupom; não vale com plano pago renovando. No fim, segue o mesmo aviso, 5 dias e bloqueio. Cupons ficam em `cupons/{CODIGO}` (só o servidor lê e grava). |
+| Plano venceu | Além do aviso na tela, o dono recebe uma notificação (sino + push): "Plano vencido… assine até X para a barbearia não ficar bloqueada". |
 | Dono assina pelo app | O Google Play cobra; o app manda a compra ao Worker (`POST /assinatura/verificar`); o Worker confere no Google e grava plano, vencimento, limite e `emDia`. Só então o app conclui a compra. |
 | Renovação mensal | Automática pelo Google Play. No vencimento, o cron pergunta ao Google; se renovou, estende o vencimento (sem aviso ao dono). |
 | Pagamento recusado | O Google tenta de novo; a casa fica `inadimplente` com o aviso de regularizar e, se não acertar, bloqueia 5 dias depois do vencimento. |

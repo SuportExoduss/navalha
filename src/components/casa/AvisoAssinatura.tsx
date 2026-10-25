@@ -8,7 +8,7 @@ import { dataLocal, formatarData } from '../../lib/agenda';
 import type { SituacaoAssinatura } from '../../lib/planos';
 import { colors, space, type } from '../../theme';
 
-const quando = (ate: number) => formatarData(dataLocal(ate));
+const quando = (ate: number) => formatarData(dataLocal(ate), dataLocal(Date.now()));
 const emDias = (d: number) => (d === 1 ? '1 dia' : `${d} dias`);
 
 /** Faltando 7 dias ou menos (teste ou plano sem renovação), ou já vencida e dentro dos 5 dias. */
