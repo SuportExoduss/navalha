@@ -30,7 +30,7 @@ Preços, limites e nomes ficam em `src/lib/planos.ts` (usado pelo app e pelo Wor
 
 1. **Conta de desenvolvedor no Google Play** (US$ 25, uma vez) e **chave de assinatura própria** (SEC-002).
 2. **Enviar o app (AAB) para o teste interno.** O Billing só funciona com o app instalado pela Play Store, com o mesmo pacote `com.trevotec.navalha`.
-3. **Criar as 4 assinaturas** (precisa de um AAB já enviado, em qualquer faixa de teste, porque o app tem a
+3. ✅ **Feito em 25/out pela API** (só no Brasil, em BRL). **Criar as 4 assinaturas** (precisa de um AAB já enviado, em qualquer faixa de teste, porque o app tem a
    permissão de cobrança). Para cada linha da tabela:
    1. Play Console › app Navalha › **Monetizar com o Google Play › Produtos › Assinaturas › Criar assinatura**.
    2. **ID do produto** exatamente como na tabela (ex.: `navalha_solo`; não dá para mudar depois) e o **nome** (ex.: Solo).
@@ -39,7 +39,7 @@ Preços, limites e nomes ficam em `src/lib/planos.ts` (usado pelo app e pelo Wor
    5. Deixe o período de carência e a suspensão de conta no padrão do Google. Não crie oferta de teste grátis:
       os 60 dias são do próprio Navalha (e uma oferta grátis na Play daria outro mês de graça).
    6. **Salvar** e **Ativar** o plano básico.
-4. **Ativar a "Google Play Android Developer API"** no Google Cloud, projeto `navalha-1a8f5`.
+4. ✅ **Feito em 25/out.** **Ativar a "Google Play Android Developer API"** no Google Cloud, projeto `navalha-1a8f5`.
 5. **Dar acesso ao Worker:** Play Console › Usuários e permissões › Convidar
    `navalha-worker@navalha-1a8f5.iam.gserviceaccount.com` com "Ver informações financeiras" e
    "Gerenciar pedidos e assinaturas". Pode levar até 24 h para valer.
