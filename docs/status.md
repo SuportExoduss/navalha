@@ -193,6 +193,16 @@ Substitui a seção "Avaliações, nota Google e ranking" acima e o `docs/roadma
   site com a tela nova, `notasCliente` fechada. Ficaram 4 índices antigos sem uso no Firebase (só saem com `--force`)
 - [x] Limpeza em produção (22/out): 1 avaliação de teste apagada, marca antiga tirada de 1 agendamento, nota da casa zerada
 
+## 25/out/2026 (pedidos do dono, no ar)
+- [x] App menor: ícones e fonte Barlow importados por arquivo (~3,5 MB a menos de fontes)
+- [x] Revisão de código: excluir barbearia apaga antes as avaliações e as fotos da casa e do cardápio (`POST /barbearia/excluir`);
+  avaliação editada volta ao topo; um pedido de avaliação por casa
+- [x] Página da casa: "Ver no mapa" (pergunta Google Maps, Waze ou Uber, se instalados) no lugar de Google Maps + Waze
+- [x] Saiu a foto do corte ao finalizar (app, regras e Worker); no site as fotos não têm "salvar imagem"
+- [x] Publicado: regras, Worker (versão bc148a0e) e web. Produção limpa: 1 foto de corte apagada do R2 e o campo de
+  foto tirado dos 15 agendamentos
+- [ ] Dono: APK/AAB novo (o "Ver no mapa" com Waze/Uber depende do AndroidManifest novo)
+
 ## Fase 1 — o que falta para o portão da Fase 2
 O código do MVP está completo. O portão é "3 barbearias amigas usando por 1 semana sem erro grave e nenhum horário duplicado".
 Para isso, nesta ordem:
