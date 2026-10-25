@@ -26,8 +26,10 @@ test('resumo do cardápio ignora serviços pausados', () => {
   assert.deepEqual(resumoDoCardapio([]), { fotosDestaque: [], categorias: [] });
 });
 
-test('links de rota abrem Google Maps e Waze', () => {
-  const l = linksDeRota(-23.6, -47.2);
-  assert.match(l.googleMaps, /destination=-23\.6,-47\.2/);
-  assert.match(l.waze, /ll=-23\.6,-47\.2/);
+test('Ver no mapa: Google Maps, Waze e Uber com o destino da casa', () => {
+  const [maps, waze, uber] = linksDeRota(-23.6, -47.2, 'Navalha & Cia');
+  assert.match(maps.url, /destination=-23\.6,-47\.2/);
+  assert.match(waze.url, /ll=-23\.6,-47\.2/);
+  assert.match(uber.url, /dropoff\[latitude\]=-23\.6&dropoff\[longitude\]=-47\.2&dropoff\[nickname\]=Navalha%20%26%20Cia$/);
+  assert.deepEqual([maps.esquema, waze.esquema, uber.esquema], [undefined, 'waze://', 'uber://']);
 });

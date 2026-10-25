@@ -8,7 +8,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Aviso, Botao, Carregando, Cartao, FalhaAoCarregar, Tela, Titulo } from '../../components/ui';
 import { Etapa } from '../../components/agenda/Etapa';
 import { pegarAvisoReserva } from '../../components/agenda/avisoReserva';
-import { dadosDaCasa, linksDeRota } from '../../services/barbearias';
+import { dadosDaCasa } from '../../services/barbearias';
+import { VerNoMapa } from '../../components/VerNoMapa';
 import { db } from '../../services/firebase';
 import { registrarEvento } from '../../services/agendamentos';
 import { Estrelas } from '../../components/agenda/Avaliar';
@@ -51,7 +52,6 @@ export default function PaginaBarbearia() {
     return <Tela><Voltar /><Titulo>Barbearia não encontrada</Titulo><Aviso texto="Ela pode ter saído do ar." /></Tela>;
   }
 
-  const rota = linksDeRota(b.geo.lat, b.geo.lng);
   // Só dígitos e com o 55 do Brasil uma vez só (o dono pode ter digitado +55).
   const digitos = b.telefone?.replace(/\D/g, '');
   const whats = digitos ? (digitos.length >= 12 && digitos.startsWith('55') ? digitos : '55' + digitos) : undefined;
@@ -86,10 +86,7 @@ export default function PaginaBarbearia() {
       </View>
 
       <View style={{ flexDirection: 'row', gap: space(2) }}>
-        <Botao titulo="Google Maps" variante="secundario" style={{ flex: 1 }} onPress={() => Linking.openURL(rota.googleMaps)}
-          icone={<Ionicons name="navigate-outline" size={16} color={colors.text} />} />
-        <Botao titulo="Waze" variante="secundario" style={{ flex: 1 }} onPress={() => Linking.openURL(rota.waze)}
-          icone={<Ionicons name="car-outline" size={16} color={colors.text} />} />
+        <VerNoMapa lat={b.geo.lat} lng={b.geo.lng} nome={b.nome} />
         {whats ? (
           <Botao titulo="" variante="secundario" accessibilityLabel="WhatsApp" style={{ width: 56, paddingHorizontal: 0 }}
             onPress={() => Linking.openURL(`https://wa.me/${whats}?text=${encodeURIComponent(`Olá! Vi a ${b.nome} no Navalha.`)}`)}

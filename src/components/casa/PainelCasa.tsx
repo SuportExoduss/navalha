@@ -59,7 +59,7 @@ export function PainelCasa({ b, equipe, ehDono, uid }: { b: Barbearia; equipe: B
         <Pressable onPress={() => router.push({ pathname: '/barbearia/[id]', params: { id: b.id } })} hitSlop={8} accessibilityRole="link">
           <Text style={[type.caption, { color: colors.accent }]}>Ver como cliente</Text>
         </Pressable>
-        <Pressable onPress={() => Linking.openURL(linksDeRota(b.geo.lat, b.geo.lng).googleMaps)} hitSlop={8} accessibilityRole="link">
+        <Pressable onPress={() => Linking.openURL(linksDeRota(b.geo.lat, b.geo.lng, b.nome)[0].url)} hitSlop={8} accessibilityRole="link">
           <Text style={[type.caption, { color: colors.accent }]}>Conferir no mapa</Text>
         </Pressable>
       </View>

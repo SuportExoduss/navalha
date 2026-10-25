@@ -328,12 +328,18 @@ export async function atualizarResumoCardapio(db: Firestore, barbeariaId: string
   casaMudou(barbeariaId);
 }
 
-/** Link de rota que abre Google Maps ou Waze — sem API paga. */
-export function linksDeRota(lat: number, lng: number) {
-  return {
-    googleMaps: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`,
-    waze: `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`,
-  };
+/**
+ * Apps para chegar na casa ("Ver no mapa"), sem API paga. `esquema` é o que o celular confere para saber se o app
+ * está instalado; o Google Maps sempre aparece (abre no navegador se faltar o app).
+ * O 99 não tem link público para destino, então fica de fora.
+ */
+export function linksDeRota(lat: number, lng: number, nome: string) {
+  const destino = `dropoff[latitude]=${lat}&dropoff[longitude]=${lng}&dropoff[nickname]=${encodeURIComponent(nome)}`;
+  return [
+    { app: 'Google Maps', url: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}` },
+    { app: 'Waze', esquema: 'waze://', url: `https://waze.com/ul?ll=${lat},${lng}&navigate=yes` },
+    { app: 'Uber', esquema: 'uber://', url: `https://m.uber.com/ul/?action=setPickup&pickup=my_location&${destino}` },
+  ];
 }
 
 /** Converte "45,90" ou "45" em centavos; null se inválido. */
