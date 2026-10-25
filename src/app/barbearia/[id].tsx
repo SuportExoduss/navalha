@@ -5,18 +5,17 @@ import { useCallback, useEffect, useState } from 'react';
 import { Image, Linking, Pressable, Text, View } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Aviso, Botao, Carregando, Cartao, Chip, FalhaAoCarregar, Tela, Titulo } from '../../components/ui';
+import { Aviso, Botao, Carregando, Cartao, FalhaAoCarregar, Tela, Titulo } from '../../components/ui';
 import { Etapa } from '../../components/agenda/Etapa';
 import { pegarAvisoReserva } from '../../components/agenda/avisoReserva';
 import { dadosDaCasa, linksDeRota } from '../../services/barbearias';
 import { db } from '../../services/firebase';
 import { registrarEvento } from '../../services/agendamentos';
-import { avaliacoesDaBarbearia } from '../../services/avaliacoes';
-import { ItemAvaliacao, MediaAvaliacoes } from '../../components/agenda/ListaAvaliacoes';
+import { Estrelas } from '../../components/agenda/Avaliar';
 import { useAuth } from '../../auth/AuthProvider';
 import { formatarPreco } from '../../lib/agenda';
 import { colors, radius, space, type, sobreFoto } from '../../theme';
-import type { Avaliacao, Barbearia, Barbeiro, Servico } from '../../types/models';
+import type { Barbearia, Barbeiro, Servico } from '../../types/models';
 
 const virgula = (n: number) => n.toFixed(1).replace('.', ',');
 
@@ -26,9 +25,6 @@ export default function PaginaBarbearia() {
   const [b, setB] = useState<Barbearia | null | undefined>(undefined);
   const [equipe, setEquipe] = useState<Barbeiro[]>([]);
   const [servicos, setServicos] = useState<Servico[]>([]);
-  const [avaliacoes, setAvaliacoes] = useState<Avaliacao[] | null>(null);
-  // Agendar (barbeiro → corte → horário) ou ler as avaliações da casa.
-  const [aba, setAba] = useState<'agendar' | 'avaliacoes'>('agendar');
   const [reservado, setReservado] = useState<string | null>(null);
   const [falhou, setFalhou] = useState(false);
   const [tentativa, setTentativa] = useState(0);
@@ -42,12 +38,6 @@ export default function PaginaBarbearia() {
       .then(d => { setB(d.barbearia); setEquipe(d.equipe); setServicos(d.servicos); })
       .catch(() => { setFalhou(true); setB(null); });
   }, [id, tentativa]);
-
-  // Avaliações só quando a aba abre (1 leitura por avaliação, guardadas 5 min); se falhar, a aba mostra vazio.
-  useEffect(() => {
-    if (aba !== 'avaliacoes' || !id || avaliacoes) return;
-    avaliacoesDaBarbearia(db, id).then(setAvaliacoes).catch(() => setAvaliacoes([]));
-  }, [aba, id, avaliacoes]);
 
   // Voltou da confirmação (dismissTo): mostra o aviso da reserva uma vez.
   useFocusEffect(useCallback(() => { const t = pegarAvisoReserva(); if (t) setReservado(t); }, []));
@@ -81,10 +71,15 @@ export default function PaginaBarbearia() {
           {b.logoUrl ? <Image source={{ uri: b.logoUrl }} style={{ width: 56, height: 56, borderRadius: 28 }} accessibilityLabel={`Logo da ${b.nome}`} /> : null}
           <View style={{ flex: 1 }}><Titulo>{b.nome}</Titulo></View>
         </View>
-        {/* Média simples das avaliações do app (0,0 a 5,0) e quantas são. */}
+        {/* Só as estrelas da média: decisão do dono, a página não mostra quem avaliou nem quantas avaliações são. */}
+        {b.resumo.totalAvaliacoesApp ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space(2) }} accessibilityLabel={`Nota ${virgula(b.resumo.notaApp)} de 5`}>
+            <Estrelas valor={Math.round(b.resumo.notaApp * 2) / 2} />
+            <Text style={type.caption}>{virgula(b.resumo.notaApp)}</Text>
+          </View>
+        ) : null}
         <Text style={type.caption}>
-          <Text style={{ color: colors.accent }}>★ </Text>
-          {b.resumo.totalAvaliacoesApp ? `${virgula(b.resumo.notaApp)} (${b.resumo.totalAvaliacoesApp}) · ` : 'Nova no Navalha · '}
+          {b.resumo.totalAvaliacoesApp ? '' : 'Nova no Navalha · '}
           {b.resumo.precoMin ? `${formatarPreco(b.resumo.precoMin)} a ${formatarPreco(b.resumo.precoMax ?? b.resumo.precoMin)}` : 'Cardápio em montagem'}
         </Text>
         <Text style={type.caption}>{b.endereco} · {b.cidade}</Text>
@@ -102,21 +97,7 @@ export default function PaginaBarbearia() {
         ) : null}
       </View>
 
-      <View style={{ flexDirection: 'row', gap: space(2) }} accessibilityRole="tablist">
-        <Chip rotulo="Agendar" ativo={aba === 'agendar'} onPress={() => setAba('agendar')} />
-        <Chip rotulo={b.resumo.totalAvaliacoesApp ? `Avaliações (${b.resumo.totalAvaliacoesApp})` : 'Avaliações'} ativo={aba === 'avaliacoes'} onPress={() => setAba('avaliacoes')} />
-      </View>
-
-      {aba === 'avaliacoes' ? (
-        <View style={{ gap: space(3) }}>
-          <MediaAvaliacoes media={b.resumo.notaApp} total={b.resumo.totalAvaliacoesApp} />
-          {avaliacoes === null ? <Carregando />
-            : avaliacoes.length === 0 ? <Cartao><Text style={type.caption}>Ainda sem avaliações. Quem corta aqui avalia pelo histórico em Agendamentos.</Text></Cartao>
-            : avaliacoes.map(a => <ItemAvaliacao key={a.id} a={a} />)}
-        </View>
-      ) : null}
-
-      {aba === 'agendar' && reservado ? (
+      {reservado ? (
         <Cartao style={{ gap: space(2), borderColor: colors.success }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space(2) }}>
             <Ionicons name="checkmark-circle" size={22} color={colors.success} />
@@ -129,7 +110,6 @@ export default function PaginaBarbearia() {
         </Cartao>
       ) : null}
 
-      {aba === 'agendar' ? <>
       <Etapa numero={1} titulo="Escolha o barbeiro" dica="Depois você escolhe o corte e o horário." />
       {equipe.length === 0 ? <Cartao><Text style={type.caption}>Esta barbearia ainda não tem barbeiros na agenda.</Text></Cartao> : (
         <View style={{ gap: space(2) }}>
@@ -184,7 +164,6 @@ export default function PaginaBarbearia() {
           </View>
         </View>
       ) : null}
-      </> : null}
     </Tela>
   );
 }

@@ -32,8 +32,8 @@ export default function ExcluirConta() {
       <Topico titulo="O que fica, e por quê">
         <Item forte="Atendimentos que já aconteceram:">continuam no histórico da barbearia (data, serviço e preço), com o
           seu nome trocado por "Cliente removido".</Item>
-        <Item forte="Avaliações:">as estrelas e o comentário que você deu às barbearias continuam valendo na nota delas, mas
-          assinados só como "Cliente".</Item>
+        <Item forte="Avaliações:">as estrelas que você deu às barbearias continuam valendo na média delas, sem ligação
+          com você.</Item>
         <Item forte="Registros técnicos de uso e de erros:">ficam ligados só a um identificador que não leva mais a você.</Item>
         <Item forte="Dados de compra de assinatura:">pelo prazo que a lei exigir.</Item>
         <Item forte="Barbearia:">se você é dono, exclua antes a barbearia em Barbearia › Configurações › Excluir barbearia

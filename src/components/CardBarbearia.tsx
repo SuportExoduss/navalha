@@ -27,7 +27,7 @@ export function CardBarbearia({ b }: { b: BarbeariaPerto }) {
           <Text style={type.caption}>
             <Text style={{ color: colors.accent }}>★ </Text>
             {/* Média simples do app e quantas; o ranking (que pesa a quantidade) só ordena a lista. */}
-            {b.resumo.totalAvaliacoesApp ? `${nota(b.resumo.notaApp)} (${b.resumo.totalAvaliacoesApp})` : 'Novo'}
+            {b.resumo.totalAvaliacoesApp ? nota(b.resumo.notaApp) : 'Novo'}
           </Text>
           {b.resumo.precoMin ? <Text style={type.caption}>a partir de {formatarPreco(b.resumo.precoMin)}</Text> : null}
           {abertaAgora(b, Date.now()) ? <Text style={[type.caption, { color: colors.success }]}>Aberta agora</Text> : null}

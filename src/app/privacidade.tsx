@@ -11,7 +11,7 @@ export default function Privacidade() {
         <Item>Usamos os seus dados só para você marcar horário e para a barbearia organizar a agenda.</Item>
         <Item>Não vendemos dados, não mostramos anúncios e não usamos rastreamento de publicidade.</Item>
         <Item>A barbearia vê o seu nome, o horário e, se você informou, o seu WhatsApp. Ninguém mais vê os seus agendamentos.</Item>
-        <Item>Público é só o que você escolhe publicar: a avaliação da barbearia, com o seu primeiro nome.</Item>
+        <Item>Nada seu fica público: se você avaliar uma barbearia, só as estrelas entram na média dela, sem o seu nome.</Item>
         <Item>Você exclui a conta pelo Perfil, na hora.</Item>
       </Topico>
 
@@ -37,9 +37,10 @@ export default function Privacidade() {
           clientes peguem o mesmo horário, e para a barbearia ver o próprio movimento. Base: execução do contrato.</Item>
         <Item forte="Foto do corte:">a foto que o barbeiro pode tirar ao concluir o atendimento. Fica só no seu histórico e no da
           barbearia, nunca numa página pública. Base: execução do contrato. Quer apagar uma foto? Peça à barbearia ou pelo e-mail.</Item>
-        <Item forte="Avaliação da barbearia:">se você quiser avaliar, as estrelas (1 a 5) e o comentário. É uma por barbearia;
-          avaliar de novo substitui a anterior. Fica pública na página da barbearia (veja abaixo) e entra na nota dela. Base:
-          consentimento, porque avaliar é opcional; você pode pedir para retirar a avaliação pelo e-mail.</Item>
+        <Item forte="Avaliação da barbearia:">se você quiser avaliar, as estrelas (1 a 5). É uma por barbearia; avaliar de
+          novo substitui a anterior. Não é pública: entra só na média de estrelas da barbearia, e ninguém (nem a barbearia) vê
+          quem avaliou nem quantas avaliações ela tem. Base: consentimento, porque avaliar é opcional; você pode pedir para
+          retirar a avaliação pelo e-mail.</Item>
         <Item forte="Barbearia, para donos e barbeiros:">nome, endereço, localização, WhatsApp, Instagram, horários, equipe,
           cardápio e fotos, públicos para quem procura barbearia. O telefone pessoal do barbeiro fica fora do cartão público:
           só o dono e o próprio barbeiro veem. Base: execução do contrato.</Item>
@@ -60,8 +61,8 @@ export default function Privacidade() {
       <Topico titulo="Quem vê os seus dados">
         <Item forte="A barbearia em que você marca:">o seu nome ou apelido, o horário, o serviço, a foto do corte
           e, se você preencheu, o WhatsApp. Ela só pode usar esses dados para atender você (regra dos Termos de uso).</Item>
-        <Item forte="Qualquer pessoa:">os dados públicos das barbearias e a sua avaliação de uma barbearia, com o seu primeiro
-          nome, o dia do corte, as estrelas e o comentário. Não mostramos sobrenome, foto, horário nem contato.</Item>
+        <Item forte="Qualquer pessoa:">só os dados públicos das barbearias, com a média de estrelas delas. Nenhum dado
+          seu é público.</Item>
         <Item forte="Serviços que operam o app para nós:">Google Firebase (login, banco de dados, notificações e site),
           Cloudflare (servidor do app e armazenamento das fotos) e Google Play (pagamento das assinaturas). Eles tratam os
           dados só para prestar esse serviço, sob os termos de proteção de dados de cada um.</Item>

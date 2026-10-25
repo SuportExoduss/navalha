@@ -318,9 +318,9 @@ service cloud.firestore {
     // Só existe a avaliação da barbearia, e ela é pública (aba Avaliações da casa). As antigas entre cliente e
     // barbeiro (até 23/out) ninguém lê mais.
     match /avaliacoes/{id} {
-      allow read: if resource.data.visivel == true && resource.data.direcao == 'cliente_para_barbearia';
-      // Só o Worker grava (POST /avaliacoes): confere o corte concluído e quem avalia.
-      allow write: if false;
+      // Privadas (decisão do dono, 25/out): o app mostra só a média em estrelas da casa (resumo.notaApp).
+      // Só o Worker lê e grava (POST /avaliacoes): confere o corte concluído e quem avalia.
+      allow read, write: if false;
     }
     match /clubes/{id} {
       allow read: if true;

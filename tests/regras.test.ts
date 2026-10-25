@@ -639,7 +639,7 @@ test('avaliação da barbearia: só o servidor grava; pública para ler; ningué
   await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'users/ana'), { uid: 'ana' }));
   await assertFails(updateDoc(doc(dbDe('ana'), 'users/ana'), { 'avaliouBarbearias.b1': { estrelas: 5, em: 1 } }));
 
-  // Avaliação: o app não cria nem edita; a da barbearia qualquer um lê; as antigas entre cliente e barbeiro, ninguém.
+  // Avaliação: o app não cria, não edita e ninguém lê (nem a própria casa): a página mostra só a média em estrelas.
   await assertFails(setDoc(doc(dbDe('ana'), 'avaliacoes/x'), { id: 'x', barbeariaId: 'b1', clienteNome: 'Ana', direcao: 'cliente_para_barbearia', estrelas: 5, visivel: true }));
   await env.withSecurityRulesDisabled(async ctx => {
     const db = ctx.firestore();
@@ -648,9 +648,11 @@ test('avaliação da barbearia: só o servidor grava; pública para ler; ningué
     await setDoc(doc(db, 'avaliacoes/antiga_barbeiro'), { barbeariaId: 'b1', barbeiroId: 'lucas', clienteUid: 'ana', direcao: 'cliente_para_barbeiro', estrelas: 5, visivel: true, criadoEm: 3 });
     await setDoc(doc(db, 'avaliacoes/antiga_cliente'), { barbeariaId: 'b1', barbeiroId: 'lucas', clienteUid: 'ana', direcao: 'barbeiro_para_cliente', estrelas: 1, visivel: true, criadoEm: 4 });
   });
-  const publicas = getDocs(query(collection(env.unauthenticatedContext().firestore(), 'avaliacoes'),
+  const lista = (db: Firestore) => getDocs(query(collection(db, 'avaliacoes'),
     where('barbeariaId', '==', 'b1'), where('visivel', '==', true), where('direcao', '==', 'cliente_para_barbearia'), orderBy('criadoEm', 'desc')));
-  assert.equal((await assertSucceeds(publicas)).size, 1);
+  await assertFails(lista(env.unauthenticatedContext().firestore() as unknown as Firestore));
+  await assertFails(lista(dbDe('dono')));
+  for (const quem of ['ana', 'dono', 'beto']) await assertFails(getDoc(doc(dbDe(quem), 'avaliacoes/v1')));
   await assertFails(getDoc(doc(dbDe('beto'), 'avaliacoes/o1')));
   for (const id of ['antiga_barbeiro', 'antiga_cliente']) {
     for (const quem of ['ana', 'lucas', 'dono']) await assertFails(getDoc(doc(dbDe(quem), 'avaliacoes', id)));

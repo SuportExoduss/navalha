@@ -3,10 +3,10 @@
 import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Aviso, Botao, Campo } from '../ui';
+import { Aviso, Botao } from '../ui';
 import { useAuth } from '../../auth/AuthProvider';
 import { avaliarBarbearia } from '../../services/avaliacoes';
-import { MAX_COMENTARIO, podeAvaliarCasa } from '../../lib/avaliacoes';
+import { podeAvaliarCasa } from '../../lib/avaliacoes';
 import { colors, space, type } from '../../theme';
 import type { Agendamento } from '../../types/models';
 
@@ -16,7 +16,9 @@ export function Estrelas({ valor, tamanho = 16, onEscolher }: { valor: number; t
   return (
     <View style={{ flexDirection: 'row', gap: onEscolher ? space(1) : 2 }} accessibilityLabel={onEscolher ? undefined : `${valor} de 5 estrelas`}>
       {[1, 2, 3, 4, 5].map(n => {
-        const icone = <Ionicons name={n <= valor ? 'star' : 'star-outline'} size={tamanho} color={n <= valor ? colors.accent : colors.textMuted} />;
+        // Meia estrela para médias como 4,5 (escolher é sempre inteiro).
+        const nome = n <= valor ? 'star' : n - 0.5 <= valor ? 'star-half' : 'star-outline';
+        const icone = <Ionicons name={nome} size={tamanho} color={nome === 'star-outline' ? colors.textMuted : colors.accent} />;
         return onEscolher ? (
           <Pressable key={n} onPress={() => onEscolher(n)} hitSlop={4} accessibilityRole="button"
             accessibilityLabel={`${n} ${n === 1 ? 'estrela' : 'estrelas'}, ${ROTULO[n]}`} accessibilityState={{ selected: n === valor }}
@@ -35,7 +37,6 @@ export function AvaliarBarbearia({ a, pedido }: { a: Agendamento; pedido?: boole
   const dada = perfil?.avaliouBarbearias?.[a.barbeariaId];
   const [aberto, setAberto] = useState(!!pedido && !dada);
   const [estrelas, setEstrelas] = useState(0);
-  const [comentario, setComentario] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const casa = a.barbeariaNome ?? 'a barbearia';
@@ -47,7 +48,6 @@ export function AvaliarBarbearia({ a, pedido }: { a: Agendamento; pedido?: boole
     setErro(null);
     // Editar começa da avaliação atual; avaliar pela primeira vez, do zero.
     setEstrelas(dada?.estrelas ?? 0);
-    setComentario(dada?.comentario ?? '');
     setAberto(true);
   }
 
@@ -71,7 +71,7 @@ export function AvaliarBarbearia({ a, pedido }: { a: Agendamento; pedido?: boole
     setErro(null);
     setEnviando(true);
     try {
-      await avaliarBarbearia(a, estrelas, comentario);
+      await avaliarBarbearia(a, estrelas);
       setAberto(false);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não foi possível enviar. Tente de novo.');
@@ -86,8 +86,7 @@ export function AvaliarBarbearia({ a, pedido }: { a: Agendamento; pedido?: boole
         {estrelas ? <Text style={{ color: colors.accent }}>{`  ${ROTULO[estrelas]}`}</Text> : null}
       </Text>
       <Estrelas valor={estrelas} tamanho={28} onEscolher={setEstrelas} />
-      <Campo rotulo="Comentário (opcional)" value={comentario} onChangeText={setComentario} maxLength={MAX_COMENTARIO} multiline
-        placeholder="Conte como foi" dica="Aparece na página da barbearia com o seu primeiro nome." />
+      <Text style={type.caption}>Só as estrelas entram na média da barbearia; ninguém vê quem avaliou.</Text>
       {erro ? <Aviso texto={erro} tom="erro" /> : null}
       <View style={{ flexDirection: 'row', gap: space(2) }}>
         <Botao titulo={dada ? 'Cancelar edição' : 'Agora não'} variante="secundario" style={{ flex: 1 }} onPress={() => setAberto(false)} />

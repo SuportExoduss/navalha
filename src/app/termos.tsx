@@ -23,8 +23,7 @@ export default function Termos() {
 
       <Topico titulo="Para clientes">
         <Item>Marque só horários em que você pretende ir e cancele pelo app se não puder; a barbearia vê as faltas.</Item>
-        <Item>Avaliações devem ser sobre um atendimento real, sem ofensas, dados de terceiros ou propaganda. Podemos retirar
-          avaliações que quebrem essas regras.</Item>
+        <Item>Avalie só atendimentos reais. Podemos retirar avaliações feitas para inflar ou derrubar a nota de uma barbearia.</Item>
       </Topico>
 
       <Topico titulo="Para barbearias (donos e barbeiros)">

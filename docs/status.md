@@ -184,7 +184,7 @@ Substitui a seção "Avaliações, nota Google e ranking" acima e o `docs/roadma
 - [x] Uma avaliação por cliente por barbearia (id = hash de casa + cliente, sem uid no documento público). Avaliar de novo
   edita ("Salvar nova avaliação" / "Cancelar edição"); "Como foi o corte?" só aparece para quem ainda não avaliou a casa
 - [x] Nota mostrada = média pura 0,0–5,0 com a quantidade; a busca ordena pela média bayesiana (1 avaliação 5★ não passa 80 de 4,8)
-- [x] Aba "Avaliações (n)" na página pública da barbearia (primeiro nome e dia do corte; carrega só ao abrir a aba)
+- [x] ~~Aba "Avaliações (n)" na página pública da barbearia~~ — retirada em 25/out (decisão do dono): a página e o card mostram só as estrelas da média, sem quem avaliou nem quantos; o formulário pede só as estrelas; regras fecham a leitura de `avaliacoes`; política de privacidade atualizada (vigência 25/out)
 - [x] Exclusão de conta: a avaliação fica assinada "Cliente"; fotos no R2 apagadas; o barbeiro sai da equipe; o dono precisa
   excluir a barbearia antes (o app confere antes de cancelar qualquer horário)
 - [x] Política de privacidade e página de exclusão atualizadas
