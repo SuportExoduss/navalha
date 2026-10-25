@@ -161,7 +161,7 @@ Relatório na conversa de 22/out (12 achados, L01–L12; não é parecer jurídi
   documento); a exclusão de conta acha pelo id. Worker 16, regras 47; Worker publicado em 22/out (versão 8f7979e1).
   As públicas gravadas antes disso ainda têm esses campos (limpeza única, se precisar)
 - [x] Rascunho da política de privacidade v2 em `.lgpd/policies/privacy-policy-v2-draft.md` (para o advogado)
-- [ ] Dono: testar a exclusão com uma conta descartável (cliente com avaliação) e conferir no console e no R2
+- [x] Dono: testou a exclusão de conta com uma conta descartável (25/out): excluiu e cancelou os horários
 - [x] Etapa 2 (23/out, decisões do dono): política v2 publicada (`/privacidade`, com bases legais, encarregado, onde os
   dados ficam e incidentes), Termos de uso com as regras para barbearias (`/termos`, aceitos no login e ao criar a casa),
   idade mínima 18 anos, roteiro e registro de incidentes (`.lgpd/incidentes.md`), registro das decisões
@@ -171,10 +171,24 @@ Relatório na conversa de 22/out (12 achados, L01–L12; não é parecer jurídi
   dos "Dados de Serviço do Firebase" para serviços do Google fora do Firebase (mesma tela)
 - [ ] Dono: marca "Navalha" no INPI está livre nas classes de software (9 e 42), mas há registro em vigor na classe 44
   (serviços de barbearia, NAVALHA BARBEARIA LTDA): consultar advogado antes de pedir o registro
-- [ ] Revisão jurídica recomendada (não bloqueia): itens no fim de `.lgpd/policies/privacy-policy-v2.md`
+- [x] Sem advogado (decisão do dono, 25/out): as posições adotadas e o motivo de cada uma estão no fim de
+  `.lgpd/policies/privacy-policy-v2.md`
 - [x] Etapa 3 (23/out): mapa de dados (`.lgpd/data-map.md`) e registro das operações com teste de legítimo interesse
   (`.lgpd/ropa.md`), conferidos com o código. A política deixou de dizer que a barbearia vê a foto do cliente (não vê)
-- [ ] Script de acesso e portabilidade (L05): hoje o pedido é atendido à mão pelo console, em até 15 dias
+- [x] Reavaliação /codelgpd (25/out), tudo pedido pelo dono:
+  - Idade mínima de verdade: tela `/idade` pede a data de nascimento no 1º acesso (e a quem já tinha conta), guarda só
+    `maiorDeIdadeEm`; menor tem conta e dados apagados (com plano B no app se o Worker falhar). As regras barram reserva
+    sem a declaração (app antigo também). Conferido no navegador com o emulador: link direto cai em `/idade`; adulto segue;
+    menor some do banco e do login
+  - WhatsApp do cliente só no horário: o cron apaga `clienteTelefone` 24 h depois do fim; barbeiro desligado ou fora da
+    casa perde na hora o acesso aos agendamentos (`barbeiroAtivo` nas regras); regra explícita nos Termos
+  - Avaliação guarda só as estrelas (sem nome, comentário, dia); a página e o card mostram média e quantidade
+  - Limpeza diária do legado (nota do cliente, avaliações entre cliente e barbeiro, nome/comentário antigos) e dos
+    convites vencidos; convites apagados na exclusão da casa
+  - Acesso e portabilidade (L05): Perfil › "Baixar meus dados" (`GET /conta/dados` no Worker, JSON com tudo)
+  - Política, Termos, `data-map.md`, `ropa.md` e modelo de dados atualizados. Testes: lógica 57, regras 49, Worker 19
+- [ ] Publicar (Worker, regras + índices, web) — barrado pela permissão automática do Claude Code em 25/out
+- [ ] Dono: gerar APK novo (o antigo não tem a tela de idade; até atualizar, declarar a idade uma vez pelo site libera a reserva)
 
 ## Reestruturação das avaliações (decisão do dono, 22/out/2026)
 Substitui a seção "Avaliações, nota Google e ranking" acima e o `docs/roadmap-avaliacoes.md`.

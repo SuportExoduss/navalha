@@ -10,9 +10,9 @@ export default function Privacidade() {
       <Topico titulo="Resumo">
         <Item>Usamos os seus dados só para você marcar horário e para a barbearia organizar a agenda.</Item>
         <Item>Não vendemos dados, não mostramos anúncios e não usamos rastreamento de publicidade.</Item>
-        <Item>A barbearia vê o seu nome, o horário e, se você informou, o seu WhatsApp. Ninguém mais vê os seus agendamentos.</Item>
-        <Item>Nada seu fica público: se você avaliar uma barbearia, só as estrelas entram na média dela, sem o seu nome.</Item>
-        <Item>Você exclui a conta pelo Perfil, na hora.</Item>
+        <Item>A barbearia vê o seu nome e o horário e, só nos horários que você marcou, o seu WhatsApp (se você informou). Ninguém mais vê os seus agendamentos.</Item>
+        <Item>Nada seu fica público: se você avaliar uma barbearia, guardamos só as estrelas, que entram na média dela.</Item>
+        <Item>Pelo Perfil você baixa todos os seus dados e exclui a conta, na hora.</Item>
       </Topico>
 
       <Topico titulo="Quem somos e como falar com a gente">
@@ -26,19 +26,20 @@ export default function Privacidade() {
       <Topico titulo="Quais dados usamos, para quê e com que base legal">
         <Item forte="Conta Google:">nome, e-mail, foto e um identificador da conta, recebidos quando você entra com o Google.
           Servem para criar a sua conta e entrar no app. Base: execução do contrato (LGPD, art. 7º, V).</Item>
-        <Item forte="Perfil:">apelido, capa e WhatsApp, só se você preencher. O WhatsApp serve para a barbearia falar com você
-          sobre os seus horários, inclusive pelo botão "Lembrar no WhatsApp", que abre o WhatsApp do barbeiro com uma mensagem
-          pronta; quem envia é o barbeiro, e o Navalha não manda mensagens. Base: execução do contrato.</Item>
+        <Item forte="Perfil:">apelido, capa e WhatsApp, só se você preencher. A barbearia só vê o seu WhatsApp quando você marca
+          um horário com ela, e só para avisar de atraso ou mudança e lembrar do corte, inclusive pelo botão "Lembrar no
+          WhatsApp", que abre o WhatsApp do barbeiro com uma mensagem pronta (quem envia é o barbeiro; o Navalha não manda
+          mensagens). O número sai do agendamento 24 horas depois do horário. Base: execução do contrato.</Item>
         <Item forte="Localização:">a posição do celular, só com o app aberto e com a sua permissão, para mostrar barbearias perto
           de você. Não guardamos o seu trajeto nem a sua posição. Quem cadastra uma barbearia grava a localização dela, que
           fica pública. Base: consentimento (art. 7º, I), que você retira nas configurações do celular.</Item>
         <Item forte="Agendamentos:">barbearia, barbeiro, serviço, preço, data e hora, situação (marcado, confirmado, concluído,
           faltou, cancelado) e o motivo do cancelamento escolhido na lista. Servem para marcar, lembrar e cancelar sem que dois
           clientes peguem o mesmo horário, e para a barbearia ver o próprio movimento. Base: execução do contrato.</Item>
-        <Item forte="Avaliação da barbearia:">se você quiser avaliar, as estrelas (1 a 5). É uma por barbearia; avaliar de
-          novo substitui a anterior. Não é pública: entra só na média de estrelas da barbearia, e ninguém (nem a barbearia) vê
-          quem avaliou nem quantas avaliações ela tem. Base: consentimento, porque avaliar é opcional; você pode pedir para
-          retirar a avaliação pelo e-mail.</Item>
+        <Item forte="Avaliação da barbearia:">se você quiser avaliar, guardamos só as estrelas (1 a 5), sem o seu nome,
+          comentário ou dia do corte. É uma por barbearia; avaliar de novo substitui a anterior. A página da barbearia mostra só
+          a média das estrelas e quantas avaliações ela tem; ninguém (nem a barbearia) vê quem avaliou. Base: consentimento,
+          porque avaliar é opcional; você pode pedir para retirar a avaliação pelo e-mail.</Item>
         <Item forte="Barbearia, para donos e barbeiros:">nome, endereço, localização, WhatsApp, Instagram, horários, equipe,
           cardápio e fotos, públicos para quem procura barbearia. O telefone pessoal do barbeiro fica fora do cartão público:
           só o dono e o próprio barbeiro veem. Base: execução do contrato.</Item>
@@ -57,8 +58,9 @@ export default function Privacidade() {
       </Topico>
 
       <Topico titulo="Quem vê os seus dados">
-        <Item forte="A barbearia em que você marca:">o seu nome ou apelido, o horário, o serviço
-          e, se você preencheu, o WhatsApp. Ela só pode usar esses dados para atender você (regra dos Termos de uso).</Item>
+        <Item forte="A barbearia em que você marca:">o seu nome ou apelido, o horário e o serviço e, só nos horários que você
+          marcou e até 24 horas depois deles, o WhatsApp (se você preencheu). O barbeiro vê só os horários dele, e quem sai da
+          equipe perde o acesso na hora. A barbearia só pode usar esses dados para atender você (regra dos Termos de uso).</Item>
         <Item forte="Qualquer pessoa:">só os dados públicos das barbearias, com a média de estrelas delas. Nenhum dado
           seu é público.</Item>
         <Item forte="Serviços que operam o app para nós:">Google Firebase (login, banco de dados, notificações e site),
@@ -88,15 +90,18 @@ export default function Privacidade() {
         </Paragrafo>
         <Paragrafo>
           Guardamos os dados enquanto a conta existir, menos os registros de uso e de erros (apagados após 12 meses) e os
-          avisos do sino (apagados após 90 dias). Ao excluir a conta, seguimos o que está descrito em{' '}
+          avisos do sino (apagados após 90 dias). O WhatsApp sai de cada agendamento 24 horas depois do horário, e os convites
+          de equipe são apagados quando vencem (7 dias). Ao excluir a conta, seguimos o que está descrito em{' '}
           <Link href="/excluir-conta">Excluir conta e dados</Link>. Registros de compra podem ser mantidos pelo prazo que a lei exigir.
         </Paragrafo>
       </Topico>
 
       <Topico titulo="Seus direitos (LGPD, art. 18)">
-        <Item>Confirmar se tratamos os seus dados e acessá-los.</Item>
+        <Item>Confirmar se tratamos os seus dados e acessá-los: em Perfil › "Baixar meus dados" você recebe na hora um arquivo
+          com tudo o que guardamos sobre você.</Item>
         <Item>Corrigir dados incompletos ou errados (a maioria direto no Perfil).</Item>
-        <Item>Pedir anonimização, bloqueio ou eliminação de dados desnecessários, e a portabilidade dos seus dados.</Item>
+        <Item>Pedir anonimização, bloqueio ou eliminação de dados desnecessários, e a portabilidade (o mesmo arquivo de
+          "Baixar meus dados", em formato aberto, que outro serviço consegue ler).</Item>
         <Item>Excluir a conta e os dados (pelo Perfil, na hora).</Item>
         <Item>Saber com quem compartilhamos e o que acontece se você não consentir: sem localização, notificações ou WhatsApp,
           o app funciona, só deixam de funcionar a busca por perto, os lembretes e o lembrete pelo WhatsApp.</Item>
@@ -109,8 +114,10 @@ export default function Privacidade() {
 
       <Topico titulo="Idade mínima">
         <Paragrafo>
-          O Navalha é para maiores de {IDADE_MINIMA} anos. Menores de idade marcam o corte pela conta de um responsável. Se você é
-          responsável por um menor que criou conta, escreva para {email} e excluímos a conta.
+          O Navalha é só para maiores de {IDADE_MINIMA} anos. No primeiro acesso pedimos a sua data de nascimento: guardamos só
+          que você é maior de idade, nunca a data. Se a data mostrar menos de {IDADE_MINIMA} anos, a conta e os dados são
+          apagados na hora e o login não é liberado; menores marcam o corte pela conta de um responsável. Se você é responsável
+          por um menor que criou conta, escreva para {email} e excluímos a conta.
         </Paragrafo>
       </Topico>
 

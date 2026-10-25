@@ -1,7 +1,7 @@
 // Perfil compartilhado por cliente e barbearia: foto, nome, apelido, telefone,
 // modo ativo, aparência (tema), trocar conta Google e excluir a conta.
 import { useEffect, useState } from 'react';
-import { Image, Platform, Pressable, Text, View } from 'react-native';
+import { Image, Platform, Pressable, Share, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Aviso, Botao, Campo, Cartao, Chip, Linha, Secao, Tela, Titulo } from './ui';
@@ -10,7 +10,7 @@ import { irParaPapel } from './irParaPapel';
 import { Capa } from './Capa';
 import { useAuth } from '../auth/AuthProvider';
 import { auth, db } from '../services/firebase';
-import { DONO_NAO_EXCLUI, atualizarPerfil, escolherPapel, excluirConta, refletirNaEquipe } from '../services/usuarios';
+import { DONO_NAO_EXCLUI, atualizarPerfil, escolherPapel, excluirConta, meusDados, refletirNaEquipe } from '../services/usuarios';
 import { reautenticarGoogle, sairDoGoogle } from '../services/googleSignIn';
 import { escolherEEnviar } from '../services/fotos';
 import { telefoneNaEquipe } from '../services/barbearias';
@@ -122,6 +122,7 @@ export function PerfilConta() {
           onPress={() => router.push('/bateria')} />
       ) : null}
 
+      <BaixarDados />
       <Botao titulo="Trocar conta Google" variante="secundario" onPress={sair} />
       <ExcluirConta />
       <Pressable onPress={() => router.push('/privacidade')} hitSlop={8} accessibilityRole="link" style={{ alignSelf: 'center' }}>
@@ -131,6 +132,40 @@ export function PerfilConta() {
         <Text style={[type.caption, { color: colors.textMuted, textDecorationLine: 'underline' }]}>Termos de uso</Text>
       </Pressable>
     </Tela>
+  );
+}
+
+/** "Baixar meus dados" (LGPD: acesso e portabilidade). Site: baixa um arquivo .json; Android: abre o compartilhar
+ *  do celular (salvar em arquivo, mandar por e-mail etc.), sem biblioteca nova. */
+function BaixarDados() {
+  const { user } = useAuth();
+  const [estado, setEstado] = useState<'parado' | 'buscando' | 'pronto' | string>('parado');
+  async function baixar() {
+    if (!user || estado === 'buscando') return;
+    setEstado('buscando');
+    try {
+      const texto = await meusDados(user);
+      if (Platform.OS === 'web') {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([texto], { type: 'application/json' }));
+        a.download = 'meus-dados-navalha.json';
+        a.click();
+        URL.revokeObjectURL(a.href);
+      } else {
+        await Share.share({ title: 'Meus dados no Navalha', message: texto });
+      }
+      setEstado('pronto');
+    } catch (e) {
+      setEstado(e instanceof Error ? e.message : 'Não foi possível buscar os dados agora.');
+    }
+  }
+  return (
+    <View style={{ gap: space(2) }}>
+      <Linha icone="download-outline" titulo="Baixar meus dados" dica="Tudo o que o Navalha guarda sobre você, num arquivo" onPress={baixar} />
+      {estado === 'buscando' ? <Aviso texto="Juntando os seus dados…" /> : null}
+      {estado === 'pronto' ? <Aviso texto="Pronto." tom="ok" /> : null}
+      {estado !== 'parado' && estado !== 'buscando' && estado !== 'pronto' ? <Aviso texto={estado} tom="erro" /> : null}
+    </View>
   );
 }
 

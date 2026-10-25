@@ -200,26 +200,29 @@ test('avaliar: uma avaliação por cliente por casa; de novo, edita; a nota e o 
       }
     },
   } as never;
-  assert.equal((await avaliar(db, 'beto', 'a1', 5, '', agora)).status, 403);
-  assert.equal((await avaliar(db, 'ana', 'a2', 5, '', agora)).status, 409); // ainda não concluído
-  assert.equal((await avaliar(db, 'ana', 'a1', 9, '', agora)).status, 400);
-  assert.deepEqual((await avaliar(db, 'ana', 'a1', 5, '  Ótimo degradê  ', agora)).corpo, { ok: true, editada: false });
+  assert.equal((await avaliar(db, 'beto', 'a1', 5, agora)).status, 403);
+  assert.equal((await avaliar(db, 'ana', 'a2', 5, agora)).status, 409); // ainda não concluído
+  assert.equal((await avaliar(db, 'ana', 'a1', 9, agora)).status, 400);
+  assert.deepEqual((await avaliar(db, 'ana', 'a1', 5, agora)).corpo, { ok: true, editada: false });
   const id = await idAvaliacao('b1', 'ana');
   assert.match(id, /^[0-9a-f]{24}$/);
   const av = docs.get(`avaliacoes/${id}`) as Record<string, unknown>;
-  // Pública: primeiro nome e dia do corte; nada de uid, foto ou capa.
-  assert.deepEqual([av.clienteNome, av.comentario, av.direcao, av.clienteUid, av.clienteFotoUrl], ['Ana', 'Ótimo degradê', 'cliente_para_barbearia', undefined, undefined]);
+  // Só as estrelas (LGPD, necessidade): nada de nome, comentário, dia do corte, uid ou foto.
+  assert.deepEqual(Object.keys(av).sort(), ['atualizadoEm', 'barbeariaId', 'criadoEm', 'estrelas', 'id']);
+  assert.equal('comentario' in (docs.get('users/ana')!.avaliouBarbearias as Record<string, object>).b1, false);
   let r = docs.get('barbearias/b1')!.resumo as Record<string, number>;
   assert.deepEqual([r.notaApp, r.totalAvaliacoesApp, r.somaEstrelasApp], [4.5, 2, 9]);
   assert.ok(r.notaRanking > 4 && r.notaRanking < 4.5); // o ranking pesa a quantidade
   assert.equal((docs.get('users/ana')!.avaliouBarbearias as Record<string, { estrelas: number }>).b1.estrelas, 5);
 
-  // De novo (mesmo de outro corte): edita, não soma outra; sem comentário, o antigo some.
-  assert.deepEqual((await avaliar(db, 'ana', 'a3', 3, '', agora + 1000)).corpo, { ok: true, editada: true });
+  // De novo (mesmo de outro corte): edita, não soma outra. Uma antiga (de antes de 25/out) perde nome e comentário.
+  docs.set(`avaliacoes/${id}`, { ...av, clienteNome: 'Ana', comentario: 'Ótimo', inicio: 1, direcao: 'cliente_para_barbearia', visivel: true });
+  assert.deepEqual((await avaliar(db, 'ana', 'a3', 3, agora + 1000)).corpo, { ok: true, editada: true });
   r = docs.get('barbearias/b1')!.resumo as Record<string, number>;
   assert.deepEqual([r.notaApp, r.totalAvaliacoesApp, r.somaEstrelasApp], [3.5, 2, 7]);
   const editada = docs.get(`avaliacoes/${id}`) as Record<string, unknown>;
-  assert.deepEqual([editada.estrelas, editada.comentario, editada.criadoEm, editada.atualizadoEm], [3, undefined, agora + 1000, agora + 1000]);
+  assert.deepEqual([editada.estrelas, editada.criadoEm, editada.atualizadoEm], [3, agora, agora + 1000]);
+  assert.deepEqual(Object.keys(editada).sort(), ['atualizadoEm', 'barbeariaId', 'criadoEm', 'estrelas', 'id']);
 });
 
 test('Firestore REST: APAGAR tira o campo (fica na máscara sem valor) e apagar manda deletes', async () => {
@@ -237,7 +240,7 @@ test('Firestore REST: APAGAR tira o campo (fica na máscara sem valor) e apagar 
   } finally { globalThis.fetch = original; }
 });
 
-test('excluir conta: anonimiza histórico e a avaliação, apaga avisos, perfil e fotos; barbeiro sai da equipe; dono não exclui', async () => {
+test('excluir conta: anonimiza histórico e tira o autor da avaliação, apaga avisos, perfil e fotos; barbeiro sai da equipe; dono não exclui', async () => {
   const { excluirConta, chaveDaFoto } = await import('./conta');
   const { idAvaliacao } = await import('./avaliacoes');
   const { APAGAR } = await import('./firestore');
@@ -253,7 +256,8 @@ test('excluir conta: anonimiza histórico e a avaliação, apaga avisos, perfil 
   ]);
   const consultas: Record<string, { id: string; dados: Record<string, unknown> }[]> = {
     agendamentos: [{ id: 'a1', dados: { barbeariaId: 'b1', barbeiroId: 'lucas', fotos: [foto, 'https://evil/x.webp'] } }],
-    avaliacoes: [{ id: 'a1_barbeiro', dados: {} }], // antiga, de antes de 23/out
+    // Antigas (de antes de 23/out), achadas pelo uid: a do barbeiro sai; a da casa fica, sem autor.
+    avaliacoes: [{ id: 'a1_barbeiro', dados: { direcao: 'cliente_para_barbeiro' } }, { id: 'a0', dados: { direcao: 'cliente_para_barbearia' } }],
     notificacoes: [{ id: 'n-da-ana', dados: {} }],
   };
   const gravados: { caminho: string; campos: Record<string, unknown> }[] = [];
@@ -277,8 +281,11 @@ test('excluir conta: anonimiza histórico e a avaliação, apaga avisos, perfil 
   assert.deepEqual((await excluirConta(db, bucket, 'ana', agora)).status, 200);
   const g = (c: string) => gravados.find(w => w.caminho === c)?.campos;
   assert.deepEqual(g('agendamentos/a1'), { clienteNome: 'Cliente removido', clienteTelefone: APAGAR, fotos: [], atualizadoEm: agora });
-  assert.deepEqual(g(publica), { clienteNome: 'Cliente', clienteFotoUrl: APAGAR, clienteBannerUrl: APAGAR });
-  assert.deepEqual(g('avaliacoes/a1_barbeiro'), { clienteNome: 'Cliente', clienteFotoUrl: APAGAR, clienteBannerUrl: APAGAR });
+  const semAutor = Object.fromEntries(['clienteNome', 'clienteUid', 'autorUid', 'clienteFotoUrl', 'clienteBannerUrl', 'comentario', 'inicio'].map(c => [c, APAGAR]));
+  assert.deepEqual(g(publica), semAutor);
+  assert.deepEqual(g('avaliacoes/a0'), semAutor);
+  assert.equal(g('avaliacoes/a1_barbeiro'), undefined);
+  assert.ok(apagados.includes('avaliacoes/a1_barbeiro'));
   assert.deepEqual(g('barbearias/b2/barbeiros/ana'), { nome: 'Barbeiro removido', apelido: APAGAR, fotoUrl: APAGAR, bannerUrl: APAGAR, ativo: false });
   assert.deepEqual(g('barbearias/b2'), { barbeirosAtivos: 2, mudouBarbeiro: 'ana' });
   for (const c of ['users/ana', 'notificacoes/n-da-ana', 'notificacoes/a1_agendado_lucas', 'notificacoes/a1_cancelado_dono',
@@ -293,7 +300,7 @@ test('excluir conta: anonimiza histórico e a avaliação, apaga avisos, perfil 
   assert.deepEqual([gravados.length, apagados.length], [0, 0]);
 });
 
-test('prazos de guarda: apaga métricas e erros com mais de 12 meses e avisos com mais de 90 dias', async () => {
+test('prazos de guarda: métricas e erros 12 meses, avisos 90 dias, convites ao vencer', async () => {
   const { limparAntigos } = await import('./conta');
   const agora = 1_800_000_000_000, DIA = 86_400_000;
   const limites: Record<string, number> = {};
@@ -301,18 +308,18 @@ test('prazos de guarda: apaga métricas e erros com mais de 12 meses e avisos co
   const db = {
     query: async (q: { from: { collectionId: string }[]; where: { fieldFilter: { field: { fieldPath: string }; op: string; value: { integerValue: string } } } }) => {
       const c = q.from[0].collectionId;
-      assert.deepEqual([q.where.fieldFilter.field.fieldPath, q.where.fieldFilter.op], ['em', 'LESS_THAN']);
+      assert.deepEqual([q.where.fieldFilter.field.fieldPath, q.where.fieldFilter.op], [c === 'convites' ? 'expiraEm' : 'em', 'LESS_THAN']);
       limites[c] = Number(q.where.fieldFilter.value.integerValue);
       return [{ id: `${c}-velho`, dados: {} }];
     },
     apagar: async (l: string[]) => { apagados.push(...l); },
   } as never;
   await limparAntigos(db, agora);
-  assert.deepEqual(limites, { eventos: agora - 365 * DIA, erros: agora - 365 * DIA, notificacoes: agora - 90 * DIA });
-  assert.deepEqual(apagados, ['eventos/eventos-velho', 'erros/erros-velho', 'notificacoes/notificacoes-velho']);
+  assert.deepEqual(limites, { eventos: agora - 365 * DIA, erros: agora - 365 * DIA, notificacoes: agora - 90 * DIA, convites: agora });
+  assert.deepEqual(apagados, ['eventos/eventos-velho', 'erros/erros-velho', 'notificacoes/notificacoes-velho', 'convites/convites-velho']);
 });
 
-test('excluir barbearia: só o dono; apaga as avaliações públicas e as fotos da casa e do cardápio', async () => {
+test('excluir barbearia: só o dono; apaga as avaliações, os convites e as fotos da casa e do cardápio', async () => {
   const { excluirDadosBarbearia } = await import('./conta');
   const docs = new Map<string, Record<string, unknown>>([['barbearias/b1', { donoUid: 'dono' }]]);
   const apagados: string[] = [], fotosApagadas: string[] = [], pastas: string[] = [];
@@ -320,7 +327,7 @@ test('excluir barbearia: só o dono; apaga as avaliações públicas e as fotos 
     varios: async (cs: string[]) => new Map(cs.filter(c => docs.has(c)).map(c => [c, docs.get(c)!])),
     query: async (q: { from: { collectionId: string }[] }, pai = '') => q.from[0].collectionId === 'servicos'
       ? (assert.equal(pai, 'barbearias/b1'), [{ id: 's1', dados: {} }])
-      : [{ id: 'h1', dados: {} }, { id: 'h2', dados: {} }],
+      : q.from[0].collectionId === 'convites' ? [{ id: 'ABCDEF', dados: {} }] : [{ id: 'h1', dados: {} }, { id: 'h2', dados: {} }],
     apagar: async (l: string[]) => { apagados.push(...l); },
   } as never;
   const bucket = {
@@ -330,8 +337,73 @@ test('excluir barbearia: só o dono; apaga as avaliações públicas e as fotos 
   assert.equal((await excluirDadosBarbearia(db, bucket, 'intruso', 'b1')).status, 403);
   assert.deepEqual([apagados.length, fotosApagadas.length], [0, 0]);
   assert.equal((await excluirDadosBarbearia(db, bucket, 'dono', 'b1')).status, 200);
-  assert.deepEqual(apagados, ['avaliacoes/h1', 'avaliacoes/h2']);
+  assert.deepEqual(apagados, ['avaliacoes/h1', 'avaliacoes/h2', 'convites/ABCDEF']);
   assert.deepEqual(pastas, ['barbearia/b1/', 'servico/s1/']);
   assert.deepEqual(fotosApagadas, ['barbearia/b1/x.webp', 'servico/s1/x.webp']);
   assert.equal((await excluirDadosBarbearia(db, bucket, 'dono', 'sumiu')).status, 200); // já excluída: nada a fazer
+});
+
+test('WhatsApp do cliente sai do agendamento 24 h depois do fim do horário', async () => {
+  const { tirarTelefonesVencidos } = await import('./conta');
+  const { APAGAR } = await import('./firestore');
+  const agora = 1_800_000_000_000, H = 3_600_000;
+  let janela: number[] = [];
+  const gravados: { caminho: string; campos: Record<string, unknown> }[] = [];
+  const db = {
+    query: async (q: { where: { compositeFilter: { filters: { fieldFilter: { field: { fieldPath: string }; value: { integerValue: string } } }[] } } }) => {
+      janela = q.where.compositeFilter.filters.map(f => (assert.equal(f.fieldFilter.field.fieldPath, 'fim'), Number(f.fieldFilter.value.integerValue)));
+      return [{ id: 'a1', dados: { clienteTelefone: '15999990000' } }, { id: 'a2', dados: {} }];
+    },
+    escrever: async (l: typeof gravados) => { gravados.push(...l); },
+  } as never;
+  await tirarTelefonesVencidos(db, agora);
+  assert.deepEqual(janela, [agora - 26 * H, agora - 24 * H]); // terminou entre 26 h e 24 h atrás
+  assert.deepEqual(gravados, [{ caminho: 'agendamentos/a1', campos: { clienteTelefone: APAGAR } }]); // sem telefone, nem grava
+});
+
+test('legado das avaliações antigas: nota do cliente e avaliações entre cliente e barbeiro saem; a da casa fica só com as estrelas', async () => {
+  const { limparLegado } = await import('./conta');
+  const { APAGAR } = await import('./firestore');
+  const apagados: string[] = [];
+  const gravados: { caminho: string; campos: Record<string, unknown> }[] = [];
+  const db = {
+    query: async (q: { from: { collectionId: string }[]; where?: { fieldFilter: { field: { fieldPath: string } } } }) => {
+      const c = q.from[0].collectionId, f = q.where?.fieldFilter.field.fieldPath;
+      if (c === 'notasCliente') return [{ id: 'ana', dados: {} }];
+      if (c === 'users') return (assert.equal(f, 'notaCliente.total'), [{ id: 'ana', dados: {} }]);
+      return JSON.stringify(q.where).includes('barbeiro_para_cliente') ? [{ id: 'v1_cliente', dados: {} }] : [{ id: 'v1_barbearia', dados: {} }];
+    },
+    apagar: async (l: string[]) => { apagados.push(...l); },
+    escrever: async (l: typeof gravados) => { gravados.push(...l); },
+  } as never;
+  await limparLegado(db);
+  assert.deepEqual(apagados, ['notasCliente/ana', 'avaliacoes/v1_cliente']);
+  const casa = gravados.find(g => g.caminho === 'avaliacoes/v1_barbearia')!.campos;
+  for (const c of ['clienteNome', 'clienteUid', 'comentario', 'inicio', 'direcao']) assert.equal(casa[c], APAGAR, c);
+  assert.deepEqual(gravados.find(g => g.caminho === 'users/ana')!.campos, { notaCliente: APAGAR });
+});
+
+test('baixar meus dados: tudo da própria pessoa, nada consultado por outro uid', async () => {
+  const { exportarDados } = await import('./conta');
+  const { idAvaliacao } = await import('./avaliacoes');
+  const av = `avaliacoes/${await idAvaliacao('b1', 'ana')}`;
+  const docs = new Map<string, Record<string, unknown>>([
+    ['users/ana', { uid: 'ana', nome: 'Ana', barbearias: ['b2'], avaliouBarbearias: { b1: { estrelas: 5, em: 1 } } }],
+    [av, { estrelas: 5 }], ['testes/ana', { em: 1 }],
+    ['barbearias/b2/barbeiros/ana', { nome: 'Ana' }], ['barbearias/b2/equipePrivado/ana', { telefone: '15999990000' }],
+  ]);
+  const db = {
+    query: async (q: { from: { collectionId: string }[]; where: { fieldFilter: { value: { stringValue: string } } } }) => {
+      assert.equal(q.where.fieldFilter.value.stringValue, 'ana');
+      return [{ id: `${q.from[0].collectionId}-1`, dados: { x: 1 } }];
+    },
+    varios: async (cs: string[]) => new Map(cs.filter(c => docs.has(c)).map(c => [c, docs.get(c)!])),
+  } as never;
+  const { corpo } = await exportarDados(db, 'ana', 0);
+  assert.equal((corpo.perfil as { nome: string }).nome, 'Ana');
+  assert.deepEqual(corpo.agendamentos, [{ id: 'agendamentos-1', x: 1 }]);
+  assert.deepEqual([corpo.notificacoes.length, corpo.usoDoApp.length, corpo.errosTecnicos.length], [1, 1, 1]);
+  assert.deepEqual(corpo.avaliacoesDeBarbearias, [{ estrelas: 5 }]);
+  assert.deepEqual(corpo.testeGratis, { em: 1 });
+  assert.deepEqual(corpo.equipes, [{ barbeariaId: 'b2', cartao: { nome: 'Ana' }, privado: { telefone: '15999990000' } }]);
 });

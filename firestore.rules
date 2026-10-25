@@ -249,11 +249,18 @@ service cloud.firestore {
         let perfil = /databases/$(database)/documents/users/$(eu());
         let antes = exists(perfil) ? get(perfil).data.get('ultimaReserva', null) : null;
         return getAfter(perfil).data.get('ultimaReserva', null) == request.time
-          && (antes == null || request.time > antes + duration.value(20, 's'));
+          && (antes == null || request.time > antes + duration.value(20, 's'))
+          // Idade mínima (18): só reserva quem se declarou maior de idade na tela /idade. Barra app antigo sem a tela.
+          && getAfter(perfil).data.get('maiorDeIdadeEm', null) is int;
       }
-      // Barbeiro vê só os próprios horários; o dono, a casa toda (clientes e faturamento dos colegas são do dono).
-      function daCasaParaEste(a) { return ehDono(a.barbeariaId) || (ehBarbeiro(a.barbeariaId) && a.barbeiroId == eu()); }
-      allow read: if logado() && (ag().clienteUid == eu() || ag().barbeiroId == eu() || ehDono(ag().barbeariaId));
+      // Barbeiro vê só os próprios horários, e só enquanto está ativo na casa: quem foi desligado ou saiu perde o acesso
+      // aos clientes (nome e WhatsApp) na hora. O dono vê a casa toda (clientes e faturamento dos colegas são do dono).
+      function barbeiroAtivo(bid) {
+        let b = /databases/$(database)/documents/barbearias/$(bid)/barbeiros/$(eu());
+        return logado() && exists(b) && get(b).data.get('ativo', true) == true;
+      }
+      function daCasaParaEste(a) { return ehDono(a.barbeariaId) || (barbeiroAtivo(a.barbeariaId) && a.barbeiroId == eu()); }
+      allow read: if logado() && (ag().clienteUid == eu() || (ag().barbeiroId == eu() && barbeiroAtivo(ag().barbeariaId)) || ehDono(ag().barbeariaId));
 
       allow create: if logado()
         && request.resource.data.id == aid

@@ -2,8 +2,6 @@
 // Cada cliente tem uma avaliação por barbearia (avaliar de novo edita a mesma). A nota mostrada é a média simples;
 // o ranking usa uma média bayesiana para uma casa com 1 avaliação 5★ não passar na frente de outra com 80 de 4,8★.
 
-export const MAX_COMENTARIO = 300;
-
 /** Nota "neutra" e quantas avaliações ela vale: puxa para o meio só a ordem das casas com poucas avaliações. */
 const PRIOR_NOTA = 4;
 const PRIOR_PESO = 10;

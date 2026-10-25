@@ -7,13 +7,14 @@
 //  POST /avaliacoes            → o cliente avalia a barbearia (uma por casa; de novo, edita). A nota só muda por aqui
 //  POST /avisos/agendamento    → avisa cliente, barbeiro e dono (push + painel) quando alguém marca ou cancela
 //  POST /conta/excluir         → apaga ou anonimiza os dados da pessoa (LGPD); o app apaga o login em seguida
+//  GET  /conta/dados           → todos os dados da pessoa em JSON (LGPD: acesso e portabilidade)
 //  POST /barbearia/excluir     → antes de o dono apagar a casa: avaliações públicas e fotos da casa e do cardápio
-//  cron a cada hora            → lembretes de 24 h e 2 h, casas com plano/teste vencido, prazos de guarda e, no dia 1, resumo do mês
+//  cron a cada hora            → lembretes de 24 h e 2 h, casas com plano/teste vencido, prazos de guarda, WhatsApp do cliente 24 h após o horário e, no dia 1, resumo do mês
 import { verificarIdToken } from './auth';
 import { conferirVencimentos, migrarAssinaturas, verificarCompra } from './assinatura';
 import { avisarAgendamento, resumoDoMes } from './avisos';
 import { avaliar } from './avaliacoes';
-import { excluirConta, excluirDadosBarbearia, limparAntigos } from './conta';
+import { excluirConta, excluirDadosBarbearia, exportarDados, limparAntigos, limparLegado, tirarTelefonesVencidos } from './conta';
 import { Firestore, tokenGoogle } from './firestore';
 import { chaveFoto, janelasLembrete, mensagemFcm, mensagemLembrete, tipoDaImagem, TIPOS } from './util';
 
@@ -124,15 +125,14 @@ export default {
       const token = req.headers.get('Authorization')?.replace(/^Bearer /, '') ?? '';
       const uid = token ? await verificarIdToken(token, env.FIREBASE_PROJECT_ID) : null;
       if (!uid) return json({ erro: 'Entre na sua conta.' }, 401, h);
-      const corpo = (await req.json().catch(() => null)) as { agendamentoId?: unknown; alvo?: unknown; estrelas?: unknown; comentario?: unknown } | null;
+      const corpo = (await req.json().catch(() => null)) as { agendamentoId?: unknown; alvo?: unknown; estrelas?: unknown } | null;
       // Só existe a avaliação da barbearia. Apps antigos mandam "barbeiro" (ou nada): vale como a da casa.
       if (corpo?.alvo === 'cliente') return json({ erro: 'A avaliação de clientes saiu do app.' }, 410, h);
       const agendamentoId = typeof corpo?.agendamentoId === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(corpo.agendamentoId) ? corpo.agendamentoId : '';
       if (!agendamentoId) return json({ erro: 'Agendamento inválido.' }, 400, h);
       if (!env.GOOGLE_SA_EMAIL || !env.GOOGLE_SA_PRIVATE_KEY) return json({ erro: 'Servidor sem credenciais.' }, 503, h);
       const tokenSA = await tokenGoogle(env.GOOGLE_SA_EMAIL, env.GOOGLE_SA_PRIVATE_KEY);
-      const r = await avaliar(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA), uid, agendamentoId,
-        Number(corpo?.estrelas), typeof corpo?.comentario === 'string' ? corpo.comentario : '');
+      const r = await avaliar(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA), uid, agendamentoId, Number(corpo?.estrelas));
       return json(r.corpo, r.status, h);
     }
 
@@ -144,6 +144,18 @@ export default {
       const tokenSA = await tokenGoogle(env.GOOGLE_SA_EMAIL, env.GOOGLE_SA_PRIVATE_KEY);
       const r = await excluirConta(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA), env.FOTOS, uid);
       return json(r.corpo, r.status, h);
+    }
+
+    if (url.pathname === '/conta/dados' && req.method === 'GET') {
+      const token = req.headers.get('Authorization')?.replace(/^Bearer /, '') ?? '';
+      const uid = token ? await verificarIdToken(token, env.FIREBASE_PROJECT_ID) : null;
+      if (!uid) return json({ erro: 'Entre na sua conta.' }, 401, h);
+      // Mesmo limitador das fotos (por conta): exportar lê bastante e não precisa ser repetido.
+      if (env.LIMITE_FOTOS && !(await env.LIMITE_FOTOS.limit({ key: `dados:${uid}` })).success) return json({ erro: 'Espere um minuto e tente de novo.' }, 429, h);
+      if (!env.GOOGLE_SA_EMAIL || !env.GOOGLE_SA_PRIVATE_KEY) return json({ erro: 'Servidor sem credenciais.' }, 503, h);
+      const tokenSA = await tokenGoogle(env.GOOGLE_SA_EMAIL, env.GOOGLE_SA_PRIVATE_KEY);
+      const r = await exportarDados(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA), uid);
+      return json(r.corpo, r.status, { ...h, 'Cache-Control': 'no-store' });
     }
 
     if (url.pathname === '/barbearia/excluir' && req.method === 'POST') {
@@ -184,6 +196,9 @@ async function vencimentos(env: Env) {
   // Dia 1: resumo do mês anterior para cada dono (só faz as casas que ainda não receberam).
   await resumoDoMes(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA), tokenSA, env.FIREBASE_PROJECT_ID).catch(e => console.error('Resumo do mês falhou', e));
   await limparAntigos(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA)).catch(e => console.error('Limpeza por prazo falhou', e));
+  await tirarTelefonesVencidos(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA)).catch(e => console.error('WhatsApp vencido falhou', e));
+  // Uma vez por dia (6h UTC = 3h em Brasília): sobras das avaliações antigas. Cabe no limite de chamadas do cron.
+  if (new Date().getUTCHours() === 6) await limparLegado(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA)).catch(e => console.error('Limpeza do legado falhou', e));
 }
 
 /** Lembretes de 24 h e 2 h. Roda a cada hora (cron "5 * * * *"). */

@@ -26,7 +26,7 @@ const shot = (p, n) => p.screenshot({ path: `shots/${n}.png`, fullPage: true });
     const db = c.firestore();
     const user = (uid, nome, papeis, papelAtivo, barbearias = []) => setDoc(doc(db, 'users', uid), {
       uid, nome, email: '', papeis, papelAtivo, barbearias, favoritos: { barbearias: [], barbeiros: [] },
-      privacidade: { fotosNoPortfolio: true }, provedores: ['google'], criadoEm: Date.now() });
+      privacidade: { fotosNoPortfolio: true }, provedores: ['google'], maiorDeIdadeEm: Date.now(), criadoEm: Date.now() });
     await user(ana, 'Ana Souza', ['cliente'], 'cliente');
     await user(beto, 'Beto Lima', ['cliente'], 'cliente');
     await user(lucas, 'Lucas Navalha', ['dono'], 'dono', ['b1']);

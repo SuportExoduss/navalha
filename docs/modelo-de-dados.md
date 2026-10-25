@@ -5,10 +5,10 @@ Tipos completos em `src/types/models.ts`; permissões em `firestore.rules`.
 
 | Coleção | Quem grava | Fase | Para quê |
 | --- | --- | --- | --- |
-| `users/{uid}` | o próprio usuário | 1 | Nome, apelido, foto, papéis (cliente/barbeiro/dono), modo ativo, favoritos, token de push |
+| `users/{uid}` | o próprio usuário | 1 | Nome, apelido, foto, papéis (cliente/barbeiro/dono), modo ativo, favoritos, token de push, `maiorDeIdadeEm` (quando se declarou maior de 18 na tela `/idade`; a data de nascimento não é guardada; sem ele as regras barram a reserva) |
 | `barbearias/{id}` | dono | 1 | Perfil, endereço + geohash, expediente, política, **resumo** (nota do app, preço, próximo horário), pagamento, assinatura |
 | `barbearias/{id}/barbeiros/{uid}` | dono ou o barbeiro (via convite) | 1 | Barbeiros da casa, expediente próprio, nota |
-| `convites/{código}` | dono | 1 | Código de 6 letras (sem 0/O/1/I), válido 7 dias, uso único; aponta para a barbearia |
+| `convites/{código}` | dono | 1 | Código de 6 letras (sem 0/O/1/I), válido 7 dias, uso único; aponta para a barbearia. Apagado pelo cron ao vencer e na exclusão da casa |
 | `barbearias/{id}/servicos/{id}` | barbeiro (o próprio) ou dono | 1 | Cardápio: nome, preço em centavos, duração, até 6 fotos |
 | `barbearias/{id}/bloqueios/{id}` | barbeiro ou dono | 1 | Folgas, férias, pausas pontuais (todo cliente lê; sem motivo) |
 | `barbearias/{id}/motivosFolga/{id}` | barbeiro ou dono | 1 | Motivo da folga, mesmo id do bloqueio; só o dono e o próprio barbeiro leem |
@@ -19,10 +19,12 @@ Tipos completos em `src/types/models.ts`; permissões em `firestore.rules`.
 | `eventos/{id}` | app | 1 | Métricas do piloto: agendou, cancelou, faltou, tempo até agendar |
 | `notificacoes/{id}` | Worker | 1 | Sino na Agenda (casa) e em Agendamentos (cliente): marcado e cancelado avisam os outros lados (cliente, barbeiro, dono), nunca quem fez (id `agendamento_tipo_uid`, nunca duplica) e resumo do mês no dia 1 (`resumo_AAAA-MM_casa`). O destinatário só lê e marca como lida |
 | `pagamentos/{id}` | Worker (webhook Asaas) | 3 | Pix, cartão, split, assinatura |
-| `avaliacoes/{hash}` | Worker (`POST /avaliacoes`) | 1 | Só a avaliação da barbearia (1–5★ + comentário), **uma por cliente por casa**: o id é SHA-256(`barbeariaId:clienteUid`) (24 hex), então avaliar de novo edita a mesma. **Privada desde 25/out** (regras: ninguém lê pelo app): a página da casa mostra só a média em estrelas, sem quem avaliou nem quantas são; o app manda só as estrelas (comentários antigos ficam guardados, sem exibição). O Worker atualiza `resumo.notaApp` (média pura), `totalAvaliacoesApp`, `somaEstrelasApp` (soma inteira, para editar sem erro) e `notaRanking` (média bayesiana, prior 4 com peso 10: só ordena a busca). Na exclusão de conta vira "Cliente" |
-| `users/{uid}.avaliouBarbearias` | Worker | — | `{barbeariaId: {estrelas, comentario?, em}}`: o app mostra "Editar" e não pede de novo; o aviso "Como foi o corte?" só vai a quem ainda não avaliou a casa |
+| `avaliacoes/{hash}` | Worker (`POST /avaliacoes`) | 1 | Só a avaliação da barbearia, **uma por cliente por casa** e **só as estrelas** (`barbeariaId`, `estrelas`, datas; sem nome, uid, comentário ou dia): o id é SHA-256(`barbeariaId:clienteUid`) (24 hex), então avaliar de novo edita a mesma. Ninguém lê pelo app (regras fecham); a página mostra `resumo.notaApp` e `resumo.totalAvaliacoesApp`. O cron limpa uma vez por dia o legado de antes de 25/out (nota do cliente, avaliações entre cliente e barbeiro, nome/comentário) |
+| `users/{uid}.avaliouBarbearias` | Worker | — | `{barbeariaId: {estrelas, em}}`: o app mostra "Editar" e não pede de novo; o aviso "Como foi o corte?" só vai a quem ainda não avaliou a casa |
 | `barbearias/{id}/equipePrivado/{uid}` | barbeiro | 1 | Telefone do barbeiro, fora do cartão público; só o dono e o próprio barbeiro leem |
 | `clubes/{id}`, `assinaturasClube/{id}` | dono / Worker | 4 | Clube de assinatura do cliente |
+
+> **WhatsApp do cliente no agendamento** (`clienteTelefone`): copiado do perfil na reserva, para a barbearia avisar de atraso ou lembrar do corte. O cron do Worker o apaga 24 h depois do `fim` (janela de 2 h por execução). O barbeiro só lê os agendamentos enquanto está **ativo** na casa (`barbeiroAtivo` nas regras).
 
 ## Trava contra horário duplo
 

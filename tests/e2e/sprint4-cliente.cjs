@@ -30,7 +30,7 @@ const AQUI = { latitude: -23.5015, longitude: -47.4526 };
     const db = c.firestore();
     const user = (uid, nome, papeis, papelAtivo, barbearias = []) => setDoc(doc(db, 'users', uid), {
       uid, nome, email: '', papeis, papelAtivo, barbearias, favoritos: { barbearias: [], barbeiros: [] },
-      privacidade: { fotosNoPortfolio: true }, provedores: ['google'], criadoEm: agora });
+      privacidade: { fotosNoPortfolio: true }, provedores: ['google'], maiorDeIdadeEm: agora, criadoEm: agora });
     await user(ana, 'Ana Souza', ['cliente'], 'cliente');
     await user(lucas, 'Lucas Navalha', ['dono'], 'dono', ['b1']);
     const casa = (id, nome, lat, lng, extra) => setDoc(doc(db, 'barbearias', id), {

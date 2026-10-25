@@ -32,8 +32,10 @@ export interface UserProfile {
   /** Token do FCM (Firebase Cloud Messaging) para lembretes. */
   pushToken?: string;
   /** A avaliação que o cliente deu a cada barbearia (só o Worker grava): o app mostra "Editar" e não pede de novo. */
-  avaliouBarbearias?: Record<string, { estrelas: number; comentario?: string; em: Millis }>;
+  avaliouBarbearias?: Record<string, { estrelas: number; em: Millis }>;
   provedores: ('google' | 'apple')[];
+  /** Quando a pessoa informou ter 18 anos ou mais (a data de nascimento não é guardada). Sem isto, o app pede antes de liberar. */
+  maiorDeIdadeEm?: Millis;
   criadoEm: Millis;
 }
 
@@ -225,20 +227,13 @@ export interface Pagamento {
 
 /**
  * avaliacoes/{id} — a avaliação de um cliente para uma barbearia (uma por cliente por casa; avaliar de novo edita).
- * Gravada só pelo Worker (POST /avaliacoes) e pública (página da casa): por isso só o primeiro nome, sem uid, foto
- * nem capa do cliente. O id é um resumo (hash) de casa + cliente, que só o Worker calcula.
+ * Gravada e lida só pelo Worker (POST /avaliacoes): guarda só as estrelas, que entram na média e na quantidade da
+ * casa. Sem nome, uid, comentário ou dia. O id é um resumo (hash) de casa + cliente, que só o Worker calcula.
  */
 export interface Avaliacao {
   id: string;
   barbeariaId: string;
-  /** Primeiro nome; "Cliente" depois que a pessoa exclui a conta. */
-  clienteNome: string;
-  direcao: 'cliente_para_barbearia';
   estrelas: 1 | 2 | 3 | 4 | 5;
-  comentario?: string;
-  /** Dia do corte que deu direito à avaliação (a página mostra só o dia). */
-  inicio?: Millis;
-  visivel: boolean;
   criadoEm: Millis;
   atualizadoEm?: Millis;
 }

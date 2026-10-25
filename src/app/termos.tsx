@@ -16,7 +16,8 @@ export default function Termos() {
       </Topico>
 
       <Topico titulo="Conta">
-        <Item>Para usar é preciso ter {IDADE_MINIMA} anos ou mais. Menores de idade marcam pela conta de um responsável.</Item>
+        <Item>Para usar é preciso ter {IDADE_MINIMA} anos ou mais: o app pede a data de nascimento no primeiro acesso e não libera
+          o login de menores. Menores de idade marcam pela conta de um responsável.</Item>
         <Item>A conta é pessoal e entra com o Google. Você responde pelo que é feito nela.</Item>
         <Item>Use dados verdadeiros. Você pode excluir a conta a qualquer momento pelo Perfil.</Item>
       </Topico>
@@ -29,14 +30,18 @@ export default function Termos() {
       <Topico titulo="Para barbearias (donos e barbeiros)">
         <Item>Cadastre só a barbearia de que você é dono ou que tem autorização para representar, com dados verdadeiros.</Item>
         <Item>Fotos, textos e preços publicados devem ser seus ou autorizados. Não publique fotos de clientes sem a autorização deles.</Item>
-        <Item forte="Dados dos clientes:">o nome, o WhatsApp e os horários dos clientes servem só para atender e falar
-          sobre os horários deles. É proibido vender, repassar, usar para propaganda sem o cliente pedir ou copiar esses dados
-          para fora do app sem necessidade. Mensagens pelo WhatsApp saem do seu número, e você responde por elas.</Item>
+        <Item forte="WhatsApp dos clientes:">aparece para a barbearia só quando o cliente marca um horário com ela, e só
+          para avisar de atraso ou mudança e lembrar do corte. Some do app 24 horas depois do horário. Não é permitido guardar o
+          número em outra lista, usar para propaganda ou passar para outra pessoa. As mensagens saem do seu número, e você
+          responde por elas.</Item>
+        <Item forte="Outros dados dos clientes:">o nome e os horários servem só para atender. É proibido vender, repassar ou
+          copiar esses dados para fora do app.</Item>
         <Item>Pedidos de clientes sobre os dados deles (acesso, correção, exclusão) devem ser encaminhados para {email}.</Item>
         <Item>Se perceber acesso indevido à conta da barbearia ou vazamento de dados de clientes, avise na hora pelo e-mail.</Item>
         <Item>A assinatura é cobrada pelo Google Play, nas condições do plano escolhido. Sem assinatura ativa, a barbearia sai
           da busca até regularizar.</Item>
-        <Item>O dono responde pela equipe que convida. Quem sai da equipe perde o acesso à agenda da casa.</Item>
+        <Item>O dono responde pela equipe que convida. Barbeiro desligado ou que sai da equipe perde na hora o acesso à agenda
+          e aos dados dos clientes da casa.</Item>
       </Topico>
 
       <Topico titulo="O que não é permitido">

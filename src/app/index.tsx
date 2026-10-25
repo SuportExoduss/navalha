@@ -14,6 +14,7 @@ export default function Index() {
     );
   }
   if (!user) return <Redirect href="/entrar" />;
+  if (perfil && !perfil.maiorDeIdadeEm) return <Redirect href="/idade" />;
   if (!perfil || perfil.papeis.length === 0) return <Redirect href="/papel" />;
   return perfil.papelAtivo === 'cliente' ? <Redirect href="/inicio" /> : <Redirect href="/agenda" />;
 }

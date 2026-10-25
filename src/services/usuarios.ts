@@ -1,5 +1,5 @@
 import {
-  collection, doc, getDocs, onSnapshot, query, setDoc, updateDoc, where,
+  collection, deleteDoc, doc, getDocs, onSnapshot, query, setDoc, updateDoc, where,
   type Firestore, type Unsubscribe,
 } from 'firebase/firestore';
 import { deleteUser, type User } from 'firebase/auth';
@@ -47,7 +47,7 @@ export async function escolherPapel(db: Firestore, perfil: UserProfile, papel: R
 }
 
 export async function atualizarPerfil(
-  db: Firestore, uid: string, dados: Partial<Pick<UserProfile, 'nome' | 'apelido' | 'fotoUrl' | 'bannerUrl' | 'telefone' | 'privacidade' | 'pushToken'>>,
+  db: Firestore, uid: string, dados: Partial<Pick<UserProfile, 'nome' | 'apelido' | 'fotoUrl' | 'bannerUrl' | 'telefone' | 'privacidade' | 'pushToken' | 'maiorDeIdadeEm'>>,
 ) {
   await updateDoc(doc(db, 'users', uid), dados);
 }
@@ -88,4 +88,25 @@ export async function excluirConta(db: Firestore, user: User, barbearias: string
   });
   if (!r.ok) throw new Error(((await r.json().catch(() => null)) as { erro?: string } | null)?.erro ?? `Falha ao apagar os dados (${r.status}).`);
   await deleteUser(user);
+}
+
+/** Acesso e portabilidade (LGPD, art. 18): tudo o que o Navalha guarda sobre a pessoa, em JSON legível (o Worker junta). */
+export async function meusDados(user: User): Promise<string> {
+  const r = await fetch(`${process.env.EXPO_PUBLIC_WORKER_URL}/conta/dados`, { headers: { Authorization: `Bearer ${await user.getIdToken()}` } });
+  const corpo = await r.json().catch(() => null) as { erro?: string } | null;
+  if (!r.ok || !corpo) throw new Error(corpo?.erro ?? `Não foi possível buscar os dados (${r.status}).`);
+  return JSON.stringify(corpo, null, 2);
+}
+
+/**
+ * Menor de idade na tela /idade: apaga tudo como na exclusão de conta. Se o Worker falhar (sem internet, fora do ar),
+ * o app ainda apaga o próprio perfil e o login (as regras deixam), para não guardar dado de menor.
+ */
+export async function excluirMenor(db: Firestore, user: User, barbearias: string[]) {
+  try {
+    await excluirConta(db, user, barbearias);
+  } catch {
+    await deleteDoc(doc(db, 'users', user.uid)).catch(() => undefined);
+    await deleteUser(user).catch(() => undefined);
+  }
 }

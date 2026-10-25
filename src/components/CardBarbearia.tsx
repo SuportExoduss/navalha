@@ -26,8 +26,8 @@ export function CardBarbearia({ b }: { b: BarbeariaPerto }) {
         <View style={{ flexDirection: 'row', gap: space(4), flexWrap: 'wrap' }}>
           <Text style={type.caption}>
             <Text style={{ color: colors.accent }}>★ </Text>
-            {/* Média simples do app e quantas; o ranking (que pesa a quantidade) só ordena a lista. */}
-            {b.resumo.totalAvaliacoesApp ? nota(b.resumo.notaApp) : 'Novo'}
+            {/* Média simples e quantas avaliações; o ranking (que pesa a quantidade) só ordena a lista. */}
+            {b.resumo.totalAvaliacoesApp ? `${nota(b.resumo.notaApp)} (${b.resumo.totalAvaliacoesApp})` : 'Novo'}
           </Text>
           {b.resumo.precoMin ? <Text style={type.caption}>a partir de {formatarPreco(b.resumo.precoMin)}</Text> : null}
           {abertaAgora(b, Date.now()) ? <Text style={[type.caption, { color: colors.success }]}>Aberta agora</Text> : null}

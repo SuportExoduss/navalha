@@ -38,6 +38,8 @@ beforeEach(async () => {
       assinatura: { status: 'teste', venceEm: Date.now() + 86400e3, limiteBarbeiros: 10 }, emDia: true, barbeirosAtivos: 1, passoMin: 15,
     });
     await setDoc(doc(db, 'barbearias/b1/barbeiros/lucas'), { uid: 'lucas', ativo: true });
+    // Todos já se declararam maiores de idade (tela /idade): sem isto, a reserva pelo app é barrada.
+    for (const uid of ['ana', 'beto', 'carla', 'dono', 'estranho', 'lucas', 'rafael']) await setDoc(doc(db, 'users', uid), { uid, maiorDeIdadeEm: 1 });
     // Cardápio: a reserva precisa bater preço, duração e barbeiro com estes serviços (SEC-003).
     await setDoc(doc(db, 'barbearias/b1/servicos/s'), { id: 's', barbeiroId: 'lucas', precoCentavos: 4500, duracaoMin: 30, ativo: true });
     await setDoc(doc(db, 'barbearias/b1/servicos/s1'), { id: 's1', barbeiroId: 'lucas', precoCentavos: 4500, duracaoMin: 45, ativo: true });
@@ -58,9 +60,16 @@ function reservaDe(uid: string, id: string) {
       lembretes: {}, fotos: [], criadoEm: Date.now(), atualizadoEm: Date.now(),
     });
     for (const k of slots) tx.set(doc(db, 'ocupacao', k), { barbeariaId: 'b1', barbeiroId: 'lucas', agendamentoId: id, inicio });
-    tx.set(doc(db, 'users', uid), { uid, ultimaReserva: serverTimestamp() }, { merge: true });
+    tx.set(doc(db, 'users', uid), { uid, ultimaReserva: serverTimestamp(), maiorDeIdadeEm: 1 }, { merge: true });
   });
 }
+
+test('idade mínima: sem a declaração de maior de idade, a reserva pelo app é barrada', async () => {
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'users/ana'), { uid: 'ana' }));
+  await assertFails(reservar(dbDe('ana'), novaReserva('ana', inicio)));
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'users/ana'), { uid: 'ana', maiorDeIdadeEm: 1 }));
+  await assertSucceeds(reservar(dbDe('ana'), novaReserva('ana', inicio)));
+});
 
 test('cliente reserva; o segundo cliente no mesmo horário é barrado', async () => {
   await assertSucceeds(reservaDe('ana', 'a1'));
@@ -79,7 +88,7 @@ function reservaForjada(uid: string, id: string, f: { inicio: number; slots: str
       lembretes: {}, fotos: [], criadoEm: Date.now(), atualizadoEm: Date.now(),
     });
     for (const k of f.slots) tx.set(doc(db, 'ocupacao', k), { barbeariaId: 'b1', barbeiroId: 'lucas', agendamentoId: id, inicio: f.inicio });
-    tx.set(doc(db, 'users', uid), { uid, ultimaReserva: serverTimestamp() }, { merge: true });
+    tx.set(doc(db, 'users', uid), { uid, ultimaReserva: serverTimestamp(), maiorDeIdadeEm: 1 }, { merge: true });
   });
 }
 
@@ -134,7 +143,7 @@ test('barbeiro só edita o próprio cardápio', async () => {
 });
 
 test('usuário só lê o próprio perfil', async () => {
-  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'users/ana'), { uid: 'ana' }));
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'users/ana'), { uid: 'ana', maiorDeIdadeEm: 1 }));
   await assertSucceeds(getDoc(doc(env.authenticatedContext('ana').firestore(), 'users/ana')));
   await assertFails(getDoc(doc(env.authenticatedContext('beto').firestore(), 'users/ana')));
 });
@@ -436,7 +445,7 @@ test('exclusão de conta: cliente cancela e tira o nome e o telefone do históri
   await assertSucceeds(cancelar(dbDe('ana'), { id, slots: ag.slots }));
   await assertSucceeds(updateDoc(ref, { clienteNome: NOME_REMOVIDO, clienteTelefone: deleteField(), atualizadoEm: 1 }));
   assert.equal((await getDoc(ref)).data()?.clienteTelefone, undefined);
-  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'users/ana'), { uid: 'ana' }));
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'users/ana'), { uid: 'ana', maiorDeIdadeEm: 1 }));
   await assertSucceeds(deleteDoc(doc(dbDe('ana'), 'users/ana')));
 });
 
@@ -463,7 +472,7 @@ function reservaCrua(uid: string, id: string, campos: Record<string, unknown>, s
       status: 'reservado', origem: 'app', lembretes: {}, fotos: [], criadoEm: 0, atualizadoEm: 0, ...campos,
     });
     for (const k of slots) tx.set(doc(db, 'ocupacao', k), { barbeariaId: 'b1', barbeiroId, agendamentoId: id, inicio });
-    tx.set(doc(db, 'users', uid), { uid, ultimaReserva: serverTimestamp() }, { merge: true });
+    tx.set(doc(db, 'users', uid), { uid, ultimaReserva: serverTimestamp(), maiorDeIdadeEm: 1 }, { merge: true });
   });
 }
 
@@ -573,7 +582,7 @@ test('SEC-009: foto só do nosso Worker ou da conta Google', async () => {
   await assertSucceeds(updateDoc(doc(dono, 'barbearias/b1'), { capaUrl: 'https://navalha-worker.navalha-worker.workers.dev/fotos/barbearia/b1/x.webp' }));
   await assertFails(updateDoc(doc(dono, 'barbearias/b1'), { capaUrl: 'https://rastreio.exemplo.com/pixel.gif' }));
   await assertFails(updateDoc(doc(dono, 'barbearias/b1'), { capaUrl: 'https://navalha-worker.navalha-worker.workers.dev.malicioso.com/fotos/x.webp' }));
-  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'users/ana'), { uid: 'ana' }));
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'users/ana'), { uid: 'ana', maiorDeIdadeEm: 1 }));
   await assertSucceeds(updateDoc(doc(dbDe('ana'), 'users/ana'), { fotoUrl: 'https://lh3.googleusercontent.com/a/abc=s96-c' }));
   await assertFails(updateDoc(doc(dbDe('ana'), 'users/ana'), { fotoUrl: 'javascript:alert(1)' }));
   // Cardápio: no máximo 6 fotos por corte.
@@ -637,7 +646,7 @@ test('avaliação da barbearia: só o servidor grava; pública para ler; ningué
   await assertFails(updateDoc(doc(dono, 'barbearias/b1'), { 'resumo.somaEstrelasApp': 500 }));
 
   // O cliente não marca no próprio perfil que avaliou (o Worker marca junto com a nota).
-  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'users/ana'), { uid: 'ana' }));
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'users/ana'), { uid: 'ana', maiorDeIdadeEm: 1 }));
   await assertFails(updateDoc(doc(dbDe('ana'), 'users/ana'), { 'avaliouBarbearias.b1': { estrelas: 5, em: 1 } }));
 
   // Avaliação: o app não cria, não edita e ninguém lê (nem a própria casa): a página mostra só a média em estrelas.
@@ -684,4 +693,17 @@ test('marcas de avaliação no agendamento: só o Worker', async () => {
   await assertFails(updateDoc(doc(dbDe('ana'), 'agendamentos', id), { avaliacoes: { barbeiro: { estrelas: 5, em: 1 } }, atualizadoEm: 1 }));
   await assertFails(updateDoc(doc(dbDe('lucas'), 'agendamentos', id), { status: 'confirmado', avaliacoes: { cliente: { estrelas: 1, em: 1 } } }));
   await assertSucceeds(updateDoc(doc(dbDe('lucas'), 'agendamentos', id), { status: 'confirmado' }));
+});
+
+test('barbeiro desligado ou fora da casa perde o acesso aos agendamentos (nome e WhatsApp do cliente)', async () => {
+  const id = await reservar(dbDe('ana'), novaReserva('ana', inicio));
+  await assertSucceeds(getDoc(doc(dbDe('lucas'), 'agendamentos', id)));
+  await env.withSecurityRulesDisabled(ctx => updateDoc(doc(ctx.firestore(), 'barbearias/b1/barbeiros/lucas'), { ativo: false }));
+  await assertFails(getDoc(doc(dbDe('lucas'), 'agendamentos', id)));
+  await assertFails(updateDoc(doc(dbDe('lucas'), 'agendamentos', id), { status: 'confirmado', atualizadoEm: 1 }));
+  await env.withSecurityRulesDisabled(ctx => deleteDoc(doc(ctx.firestore(), 'barbearias/b1/barbeiros/lucas')));
+  await assertFails(getDoc(doc(dbDe('lucas'), 'agendamentos', id)));
+  // O dono e a própria cliente continuam vendo.
+  await assertSucceeds(getDoc(doc(dbDe('dono'), 'agendamentos', id)));
+  await assertSucceeds(getDoc(doc(dbDe('ana'), 'agendamentos', id)));
 });

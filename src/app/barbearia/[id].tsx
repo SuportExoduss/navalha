@@ -19,6 +19,7 @@ import { colors, radius, space, type, sobreFoto } from '../../theme';
 import type { Barbearia, Barbeiro, Servico } from '../../types/models';
 
 const virgula = (n: number) => n.toFixed(1).replace('.', ',');
+const quantasAvaliacoes = (n: number) => `${n} ${n === 1 ? 'avaliação' : 'avaliações'}`;
 
 export default function PaginaBarbearia() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -71,11 +72,12 @@ export default function PaginaBarbearia() {
           {b.logoUrl ? <Image source={{ uri: b.logoUrl }} style={{ width: 56, height: 56, borderRadius: 28 }} accessibilityLabel={`Logo da ${b.nome}`} /> : null}
           <View style={{ flex: 1 }}><Titulo>{b.nome}</Titulo></View>
         </View>
-        {/* Só as estrelas da média: decisão do dono, a página não mostra quem avaliou nem quantas avaliações são. */}
+        {/* Média das estrelas e quantas avaliações (decisão do dono): nunca quem avaliou nem comentários. */}
         {b.resumo.totalAvaliacoesApp ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space(2) }} accessibilityLabel={`Nota ${virgula(b.resumo.notaApp)} de 5`}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space(2) }}
+            accessibilityLabel={`Nota ${virgula(b.resumo.notaApp)} de 5, ${quantasAvaliacoes(b.resumo.totalAvaliacoesApp)}`}>
             <Estrelas valor={Math.round(b.resumo.notaApp * 2) / 2} />
-            <Text style={type.caption}>{virgula(b.resumo.notaApp)}</Text>
+            <Text style={type.caption}>{virgula(b.resumo.notaApp)} ({quantasAvaliacoes(b.resumo.totalAvaliacoesApp)})</Text>
           </View>
         ) : null}
         <Text style={type.caption}>
