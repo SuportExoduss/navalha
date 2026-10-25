@@ -1,4 +1,5 @@
-export const TIPOS = ['perfil', 'barbearia', 'servico', 'corte', 'banner'] as const;
+// Sem 'corte': a foto do corte ao finalizar saiu do app (25/out). As antigas ainda são apagadas na exclusão de conta.
+export const TIPOS = ['perfil', 'barbearia', 'servico', 'banner'] as const;
 
 /** Monta a chave do arquivo no R2; recusa entrada que tente escapar da pasta. */
 export function chaveFoto(tipo: string, uid: string, refId: string, id: string): string | null {

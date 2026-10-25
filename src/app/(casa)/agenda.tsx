@@ -1,7 +1,7 @@
 // Agenda da barbearia: linha do tempo do dia, ações rápidas (antes do horário só cancelar; depois, concluído,
 // faltou ou cancelar) e encaixe manual de cliente de balcão. Escuta só o dia aberto na tela.
 import { useEffect, useMemo, useState } from 'react';
-import { Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Aviso, Botao, Carregando, Cartao, Chip, Tela, Titulo } from '../../components/ui';
@@ -17,7 +17,6 @@ import { useMinhaBarbearia } from '../../hooks/useMinhaBarbearia';
 import { db } from '../../services/firebase';
 import { cancelar, concluir, definirStatus, iniciarCorte, ouvirAgendaDoDia, registrarEvento } from '../../services/agendamentos';
 import { corteAberto, emAtendimento, podeIniciar } from '../../lib/atendimento';
-import { escolherEEnviar } from '../../services/fotos';
 import { dataLocal, expedienteEfetivo, diaDaSemana, formatarHora, formatarPreco, proximosDias, somarDias } from '../../lib/agenda';
 import { colors, radius, space, type } from '../../theme';
 import type { Agendamento, ISODate } from '../../types/models';
@@ -126,7 +125,6 @@ function ItemAgenda({ a, barbeiro, uid, lista }: { a: Agendamento; barbeiro?: st
   const [ocupado, setOcupado] = useState(false);
   const [confirmarCancelamento, setConfirmarCancelamento] = useState(false);
   const [motivo, setMotivo] = useState('');
-  const [concluindo, setConcluindo] = useState(false);
   const cancelamento = textoCancelamento(a, 'casa');
   const [erro, setErro] = useState<string | null>(null);
   const ativo = ATIVOS.includes(a.status);
@@ -140,15 +138,11 @@ function ItemAgenda({ a, barbeiro, uid, lista }: { a: Agendamento; barbeiro?: st
     } finally { setOcupado(false); }
   }
 
-  /** "Concluído" com foto do corte: a foto vai para o histórico do cliente (e, se ele aprovar, para o portfólio na Fase 3). */
-  function concluirCom(origem: 'camera' | 'galeria' | null) {
+  function concluirCorte() {
     return agir(async () => {
-      const foto = origem ? await escolherEEnviar('corte', a.id, origem) : null;
-      if (origem && !foto) return; // cancelou a câmera: continua aberto para tentar de novo
-      await concluir(db, a.id, foto ? [...a.fotos, foto] : a.fotos);
+      await concluir(db, a.id);
       avisarAgendamento(a.id); // com "pedir avaliação" ligado na casa, o cliente recebe o pedido
       registrarEvento(db, { tipo: 'concluiu', uid, barbeariaId: a.barbeariaId, em: Date.now() });
-      setConcluindo(false);
     });
   }
 
@@ -166,40 +160,19 @@ function ItemAgenda({ a, barbeiro, uid, lista }: { a: Agendamento; barbeiro?: st
         <EtiquetaStatus status={a.status} />
       </View>
       {cancelamento ? <Aviso texto={cancelamento} /> : null}
-      {ativo && !confirmarCancelamento && !concluindo ? (
+      {ativo && !confirmarCancelamento ? (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space(2) }}>
           {emAtendimento(a) ? <Chip rotulo="Corte em andamento" ativo onPress={() => router.push({ pathname: '/atendimento/[id]', params: { id: a.id } })} />
             : podeIniciar(a, lista, Date.now()) ? <Chip rotulo="Iniciar corte" ativo onPress={() => agir(async () => {
               await iniciarCorte(db, a.id);
               router.push({ pathname: '/atendimento/[id]', params: { id: a.id } });
             })} /> : null}
-          {comecou && !emAtendimento(a) ? <Chip rotulo="Concluído" onPress={() => setConcluindo(true)} /> : null}
+          {comecou && !emAtendimento(a) ? <Chip rotulo="Concluído" onPress={concluirCorte} /> : null}
           {comecou ? <Chip rotulo="Faltou" onPress={() => agir(async () => {
             await definirStatus(db, a.id, 'faltou');
             registrarEvento(db, { tipo: 'faltou', uid, barbeariaId: a.barbeariaId, em: Date.now() });
                 })} /> : null}
           <Chip rotulo="Cancelar" onPress={() => setConfirmarCancelamento(true)} />
-        </View>
-      ) : null}
-      {concluindo ? (
-        <View style={{ gap: space(2) }}>
-          <Aviso texto="Fotografe o corte: a foto vai para o histórico do cliente." />
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space(2) }}>
-            <Botao titulo="Tirar foto" style={{ flex: 1 }} carregando={ocupado} onPress={() => concluirCom('camera')}
-              icone={<Ionicons name="camera" size={18} color={colors.accentText} />} />
-            <Botao titulo="Sem foto" variante="secundario" style={{ flex: 1 }} disabled={ocupado} onPress={() => concluirCom(null)} />
-          </View>
-          <Pressable onPress={() => concluirCom('galeria')} hitSlop={8} disabled={ocupado}>
-            <Text style={[type.caption, { color: colors.accent }]}>Escolher da galeria</Text>
-          </Pressable>
-          <Pressable onPress={() => setConcluindo(false)} hitSlop={8}>
-            <Text style={type.caption}>Voltar</Text>
-          </Pressable>
-        </View>
-      ) : null}
-      {a.status === 'concluido' && a.fotos.length ? (
-        <View style={{ flexDirection: 'row', gap: space(2) }}>
-          {a.fotos.map(f => <Image key={f} source={{ uri: f }} accessibilityLabel="Foto do corte" style={{ width: 56, height: 70, borderRadius: 8 }} />)}
         </View>
       ) : null}
       {confirmarCancelamento ? (
@@ -216,8 +189,8 @@ function ItemAgenda({ a, barbeiro, uid, lista }: { a: Agendamento; barbeiro?: st
           </View>
         </View>
       ) : null}
-      {ativo && !confirmarCancelamento && !concluindo ? <LembrarNoWhatsapp a={a} uid={uid} /> : null}
-      {ocupado && !confirmarCancelamento && !concluindo ? <Aviso texto="Salvando…" /> : null}
+      {ativo && !confirmarCancelamento ? <LembrarNoWhatsapp a={a} uid={uid} /> : null}
+      {ocupado && !confirmarCancelamento ? <Aviso texto="Salvando…" /> : null}
       {erro ? <Aviso texto={erro} tom="erro" /> : null}
     </Cartao>
   );

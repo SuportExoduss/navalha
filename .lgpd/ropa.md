@@ -17,7 +17,7 @@ Detalhe de cada dado em `data-map.md`.
 | 2 | Perfil | identificar e contatar sobre horários | execução de contrato | todos | apelido, capa, WhatsApp | barbearia do horário | não (Firestore SP) | enquanto a conta existir |
 | 3 | Busca por perto | mostrar barbearias próximas | consentimento (art. 7º, I) | clientes | localização do aparelho (não gravada) | — | não | não guarda |
 | 4 | Agendamento | marcar, lembrar, cancelar, evitar horário duplo | execução de contrato | clientes, barbeiros | horário, serviço, preço, situação, motivo de cancelamento | barbearia | não | enquanto a conta existir; depois anonimizado |
-| 5 | Foto do corte | registrar o resultado no histórico | execução de contrato | clientes | foto (pode mostrar o rosto) | barbearia; Cloudflare (R2) | sim (R2 global) | enquanto a conta existir |
+| 5 | ~~Foto do corte~~ | saiu do app em 25/out (decisão do dono); as antigas são apagadas na exclusão de conta | — | — | — | — | — | — |
 | 6 | Avaliação da barbearia | nota e ranking das casas | consentimento (opcional) | clientes | primeiro nome, estrelas, comentário, dia | **público** | não | enquanto a casa existir; depois "Cliente" |
 | 7 | Cadastro da barbearia e equipe | página pública e agenda da casa | execução de contrato | donos, barbeiros | dados da casa, nome/foto do barbeiro, telefone (privado) | público (menos o telefone) | não | enquanto existir |
 | 8 | Assinatura da barbearia | cobrar e controlar o plano | execução de contrato; obrigação legal (art. 7º, II) | donos | plano, vencimento, token de compra, marca do teste | Google Play | sim | prazo legal |

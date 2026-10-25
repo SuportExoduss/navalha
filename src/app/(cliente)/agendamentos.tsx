@@ -1,6 +1,6 @@
 // Agendamentos do cliente: próximos (com cancelamento) e histórico.
 import { useEffect, useState } from 'react';
-import { Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Aviso, Botao, Carregando, Cartao, Secao, Tela, Titulo } from '../../components/ui';
 import { MotivoCancelamento, textoCancelamento } from '../../components/agenda/MotivoCancelamento';
@@ -108,11 +108,6 @@ function ItemAgendamento({ a, uid, podeCancelar, pedido, avaliar }: { a: Agendam
         <EtiquetaStatus status={a.status} />
       </View>
       {cancelamento ? <Aviso texto={cancelamento} /> : null}
-      {a.fotos.length ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space(2) }}>
-          {a.fotos.map(f => <Image key={f} source={{ uri: f }} accessibilityLabel="Foto do corte" style={{ width: 96, height: 120, borderRadius: 12 }} />)}
-        </ScrollView>
-      ) : null}
       {pedido || avaliar ? <AvaliarBarbearia a={a} pedido={pedido} /> : null}
       {/* Agendar de novo começa na casa, pela etapa 1 (barbeiro): agendar é sempre barbeiro → corte → horário. */}
       <Pressable onPress={() => router.push({ pathname: '/barbearia/[id]', params: { id: a.barbeariaId } })} hitSlop={8}>

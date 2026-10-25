@@ -161,7 +161,7 @@ Relatório na conversa de 22/out (12 achados, L01–L12; não é parecer jurídi
   documento); a exclusão de conta acha pelo id. Worker 16, regras 47; Worker publicado em 22/out (versão 8f7979e1).
   As públicas gravadas antes disso ainda têm esses campos (limpeza única, se precisar)
 - [x] Rascunho da política de privacidade v2 em `.lgpd/policies/privacy-policy-v2-draft.md` (para o advogado)
-- [ ] Dono: testar a exclusão com uma conta descartável (cliente com avaliação e foto de corte) e conferir no console e no R2
+- [ ] Dono: testar a exclusão com uma conta descartável (cliente com avaliação) e conferir no console e no R2
 - [x] Etapa 2 (23/out, decisões do dono): política v2 publicada (`/privacidade`, com bases legais, encarregado, onde os
   dados ficam e incidentes), Termos de uso com as regras para barbearias (`/termos`, aceitos no login e ao criar a casa),
   idade mínima 18 anos, roteiro e registro de incidentes (`.lgpd/incidentes.md`), registro das decisões

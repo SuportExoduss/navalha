@@ -22,7 +22,7 @@ export default function ExcluirConta() {
 
       <Topico titulo="O que é apagado">
         <Item>Seu perfil: nome, apelido, e-mail, foto, capa, WhatsApp e o identificador de notificações.</Item>
-        <Item>As fotos: do perfil, da capa e dos seus cortes.</Item>
+        <Item>As fotos do perfil e da capa.</Item>
         <Item>Os avisos ligados aos seus horários.</Item>
         <Item>Seu acesso: a conta de login deixa de existir.</Item>
         <Item>Seus horários futuros são cancelados e liberados para outras pessoas.</Item>

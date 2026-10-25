@@ -35,8 +35,6 @@ export default function Privacidade() {
         <Item forte="Agendamentos:">barbearia, barbeiro, serviço, preço, data e hora, situação (marcado, confirmado, concluído,
           faltou, cancelado) e o motivo do cancelamento escolhido na lista. Servem para marcar, lembrar e cancelar sem que dois
           clientes peguem o mesmo horário, e para a barbearia ver o próprio movimento. Base: execução do contrato.</Item>
-        <Item forte="Foto do corte:">a foto que o barbeiro pode tirar ao concluir o atendimento. Fica só no seu histórico e no da
-          barbearia, nunca numa página pública. Base: execução do contrato. Quer apagar uma foto? Peça à barbearia ou pelo e-mail.</Item>
         <Item forte="Avaliação da barbearia:">se você quiser avaliar, as estrelas (1 a 5). É uma por barbearia; avaliar de
           novo substitui a anterior. Não é pública: entra só na média de estrelas da barbearia, e ninguém (nem a barbearia) vê
           quem avaliou nem quantas avaliações ela tem. Base: consentimento, porque avaliar é opcional; você pode pedir para
@@ -59,7 +57,7 @@ export default function Privacidade() {
       </Topico>
 
       <Topico titulo="Quem vê os seus dados">
-        <Item forte="A barbearia em que você marca:">o seu nome ou apelido, o horário, o serviço, a foto do corte
+        <Item forte="A barbearia em que você marca:">o seu nome ou apelido, o horário, o serviço
           e, se você preencheu, o WhatsApp. Ela só pode usar esses dados para atender você (regra dos Termos de uso).</Item>
         <Item forte="Qualquer pessoa:">só os dados públicos das barbearias, com a média de estrelas delas. Nenhum dado
           seu é público.</Item>

@@ -257,6 +257,8 @@ service cloud.firestore {
 
       allow create: if logado()
         && request.resource.data.id == aid
+        // Foto do corte saiu do app (25/out): agendamento não leva foto.
+        && (!('fotos' in request.resource.data) || request.resource.data.fotos.size() == 0)
         && request.resource.data.slots.size() >= 1 && request.resource.data.slots.size() <= 24
         && request.resource.data.inicio > request.time.toMillis() - 3600000
         && (
@@ -275,18 +277,17 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/ocupacao/$(request.resource.data.slots[0])).data.agendamentoId == aid
         && getAfter(/databases/$(database)/documents/ocupacao/$(request.resource.data.slots[request.resource.data.slots.size() - 1])).data.agendamentoId == aid;
 
-      // Cliente só cancela; a casa confirma, conclui, marca falta e anexa fotos.
+      // Cliente só cancela; a casa confirma, conclui e marca falta. Ninguém anexa foto (a foto do corte saiu do app).
       // Status anterior conta (SEC-004): o cliente só cancela o que ainda está de pé e não começou
       // (falta e atendimento concluído não se apagam), e reserva cancelada não volta a valer,
       // porque os blocos dela já foram liberados para outra pessoa.
       // As marcas de avaliação são do Worker: ninguém bloqueia (nem libera) uma avaliação pelo app.
-      allow update: if logado() && !mudou(['id', 'barbeariaId', 'barbeiroId', 'clienteUid', 'inicio', 'fim', 'slots', 'precoCentavos', 'pagamentoId', 'avaliacao', 'avaliacoes', 'pedidoAvaliacao'])
+      allow update: if logado() && !mudou(['id', 'barbeariaId', 'barbeiroId', 'clienteUid', 'inicio', 'fim', 'slots', 'precoCentavos', 'pagamentoId', 'avaliacao', 'avaliacoes', 'pedidoAvaliacao', 'fotos'])
         && (
           (ag().clienteUid == eu() && request.resource.data.status == 'cancelado'
              && ag().status in ['reservado', 'confirmado'] && ag().inicio > request.time.toMillis()
-             && request.resource.data.diff(ag()).affectedKeys().hasOnly(['status', 'atualizadoEm', 'fotosAprovadas', 'cancelamento'])
+             && request.resource.data.diff(ag()).affectedKeys().hasOnly(['status', 'atualizadoEm', 'cancelamento'])
              && cancelamentoOk('cliente'))
-          || (ag().clienteUid == eu() && request.resource.data.diff(ag()).affectedKeys().hasOnly(['fotosAprovadas', 'atualizadoEm']))
           // Exclusão de conta (LGPD): o cliente apaga o próprio nome e o telefone do histórico da barbearia.
           || (ag().clienteUid == eu() && request.resource.data.clienteNome == 'Cliente removido'
              && !('clienteTelefone' in request.resource.data)

@@ -7,11 +7,12 @@ import { Firestore, lerValor } from './firestore';
 import { camposDaCasa, lerCompra } from './assinatura';
 
 test('chave da foto aceita só tipos e ids seguros', () => {
-  assert.equal(chaveFoto('corte', 'uid123', 'ag_1', 'abc-1'), 'corte/ag_1/uid123-abc-1.webp');
+  assert.equal(chaveFoto('corte', 'uid123', 'ag_1', 'abc-1'), null); // foto do corte saiu do app
+  assert.equal(chaveFoto('servico', 'uid123', 's_1', 'abc-1'), 'servico/s_1/uid123-abc-1.webp');
   assert.equal(chaveFoto('banner', 'uid123', 'uid123', 'abc-1'), 'banner/uid123/uid123-abc-1.webp');
   assert.equal(chaveFoto('virus', 'u', 'r', 'i'), null);
-  assert.equal(chaveFoto('corte', 'u', '../../segredo', 'i'), null);
-  assert.equal(chaveFoto('corte', 'u/x', 'r', 'i'), null);
+  assert.equal(chaveFoto('perfil', 'u', '../../segredo', 'i'), null);
+  assert.equal(chaveFoto('perfil', 'u/x', 'r', 'i'), null);
 });
 
 test('claims do token do Firebase', () => {

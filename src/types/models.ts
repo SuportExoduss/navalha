@@ -184,8 +184,6 @@ export interface Agendamento {
   origem: 'app' | 'balcao';
   lembretes: { h24?: Millis; h2?: Millis };
   pagamentoId?: string;
-  fotos: string[];
-  fotosAprovadas?: boolean;
   /** Quem cancelou e por quê: a barbearia vê o motivo do cliente e o cliente vê o da barbearia. */
   cancelamento?: { por: 'cliente' | 'casa'; motivo: string; em: Millis };
   /** WhatsApp do cliente no momento da reserva (do perfil dele): o barbeiro do horário pode mandar um lembrete. */

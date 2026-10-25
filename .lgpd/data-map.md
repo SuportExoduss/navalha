@@ -12,7 +12,7 @@ Idade mínima declarada: 18 anos (sem verificação).
 |---|---|---|---|---|---|---|
 | Firebase Auth | uid, e-mail, nome, foto do Google | todos | só o sistema | Google login | enquanto a conta existir | apagado |
 | `users/{uid}` | nome, apelido, e-mail, foto, capa, WhatsApp, papéis, barbearias, favoritos, token de push, avaliações dadas | todos | o próprio | o próprio (avaliações: Worker) | enquanto a conta existir | apagado |
-| `agendamentos/{id}` | cliente (uid, nome, WhatsApp), barbeiro (uid, nome), serviço, preço, data/hora, situação, motivo de cancelamento, foto do corte | cliente, barbeiro | o cliente, o barbeiro do horário e o dono | cliente ou casa | enquanto a conta existir | nome vira "Cliente removido"; WhatsApp e fotos saem (o uid fica, sem conta ligada); futuros cancelados |
+| `agendamentos/{id}` | cliente (uid, nome, WhatsApp), barbeiro (uid, nome), serviço, preço, data/hora, situação, motivo de cancelamento | cliente, barbeiro | o cliente, o barbeiro do horário e o dono | cliente ou casa | enquanto a conta existir | nome vira "Cliente removido"; WhatsApp sai (o uid fica, sem conta ligada); futuros cancelados |
 | `ocupacao/{barbeiro_data_HHMM}` | uid do barbeiro e id do agendamento | barbeiro | todos logados (ver horário livre) | junto com o agendamento | até o cancelamento | — |
 | `avaliacoes/{hash}` | primeiro nome, estrelas, comentário, dia do corte (sem uid) | cliente | **público** | Worker | enquanto a barbearia existir | nome vira "Cliente" |
 | `barbearias/{id}` | nome, endereço, localização, WhatsApp e Instagram da casa, dono (uid) | dono | **público** | dono | enquanto existir | dono precisa excluir a casa antes |
@@ -25,14 +25,14 @@ Idade mínima declarada: 18 anos (sem verificação).
 | `notificacoes/{id}` | destinatário (uid), texto do aviso (nome, horário) | todos | o destinatário | Worker | **90 dias** (cron) | apagado |
 | `eventos/{id}` | uid, ação (agendou, cancelou…), barbearia, tempos | todos | ninguém pelo app | app | **12 meses** (cron) | fica sem ligação com a pessoa |
 | `erros/{id}` | uid, tela, mensagem e pilha do erro, sistema, versão | todos | ninguém pelo app | app | **12 meses** (cron) | fica sem ligação com a pessoa |
-| R2 `navalha-fotos` | fotos de perfil, capa, casa, cardápio e corte | todos | quem tem o link (difícil de adivinhar) | Worker (upload com login) | enquanto o dono da foto existir | perfil, capa e cortes apagados |
+| R2 `navalha-fotos` | fotos de perfil, capa, casa e cardápio (a foto do corte saiu em 25/out) | todos | quem tem o link (difícil de adivinhar) | Worker (upload com login) | enquanto o dono da foto existir | perfil, capa (e fotos de corte antigas) apagados |
 | Aparelho | sessão de login, tema, cópia temporária de páginas públicas | todos | o próprio aparelho | app | até sair ou limpar | sai com o logout |
 | FCM (Google) | token do aparelho | todos | Google | app | até trocar o token | token apagado do perfil |
 | Google Play | dados de pagamento da assinatura | dono | Google | Google | regras do Google | fora do nosso alcance |
 
 ## Fluxos que levam dado a outra pessoa
 - **Cliente → barbearia**: ao marcar, o nome/apelido, o WhatsApp (se preenchido) e o horário.
-- **Barbearia → cliente**: foto do corte no histórico; avisos de marcado/cancelado (push e sino).
+- **Barbearia → cliente**: avisos de marcado/cancelado (push e sino).
 - **Barbeiro → WhatsApp do cliente**: "Lembrar no WhatsApp" abre o WhatsApp **do barbeiro** com mensagem pronta; o
   Navalha não envia nada nem usa a API do WhatsApp.
 - **Cliente → público**: avaliação da barbearia (primeiro nome, dia, estrelas, comentário).

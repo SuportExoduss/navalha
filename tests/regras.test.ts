@@ -440,10 +440,11 @@ test('exclusão de conta: cliente cancela e tira o nome e o telefone do históri
   await assertSucceeds(deleteDoc(doc(dbDe('ana'), 'users/ana')));
 });
 
-test('barbeiro conclui com foto; painel do dono lê a semana', async () => {
+test('barbeiro conclui sem foto (ninguém anexa foto ao corte); painel do dono lê a semana', async () => {
   const id = await reservar(dbDe('ana'), novaReserva('ana', inicio));
-  await assertSucceeds(concluir(dbDe('lucas'), id, ['https://fotos/corte/x.webp']));
-  await assertFails(concluir(dbDe('ana'), id, []));
+  await assertFails(updateDoc(doc(dbDe('lucas'), 'agendamentos', id), { status: 'concluido', fotos: ['https://fotos/corte/x.webp'] }));
+  await assertSucceeds(concluir(dbDe('lucas'), id));
+  await assertFails(concluir(dbDe('ana'), id));
   const l = await assertSucceeds(agendamentosDaSemana(dbDe('dono'), 'b1', '2030-01-12'));
   assert.equal(l.length, 1);
   await assertFails(agendamentosDaSemana(dbDe('beto'), 'b1', '2030-01-12'));

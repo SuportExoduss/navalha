@@ -29,7 +29,7 @@ export default function Termos() {
       <Topico titulo="Para barbearias (donos e barbeiros)">
         <Item>Cadastre só a barbearia de que você é dono ou que tem autorização para representar, com dados verdadeiros.</Item>
         <Item>Fotos, textos e preços publicados devem ser seus ou autorizados. Não publique fotos de clientes sem a autorização deles.</Item>
-        <Item forte="Dados dos clientes:">o nome, o WhatsApp, os horários e as fotos dos clientes servem só para atender e falar
+        <Item forte="Dados dos clientes:">o nome, o WhatsApp e os horários dos clientes servem só para atender e falar
           sobre os horários deles. É proibido vender, repassar, usar para propaganda sem o cliente pedir ou copiar esses dados
           para fora do app sem necessidade. Mensagens pelo WhatsApp saem do seu número, e você responde por elas.</Item>
         <Item>Pedidos de clientes sobre os dados deles (acesso, correção, exclusão) devem ser encaminhados para {email}.</Item>

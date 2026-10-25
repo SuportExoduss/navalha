@@ -9,7 +9,6 @@ import { useAuth } from '../../auth/AuthProvider';
 import { db } from '../../services/firebase';
 import { concluir, ouvirAgendamento, registrarEvento } from '../../services/agendamentos';
 import { avisarAgendamento } from '../../services/avisos';
-import { escolherEEnviar } from '../../services/fotos';
 import { emAtendimento, minutosDecorridos } from '../../lib/atendimento';
 import { formatarHora, formatarPreco } from '../../lib/agenda';
 import { colors, space, type } from '../../theme';
@@ -30,13 +29,11 @@ export default function CorteAtual() {
   if (a === undefined) return <Carregando />;
   if (!a) return <Tela><Voltar /><Titulo>Corte não encontrado</Titulo></Tela>;
 
-  async function finalizar(origem: 'camera' | 'galeria' | null) {
+  async function finalizar() {
     setErro(null);
     setSalvando(true);
     try {
-      const foto = origem ? await escolherEEnviar('corte', a!.id, origem) : null;
-      if (origem && !foto) return; // cancelou a câmera: continua no corte
-      await concluir(db, a!.id, foto ? [...a!.fotos, foto] : a!.fotos);
+      await concluir(db, a!.id);
       avisarAgendamento(a!.id); // com "pedir avaliação" ligado na casa, o cliente recebe o pedido
       if (perfil) registrarEvento(db, { tipo: 'concluiu', uid: perfil.uid, barbeariaId: a!.barbeariaId, em: Date.now() });
     } catch (e) {
@@ -66,13 +63,8 @@ export default function CorteAtual() {
             <Text style={[type.title, type.number, { fontSize: 56, color: passou ? colors.danger : colors.text }]}>{minutos} min</Text>
             <Text style={type.caption}>{passou ? `Passou ${minutos - a.duracaoMin} min do tempo médio` : `de ${a.duracaoMin} min do tempo médio`}</Text>
           </View>
-          <Aviso texto="Fotografe ao finalizar: a foto vai para o histórico do cliente." />
-          <Botao titulo="Finalizar e fotografar" carregando={salvando} onPress={() => finalizar('camera')}
-            icone={<Ionicons name="camera" size={18} color={colors.accentText} />} />
-          <Botao titulo="Finalizar sem foto" variante="secundario" disabled={salvando} onPress={() => finalizar(null)} />
-          <Pressable onPress={() => finalizar('galeria')} hitSlop={8} disabled={salvando} accessibilityRole="button" style={{ alignSelf: 'center' }}>
-            <Text style={[type.caption, { color: colors.accent }]}>Escolher foto da galeria</Text>
-          </Pressable>
+          <Botao titulo="Finalizar corte" carregando={salvando} onPress={finalizar}
+            icone={<Ionicons name="checkmark" size={18} color={colors.accentText} />} />
         </>
       ) : a.status === 'concluido' ? (
         <>

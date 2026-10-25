@@ -60,7 +60,6 @@ export async function reservar(db: Firestore, r: NovaReserva): Promise<string> {
       status: r.origem === 'balcao' ? 'confirmado' : 'reservado',
       origem: r.origem,
       lembretes: {},
-      fotos: [],
       criadoEm: agora,
       atualizadoEm: agora,
     };
@@ -104,8 +103,8 @@ export function ouvirAgendamento(db: Firestore, id: string, cb: (a: Agendamento 
   return onSnapshot(doc(db, 'agendamentos', id), s => cb(s.exists() ? (s.data() as Agendamento) : null), () => cb(null));
 }
 
-export async function concluir(db: Firestore, id: string, fotos: string[]) {
-  await updateDoc(doc(db, 'agendamentos', id), { status: 'concluido', fotos, atualizadoEm: Date.now() });
+export async function concluir(db: Firestore, id: string) {
+  await updateDoc(doc(db, 'agendamentos', id), { status: 'concluido', atualizadoEm: Date.now() });
 }
 
 function consultaOcupacao(db: Firestore, barbeiroId: string, data: ISODate) {
