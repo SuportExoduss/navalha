@@ -5,10 +5,10 @@ Leia também `AGENTS.md` (regras do Expo SDK 58: não confie na memória, consul
 
 ## Onde estamos
 - Roadmap completo: `docs/roadmap.md` (6 fases, out/2026 → out/2027). Andamento: `docs/status.md`.
-- **Fase 1 (MVP): código dos 4 sprints concluído** (Base, Barbearia, Agenda, Cliente).
-- Falta para fechar a Fase 1: ligar Firebase/R2/Worker reais, APK Android gerado localmente (sem conta Expo, ver README),
-  testar no celular e rodar com 3 barbearias amigas (portão da Fase 2). Itens da Fase 0 que dependem do dono
-  (entrevistas, nome no INPI, termos/LGPD, contas) seguem abertos.
+- **Fase 1 (MVP): pronta e no ar** — Firebase `navalha-1a8f5`, Worker e R2 reais, web em navalha.web.app, APK/AAB local
+  (versão 0.2.0) testado num Redmi. Falta o portão: 3 barbearias amigas por 1 semana. Itens da Fase 0 que dependem do
+  dono (entrevistas, nome no INPI) seguem abertos; LGPD tem registros em `.lgpd/`.
+- Web: publique com `npm run export:web` (move as fontes para fora de `assets/node_modules`, que o Hosting não publica).
 - Próxima fase: **Fase 2 (piloto)**, código pronto; o resto é do dono (teste fechado no Play, barbearias).
 - **Fases 3, 4 e 5 estão fora do plano** (decisão do dono, 20/out/2026): não proponha nem construa pagamento do corte,
   iOS, clube, fidelidade, multiunidades etc. sem o dono pedir. Ficam (feitos): mensalidades pelo Google Play e
