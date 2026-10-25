@@ -3,7 +3,7 @@
 // cadastrado na Play Console — estes servem para a tela e para conferir o produto comprado.
 import type { AssinaturaCasa, Millis } from '../types/models';
 
-export type PlanoId = 'solo' | 'equipe' | 'casa' | 'casa_cheia';
+export type PlanoId = 'solo' | 'equipe' | 'time' | 'casa_cheia';
 
 export interface Plano {
   id: PlanoId;
@@ -15,11 +15,10 @@ export interface Plano {
   barbeiros: number;
 }
 
-// ponytail: nomes de "casa" e "casa_cheia" (R$ 100 e R$ 150) ainda não decididos pelo dono; trocar só o `nome`.
 export const PLANOS: Plano[] = [
   { id: 'solo', produto: 'navalha_solo', nome: 'Solo', precoCentavos: 2500, barbeiros: 1 },
   { id: 'equipe', produto: 'navalha_equipe', nome: 'Equipe', precoCentavos: 7000, barbeiros: 3 },
-  { id: 'casa', produto: 'navalha_casa', nome: 'Casa', precoCentavos: 10000, barbeiros: 6 },
+  { id: 'time', produto: 'navalha_time', nome: 'Time', precoCentavos: 10000, barbeiros: 6 },
   { id: 'casa_cheia', produto: 'navalha_casa_cheia', nome: 'Casa cheia', precoCentavos: 15000, barbeiros: 10 },
 ];
 

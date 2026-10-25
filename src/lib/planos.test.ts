@@ -28,7 +28,7 @@ test('planos: em dia pelo estado do Google Play', () => {
 
 test('planos: subir cobra a diferença já, descer vale na renovação', () => {
   assert.equal(modoDeTroca(planoPorId('solo')!, planoPorId('equipe')!), 'charge-prorated-price');
-  assert.equal(modoDeTroca(planoPorId('casa')!, planoPorId('equipe')!), 'deferred');
+  assert.equal(modoDeTroca(planoPorId('time')!, planoPorId('equipe')!), 'deferred');
 });
 
 test('assinatura: aviso 7 dias antes, 5 dias para regularizar, depois bloqueada', () => {

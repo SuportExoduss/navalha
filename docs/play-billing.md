@@ -21,8 +21,8 @@ O código está pronto: tela de planos, compra, conferência no servidor, limite
 | --- | --- | --- | --- |
 | Solo | `navalha_solo` | R$ 25 | 1 |
 | Equipe | `navalha_equipe` | R$ 70 | 3 |
-| Casa (nome provisório) | `navalha_casa` | R$ 100 | 6 |
-| Casa cheia (nome provisório) | `navalha_casa_cheia` | R$ 150 | 10 |
+| Time | `navalha_time` | R$ 100 | 6 |
+| Casa cheia | `navalha_casa_cheia` | R$ 150 | 10 |
 
 Preços, limites e nomes ficam em `src/lib/planos.ts` (usado pelo app e pelo Worker).
 

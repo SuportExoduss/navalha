@@ -45,15 +45,15 @@ Agendamento para barbearias de bairro: o cliente marca o corte em 3 toques e a b
 | --- | --- | --- |
 | Solo | R$ 25 | 1 (só o dono) |
 | Equipe | R$ 70 | até 3 (dono + 2) |
-| Casa (nome provisório) | R$ 100 | até 6 |
-| Casa cheia (nome provisório) | R$ 150 | até 10 |
+| Time | R$ 100 | até 6 |
+| Casa cheia | R$ 150 | até 10 |
 
 - Primeiros usuários: 60 dias liberados antes de cobrar.
 - Todos os planos com renovação mensal; cada plano limita quantos barbeiros podem ser adicionados.
 - Com a renovação em dia (verificada pelo billing), o dono pode criar a barbearia e ela fica visível na busca. Em atraso, a barbearia sai da busca.
 - Cobrança pelo **Google Play Billing** (decidido). Ao baixar de plano, o dono escolhe quem fica (desliga os excedentes antes).
 - Teste de 60 dias com o limite do maior plano (10), uma vez por conta.
-- **Em aberto:** nomes definitivos dos planos de R$ 100 e R$ 150.
+- Nomes definidos em 25/out: Solo, Equipe, Time e Casa cheia.
 
 **Troca de modo e entrada na barbearia (implementado):**
 

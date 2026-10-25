@@ -108,7 +108,7 @@ Requisitos da Google Play: `docs/publicar-google-play.md`. Pacote definitivo `co
 - [x] Casa sem teste/plano em dia sai da busca (`emDia`, só o servidor grava; cron de hora em hora)
 - [x] Testes: lógica 36, regras 36, Worker 10; migração das casas antigas rodada; regras, índices, Worker e web publicados
 - [ ] Play Console (dono): conta, AAB no teste interno, 4 assinaturas, API e acesso do Worker — passo a passo em `docs/play-billing.md`
-- [ ] Nomes dos planos de R$ 100 e R$ 150 (hoje provisórios: Casa e Casa cheia)
+- [x] Nomes dos planos (25/out): Solo, Equipe, Time (R$ 100, `navalha_time`) e Casa cheia (R$ 150)
 
 ## Agendar pelo WhatsApp (plano A em `docs/whatsapp-agendamento.md`)
 - [x] Plano A (custo zero): em Configurações, link da casa (`navalha.web.app/barbearia/{id}`) e texto pronto para a saudação do WhatsApp Business / IA da Meta, com botão Compartilhar (decisão do dono: só o plano A)
