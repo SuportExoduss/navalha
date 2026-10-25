@@ -38,7 +38,8 @@ export default function Entrar() {
       {/* Imagem solta atrás (e não ImageBackground): na web ele deixa a foto impor a própria largura à página. */}
       <Image source={width > height ? FOTO_HORIZONTAL : FOTO_VERTICAL} resizeMode="cover" accessibilityIgnoresInvertColors
         style={{ position: 'absolute', top: 0, left: 0, width, height }} />
-      <Tela rolar={revisao} transparente>
+      {/* Sem rolagem: o cartão fica embaixo e o KeyboardAvoidingView da Tela o sobe quando o teclado abre (revisão). */}
+      <Tela rolar={false} transparente>
         <View style={{ flex: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
           <View style={{ width: '100%', maxWidth: 440, gap: space(5), padding: space(5), borderRadius: radius.card, backgroundColor: sobreFoto.veu }}>
             <View style={{ gap: space(2) }}>

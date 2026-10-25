@@ -17,8 +17,7 @@ export function Tela({ children, rolar = true, rodape, transparente }: { childre
   return (
     <SafeAreaView style={[s.tela, transparente && { backgroundColor: 'transparent' }]} edges={rodape ? ['top', 'bottom'] : ['top']}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'web' ? undefined : 'padding'}>
-        {/* flexGrow: conteúdo curto ainda ocupa a altura toda (a tela de entrar alinha o cartão embaixo). */}
-        {rolar ? <ScrollView contentContainerStyle={[s.conteudo, { flexGrow: 1 }]} keyboardShouldPersistTaps="handled">{children}</ScrollView>
+        {rolar ? <ScrollView contentContainerStyle={s.conteudo} keyboardShouldPersistTaps="handled">{children}</ScrollView>
           : <View style={[s.conteudo, { flex: 1 }]}>{children}</View>}
         {rodape ? <View style={s.rodape}>{rodape}</View> : null}
       </KeyboardAvoidingView>
