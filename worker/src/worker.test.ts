@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { chaveFoto, janelasLembrete, mensagemFcm, mensagemLembrete, tipoDaImagem } from './util';
 import { validarClaims, decodificarParte, type Claims } from './auth';
 import { Firestore, lerValor } from './firestore';
-import { camposDaCasa, lerCompra } from './assinatura';
+import { camposDaCasa, conferirVencimentos, lerCompra } from './assinatura';
 
 test('chave da foto aceita só tipos e ids seguros', () => {
   assert.equal(chaveFoto('corte', 'uid123', 'ag_1', 'abc-1'), null); // foto do corte saiu do app
@@ -102,8 +102,9 @@ test('assinatura: compra do Google Play só vale para a barbearia que comprou e 
   if (!r.ok) return;
   assert.deepEqual(camposDaCasa(r), {
     'assinatura.status': 'ativa', 'assinatura.plano': 'equipe', 'assinatura.venceEm': Date.parse('2027-02-10T12:00:00Z'),
-    'assinatura.limiteBarbeiros': 3, emDia: true,
+    'assinatura.limiteBarbeiros': 3, 'assinatura.renovaSozinha': true, emDia: true,
   });
+  assert.equal(camposDaCasa(lerCompra({ ...compra, subscriptionState: 'SUBSCRIPTION_STATE_CANCELED' }, 'b1', agora) as never)['assinatura.renovaSozinha'], false);
   assert.equal(lerCompra(compra, 'outra', agora).ok, false); // token reaproveitado em outra casa
   assert.equal(lerCompra({ ...compra, lineItems: [{ productId: 'outro_app', expiryTime: '2027-02-10T12:00:00Z' }] }, 'b1', agora).ok, false);
   const atrasada = lerCompra({ ...compra, subscriptionState: 'SUBSCRIPTION_STATE_ON_HOLD' }, 'b1', agora);
@@ -406,4 +407,38 @@ test('baixar meus dados: tudo da própria pessoa, nada consultado por outro uid'
   assert.deepEqual(corpo.avaliacoesDeBarbearias, [{ estrelas: 5 }]);
   assert.deepEqual(corpo.testeGratis, { em: 1 });
   assert.deepEqual(corpo.equipes, [{ barbeariaId: 'b2', cartao: { nome: 'Ana' }, privado: { telefone: '15999990000' } }]);
+});
+
+test('vencimento: renovou segue; teste ou plano vencido tem 5 dias para regularizar; depois bloqueia', async () => {
+  const D = 86_400_000, agora = Date.parse('2027-03-01T12:00:00Z');
+  const casas = [
+    { id: 'teste3', dados: { emDia: true, assinatura: { status: 'teste', venceEm: agora - 3 * D } } },     // dentro dos 5 dias
+    { id: 'teste6', dados: { emDia: true, assinatura: { status: 'teste', venceEm: agora - 6 * D } } },     // passou dos 5 dias
+    { id: 'renovou', dados: { emDia: true, assinatura: { status: 'ativa', venceEm: agora - 3600_000 } } },
+    { id: 'cancelou', dados: { emDia: true, assinatura: { status: 'ativa', venceEm: agora - 6 * D } } },
+  ];
+  const compras: Record<string, { estado: string; vence: number }> = {
+    renovou: { estado: 'SUBSCRIPTION_STATE_ACTIVE', vence: agora + 30 * D },
+    cancelou: { estado: 'SUBSCRIPTION_STATE_EXPIRED', vence: agora - 6 * D },
+  };
+  const gravado: Record<string, Record<string, unknown>> = {};
+  const db = {
+    query: async () => casas,
+    varios: async (cs: string[]) => new Map(cs.filter(c => compras[c.split('/')[1]]).map(c => [c, { purchaseToken: c.split('/')[1] }])),
+    escrever: async (l: { caminho: string; campos: Record<string, unknown> }[]) => { for (const w of l) gravado[w.caminho.split('/')[1]] = w.campos; },
+  } as never;
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (u: string) => {
+    const id = decodeURIComponent(u.split('/tokens/')[1]);
+    const c = compras[id];
+    return new Response(JSON.stringify({ subscriptionState: c.estado, externalAccountIdentifiers: { obfuscatedExternalAccountId: id },
+      lineItems: [{ productId: 'navalha_solo', expiryTime: new Date(c.vence).toISOString() }] }));
+  }) as typeof fetch;
+  try { await conferirVencimentos(db, 't', agora); } finally { globalThis.fetch = original; }
+  assert.deepEqual(gravado.teste3, { 'assinatura.status': 'vencida', emDia: true });
+  assert.deepEqual(gravado.teste6, { 'assinatura.status': 'vencida', emDia: false });
+  assert.equal(gravado.renovou.emDia, true);
+  assert.equal(gravado.renovou['assinatura.venceEm'], agora + 30 * D);
+  assert.equal(gravado.cancelou.emDia, false);
+  assert.equal(gravado.cancelou['assinatura.renovaSozinha'], false);
 });

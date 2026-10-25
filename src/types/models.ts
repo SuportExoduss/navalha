@@ -58,6 +58,8 @@ export interface AssinaturaCasa {
   venceEm?: Millis;
   /** Barbeiros ativos permitidos (dono incluso). */
   limiteBarbeiros: number;
+  /** Plano pago com renovação automática ligada no Google Play (gravado pelo Worker). */
+  renovaSozinha?: boolean;
   fundador?: boolean;
 }
 

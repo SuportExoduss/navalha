@@ -11,6 +11,8 @@ import { PainelDono } from './PainelDono';
 import { db } from '../../services/firebase';
 import { colors, minTouch, radius, space, type, sobreFoto } from '../../theme';
 import type { Barbearia, Barbeiro } from '../../types/models';
+import { situacaoAssinatura } from '../../lib/planos';
+import { AvisoAssinatura, BarbeariaBloqueada } from './AvisoAssinatura';
 
 export function PainelCasa({ b, equipe, ehDono, uid }: { b: Barbearia; equipe: Barbeiro[]; ehDono: boolean; uid: string }) {
   const [convite, setConvite] = useState<string | null>(null);
@@ -31,6 +33,9 @@ export function PainelCasa({ b, equipe, ehDono, uid }: { b: Barbearia; equipe: B
     } catch (e) { setErro(e instanceof Error ? e.message : 'Não foi possível gerar o convite.'); }
     finally { setGerando(false); }
   }
+
+  const assinatura = situacaoAssinatura(b, Date.now());
+  if (assinatura.tipo === 'bloqueada') return <BarbeariaBloqueada ehDono={ehDono} />;
 
   return (
     <>
@@ -65,9 +70,10 @@ export function PainelCasa({ b, equipe, ehDono, uid }: { b: Barbearia; equipe: B
       </View>
 
       {/* O que tira a casa da busca vem primeiro: plano vencido, depois rascunho. */}
-      {ehDono && !b.emDia ? (
+      {ehDono && assinatura.tipo === 'rascunho' ? (
         <Linha icone="alert-circle-outline" titulo="Fora da busca: sem plano ativo" dica="Toque para escolher um plano" onPress={() => router.push('/plano')} />
       ) : null}
+      {ehDono ? <AvisoAssinatura s={assinatura} /> : null}
       {ehDono && b.emDia && !b.publicada ? (
         <Linha icone="eye-off-outline" titulo="Rascunho: ainda fora da busca" dica="Toque para completar e publicar" onPress={() => router.push('/configuracoes')} />
       ) : null}

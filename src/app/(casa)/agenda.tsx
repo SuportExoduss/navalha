@@ -20,6 +20,8 @@ import { corteAberto, emAtendimento, podeIniciar } from '../../lib/atendimento';
 import { dataLocal, expedienteEfetivo, diaDaSemana, formatarHora, formatarPreco, proximosDias, somarDias } from '../../lib/agenda';
 import { colors, radius, space, type } from '../../theme';
 import type { Agendamento, ISODate } from '../../types/models';
+import { situacaoAssinatura } from '../../lib/planos';
+import { AvisoAssinatura, BarbeariaBloqueada } from '../../components/casa/AvisoAssinatura';
 
 export default function AgendaBarbeiro() {
   const { perfil } = useAuth();
@@ -50,6 +52,9 @@ export default function AgendaBarbeiro() {
       </Tela>
     );
   }
+  // Vencida há mais de 5 dias: a agenda trava (as regras também barram novos horários).
+  const assinatura = situacaoAssinatura(barbearia, Date.now());
+  if (assinatura.tipo === 'bloqueada') return <Tela><BarbeariaBloqueada ehDono={ehDono} /></Tela>;
 
   const ativos = equipe.filter(e => e.ativo);
   const eu = equipe.find(e => e.uid === uid);
@@ -74,6 +79,7 @@ export default function AgendaBarbeiro() {
         {/* Marcados, cancelados e o resumo do mês: o sino abre o painel lateral. */}
         <PainelNotificacoes uid={uid} />
       </View>
+      {ehDono ? <AvisoAssinatura s={assinatura} /> : null}
       <Titulo destaque={dia === hoje ? 'hoje' : undefined}>{dia === hoje ? 'Sua agenda de ' : 'Sua agenda'}</Titulo>
       <SeletorDia dias={dias} hoje={hoje} valor={dia} onChange={setDia} />
 

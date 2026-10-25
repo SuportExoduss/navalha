@@ -275,6 +275,18 @@ test('encaixe manual: só a casa lança cliente de balcão', async () => {
   await assert.rejects(reservar(dbDe('dono'), novaReserva(null, inicio)));
 });
 
+test('barbearia bloqueada (vencida há mais de 5 dias): ninguém marca, nem pelo app nem por encaixe', async () => {
+  const emDia = (v: boolean) => env.withSecurityRulesDisabled(ctx => updateDoc(doc(ctx.firestore(), 'barbearias/b1'), { emDia: v }));
+  await emDia(false);
+  await assertFails(reservar(dbDe('ana'), novaReserva('ana', inicio)));
+  await assertFails(reservar(dbDe('dono'), novaReserva(null, inicio + 3_600_000)));
+  // O dono não se libera sozinho: "em dia" só o servidor grava.
+  await assertFails(updateDoc(doc(dbDe('dono'), 'barbearias/b1'), { emDia: true }));
+  // Regularizou (o servidor marcou em dia): volta a receber.
+  await emDia(true);
+  await assertSucceeds(reservar(dbDe('ana'), novaReserva('ana', inicio)));
+});
+
 test('ninguém trava a agenda de um barbeiro com chaves de outro', async () => {
   const db = dbDe('ana');
   const slots = chavesOcupacao('rafael', inicio, 30, 15);

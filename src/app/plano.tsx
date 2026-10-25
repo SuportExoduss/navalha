@@ -9,7 +9,7 @@ import { useMinhaBarbearia } from '../hooks/useMinhaBarbearia';
 import {
   assinar, assinaturaDisponivel, carregarPlanos, compraAtual, restaurar, type OfertaPlano,
 } from '../services/assinatura';
-import { PLANOS, excedentesPara, type Plano } from '../lib/planos';
+import { PLANOS, bloqueiaEm, excedentesPara, type Plano } from '../lib/planos';
 import { dataLocal, formatarData, formatarPreco } from '../lib/agenda';
 import { colors, radius, space, type } from '../theme';
 import type { Barbearia } from '../types/models';
@@ -123,10 +123,12 @@ function Situacao({ b }: { b: Barbearia }) {
   const plano = PLANOS.find(p => p.id === a.plano);
   const ativos = b.barbeirosAtivos ?? 1;
   const [titulo, detalhe, tom] =
-    a.status === 'teste' && b.emDia ? ['Teste grátis', `Até ${ate}, com até ${a.limiteBarbeiros} barbeiros. Depois, escolha um plano para continuar na busca.`, 'ok']
-    : a.status === 'ativa' && b.emDia ? [`Plano ${plano?.nome ?? ''}`, `Em dia. Renova em ${ate}.`, 'ok']
-    : a.status === 'inadimplente' ? ['Pagamento pendente', 'O Google Play não conseguiu cobrar. Sua barbearia saiu da busca até o pagamento ser acertado na Play Store.', 'erro']
-    : ['Sem plano ativo', 'Sua barbearia está fora da busca. Escolha um plano para os clientes voltarem a encontrar você.', 'erro'];
+    a.status === 'teste' && b.emDia ? ['Teste grátis', `Até ${ate}, com até ${a.limiteBarbeiros} barbeiros. Depois, você tem 5 dias para assinar; sem plano, a barbearia fica bloqueada.`, 'ok']
+    : a.status === 'vencida' && b.emDia ? ['Venceu: regularize', `Tudo funciona até ${formatarData(dataLocal(bloqueiaEm(a.venceEm ?? 0)))}. Depois, a barbearia sai da busca e a agenda fica bloqueada.`, 'erro']
+    : a.status === 'ativa' && b.emDia ? [`Plano ${plano?.nome ?? ''}`, a.renovaSozinha === false ? `Renovação desligada: vale até ${ate}.` : `Em dia. Renova sozinho em ${ate}.`, 'ok']
+    : a.status === 'inadimplente' && b.emDia ? ['Pagamento pendente', `O Google Play não conseguiu cobrar. Acerte na Play Store até ${formatarData(dataLocal(bloqueiaEm(a.venceEm ?? 0)))} para não bloquear a barbearia.`, 'erro']
+    : a.status === 'rascunho' ? ['Sem plano ativo', 'Sua barbearia está fora da busca. Escolha um plano para os clientes encontrarem você.', 'erro']
+    : ['Barbearia bloqueada', 'O plano venceu e o prazo para regularizar acabou. Assine um plano para liberar a busca e a agenda na hora.', 'erro'];
   return (
     <Cartao style={{ gap: space(2), borderColor: tom === 'erro' ? colors.danger : colors.border }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space(2) }}>

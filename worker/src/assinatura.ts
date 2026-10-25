@@ -1,7 +1,7 @@
 // Assinatura da barbearia pelo Google Play Billing. O app compra; o Worker confere no Google
 // (Android Publisher API, subscriptionsv2) e só então grava plano, vencimento e "em dia" — campos
 // que as regras do Firestore não deixam o dono mexer.
-import { DIAS_TESTE, LIMITE_TESTE, emDiaPeloPlay, planoPorProduto, type Plano } from '../../src/lib/planos';
+import { DIAS_TESTE, LIMITE_TESTE, bloqueiaEm, emDiaPeloPlay, planoPorProduto, renovaSozinha, type Plano } from '../../src/lib/planos';
 import type { Firestore } from './firestore';
 
 export const PACOTE = 'com.trevotec.navalha';
@@ -35,6 +35,7 @@ export function camposDaCasa(r: { plano: Plano; venceEm: number; emDia: boolean;
     'assinatura.plano': r.plano.id,
     'assinatura.venceEm': r.venceEm,
     'assinatura.limiteBarbeiros': r.plano.barbeiros,
+    'assinatura.renovaSozinha': renovaSozinha(r.estado),
     emDia: r.emDia,
   };
 }
@@ -69,8 +70,10 @@ export async function verificarCompra(db: Firestore, tokenSA: string, uid: strin
 }
 
 /**
- * Cron: casas "em dia" cujo prazo passou. Com compra: pergunta ao Google (a renovação estende o prazo).
- * Sem compra (fim do teste): sai da busca. ponytail: até 15 por execução (limite de chamadas do plano grátis).
+ * Cron: casas "em dia" cujo prazo passou. Com compra: pergunta ao Google (a renovação automática estende o prazo).
+ * Sem renovação (ou fim do teste): mais 5 dias de uso para regularizar; depois, bloqueada (`emDia: false`: some da
+ * busca, as regras barram agendamentos e o app trava a agenda). Durante os 5 dias a casa volta aqui a cada hora.
+ * ponytail: até 15 por execução (limite de chamadas do plano grátis); acima disso, RTDN do Play ou Workers pago.
  */
 export async function conferirVencimentos(db: Firestore, tokenSA: string, agora = Date.now()) {
   const vencidas = await db.query({
@@ -88,7 +91,11 @@ export async function conferirVencimentos(db: Firestore, tokenSA: string, agora 
     const token = compras.get(`assinaturas/${id}`)?.purchaseToken as string | undefined;
     const compra = token ? await consultarPlay(tokenSA, token).catch(() => null) : null;
     const r = compra ? lerCompra(compra, id, agora) : null;
-    escritas.push({ caminho: `barbearias/${id}`, campos: r?.ok ? camposDaCasa(r) : { 'assinatura.status': 'vencida', emDia: false } });
+    const venceEm = r?.ok ? r.venceEm : Number((vencidas.find(v => v.id === id)?.dados.assinatura as { venceEm?: number } | undefined)?.venceEm ?? 0);
+    const liberada = agora < bloqueiaEm(venceEm); // dentro dos 5 dias de regularização
+    escritas.push({ caminho: `barbearias/${id}`, campos: r?.ok
+      ? { ...camposDaCasa(r), emDia: r.emDia || liberada }
+      : { 'assinatura.status': 'vencida', emDia: liberada } });
   }
   await db.escrever(escritas);
 }

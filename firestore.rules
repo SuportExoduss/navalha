@@ -274,6 +274,9 @@ service cloud.firestore {
           || (request.resource.data.origem == 'balcao' && daCasaParaEste(request.resource.data)
              && request.resource.data.clienteUid == null && request.resource.data.status == 'confirmado')
         )
+        // Barbearia bloqueada (teste ou plano vencido há mais de 5 dias, ou rascunho sem plano) não recebe horário,
+        // nem pelo app nem por encaixe: vale mesmo para versões antigas do app.
+        && barbearia(request.resource.data.barbeariaId).get('emDia', false) == true
         // O barbeiro é da casa (e não foi desligado), e os blocos travados são dele (ninguém trava a agenda com chaves falsas).
         && get(/databases/$(database)/documents/barbearias/$(request.resource.data.barbeariaId)/barbeiros/$(request.resource.data.barbeiroId)).data.get('ativo', true) != false
         && blocoDoBarbeiro(request.resource.data.slots[0], request.resource.data.barbeiroId)
