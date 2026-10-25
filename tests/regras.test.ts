@@ -533,18 +533,6 @@ test('cancelamento com motivo: cada lado assina o seu, e o motivo só vale junto
   await assertSucceeds(cancelar(dbDe('carla'), { id: id3, slots: ag3.slots }));
 });
 
-test('SEC-005: dono só mexe no clube da própria casa', async () => {
-  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'barbearias/b2'), { id: 'b2', donoUid: 'outroDono', publicada: true, assinatura: { status: 'teste' }, resumo: {} }));
-  await assertSucceeds(setDoc(doc(dbDe('dono'), 'clubes/c1'), { barbeariaId: 'b1', nome: 'Clube 2 cortes' }));
-  // O dono da b2 não sequestra o clube da b1 trocando o barbeariaId para a casa dele.
-  await assertFails(setDoc(doc(dbDe('outroDono'), 'clubes/c1'), { barbeariaId: 'b2', nome: 'Meu agora' }));
-  await assertFails(deleteDoc(doc(dbDe('outroDono'), 'clubes/c1')));
-  // O próprio dono edita, mas não muda a casa do clube.
-  await assertSucceeds(updateDoc(doc(dbDe('dono'), 'clubes/c1'), { nome: 'Clube 3 cortes' }));
-  await assertFails(updateDoc(doc(dbDe('dono'), 'clubes/c1'), { barbeariaId: 'b2' }));
-  await assertSucceeds(deleteDoc(doc(dbDe('dono'), 'clubes/c1')));
-});
-
 test('SEC-006: a mesma conta espera 20 s entre reservas, e a marca é sempre do servidor', async () => {
   await assertSucceeds(reservar(dbDe('ana'), novaReserva('ana', inicio)));
   // Logo em seguida, outro horário livre: barrado pelo intervalo.

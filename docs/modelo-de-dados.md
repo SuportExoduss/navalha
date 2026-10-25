@@ -22,7 +22,6 @@ Tipos completos em `src/types/models.ts`; permissões em `firestore.rules`.
 | `avaliacoes/{hash}` | Worker (`POST /avaliacoes`) | 1 | Só a avaliação da barbearia, **uma por cliente por casa** e **só as estrelas** (`barbeariaId`, `estrelas`, datas; sem nome, uid, comentário ou dia): o id é SHA-256(`barbeariaId:clienteUid`) (24 hex), então avaliar de novo edita a mesma. Ninguém lê pelo app (regras fecham); a página mostra `resumo.notaApp` e `resumo.totalAvaliacoesApp`. O cron limpa uma vez por dia o legado de antes de 25/out (nota do cliente, avaliações entre cliente e barbeiro, nome/comentário) |
 | `users/{uid}.avaliouBarbearias` | Worker | — | `{barbeariaId: {estrelas, em}}`: o app mostra "Editar" e não pede de novo; o aviso "Como foi o corte?" só vai a quem ainda não avaliou a casa |
 | `barbearias/{id}/equipePrivado/{uid}` | barbeiro | 1 | Telefone do barbeiro, fora do cartão público; só o dono e o próprio barbeiro leem |
-| `clubes/{id}`, `assinaturasClube/{id}` | dono / Worker | 4 | Clube de assinatura do cliente |
 
 > **WhatsApp do cliente no agendamento** (`clienteTelefone`): copiado do perfil na reserva, para a barbearia avisar de atraso ou lembrar do corte. O cron do Worker o apaga 24 h depois do `fim` (janela de 2 h por execução). O barbeiro só lê os agendamentos enquanto está **ativo** na casa (`barbeiroAtivo` nas regras).
 

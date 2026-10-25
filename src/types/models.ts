@@ -198,54 +198,19 @@ export interface Agendamento {
   atualizadoEm: Millis;
 }
 
-/**
- * ocupacao/{barbeiroId_YYYY-MM-DD_HHMM}
- * Um documento por bloco de `passoMin` ocupado. Criado em transação:
- * se já existe, a reserva falha — é a trava contra horário duplo.
- */
-export interface Ocupacao {
-  barbeariaId: string;
-  barbeiroId: string;
-  agendamentoId: string;
-  inicio: Millis;
-}
-
 /** pagamentos/{pagamentoId} — Fase 3 (Asaas) */
 export interface Pagamento {
   id: string;
   agendamentoId?: string;
   barbeariaId: string;
   clienteUid?: string;
-  tipo: 'corte' | 'sinal' | 'assinatura_barbearia' | 'clube_cliente';
+  tipo: 'corte' | 'sinal' | 'assinatura_barbearia';
   metodo: 'pix' | 'cartao' | 'boleto' | 'balcao';
   valorCentavos: number;
   status: 'pendente' | 'pago' | 'estornado' | 'falhou';
   asaasId?: string;
   split?: { recebedor: string; valorCentavos: number }[];
   criadoEm: Millis;
-}
-
-/**
- * avaliacoes/{id} — a avaliação de um cliente para uma barbearia (uma por cliente por casa; avaliar de novo edita).
- * Gravada e lida só pelo Worker (POST /avaliacoes): guarda só as estrelas, que entram na média e na quantidade da
- * casa. Sem nome, uid, comentário ou dia. O id é um resumo (hash) de casa + cliente, que só o Worker calcula.
- */
-export interface Avaliacao {
-  id: string;
-  barbeariaId: string;
-  estrelas: 1 | 2 | 3 | 4 | 5;
-  criadoEm: Millis;
-  atualizadoEm?: Millis;
-}
-
-/** clubes/{clubeId} e assinaturasClube/{id} — Fase 4 */
-export interface PlanoClube {
-  id: string;
-  barbeariaId: string;
-  nome: string;
-  valorCentavos: number;
-  creditos: { servicoCategoria: Servico['categoria']; quantidade: number | 'ilimitado' }[];
-  ativo: boolean;
 }
 
 /** eventos/{eventoId} — métricas do piloto desde o dia 1 */

@@ -323,23 +323,10 @@ service cloud.firestore {
       allow read: if logado() && (resource.data.clienteUid == eu() || ehDono(resource.data.barbeariaId));
       allow write: if false;
     }
-    // Só existe a avaliação da barbearia, e ela é pública (aba Avaliações da casa). As antigas entre cliente e
-    // barbeiro (até 23/out) ninguém lê mais.
+    // Avaliação da barbearia: privada. O app mostra só a média e a quantidade da casa (resumo); ninguém vê quem avaliou.
+    // Só o Worker lê e grava (POST /avaliacoes): confere que quem avalia teve corte concluído na casa.
     match /avaliacoes/{id} {
-      // Privadas (decisão do dono, 25/out): o app mostra só a média em estrelas da casa (resumo.notaApp).
-      // Só o Worker lê e grava (POST /avaliacoes): confere o corte concluído e quem avalia.
       allow read, write: if false;
-    }
-    match /clubes/{id} {
-      allow read: if true;
-      // Dono só mexe no clube da própria casa: o update confere o documento atual e não deixa trocar de casa (SEC-005).
-      allow create: if logado() && ehDono(request.resource.data.barbeariaId);
-      allow update: if logado() && ehDono(resource.data.barbeariaId) && !mudou(['barbeariaId']);
-      allow delete: if logado() && ehDono(resource.data.barbeariaId);
-    }
-    match /assinaturasClube/{id} {
-      allow read: if logado() && resource.data.clienteUid == eu();
-      allow write: if false;
     }
 
     // Monitoramento de erros: o app só grava, com campos e tamanhos fixos; o dono lê no console.

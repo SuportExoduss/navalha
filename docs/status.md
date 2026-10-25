@@ -80,7 +80,7 @@ Requisitos da Google Play: `docs/publicar-google-play.md`. Pacote definitivo `co
 - [x] SEC-003 corrigido: preço, duração e barbeiro da reserva conferidos com o cardápio
 - [x] SEC-004 corrigido: cliente só cancela reserva de pé e futura; reserva cancelada não volta a valer
 - [x] 3 testes novos em tests/regras.test.ts (falhavam antes, passam depois); regras publicadas em produção
-- [x] SEC-005 (clubes só da própria casa, + teste), SEC-007 (tipo da foto pelos bytes), SEC-010 (allowBackup desligado), SEC-014 (convite com sorteio criptográfico) — 19/out
+- [x] SEC-005 (clubes só da própria casa; regra e teste removidos em 25/out junto com o clube, fora do plano), SEC-007 (tipo da foto pelos bytes), SEC-010 (allowBackup desligado), SEC-014 (convite com sorteio criptográfico) — 19/out
 - [x] Varredura geral (19/out): expo-font que faltava instalado, SDK 58 alinhado (expo-doctor 20/20), teclado com modo imersivo, deps sem uso removidas, acessibilidade (avisos anunciados, botão desabilitado distinto, fotos descritas)
 - [x] SEC-006 limite de uso (regras: 20 s entre reservas por conta; Worker: 20 fotos/min por conta, 429), SEC-008/009 (fotos da casa e do perfil só de URLs do nosso R2), SEC-016 (CORS do Worker só para navalha.web.app e localhost) — 19/out, com testes (regras 32, Worker 7)
 - [x] Monitoramento de erros: falhas do app vão para a coleção `erros` (só gravação, 10 por sessão, só logado) + tela "Algo deu errado"
