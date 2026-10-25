@@ -109,6 +109,7 @@ Requisitos da Google Play: `docs/publicar-google-play.md`. Pacote definitivo `co
 - [x] Testes: lógica 36, regras 36, Worker 10; migração das casas antigas rodada; regras, índices, Worker e web publicados
 - [ ] Play Console (dono): conta, AAB no teste interno, 4 assinaturas, API e acesso do Worker — passo a passo em `docs/play-billing.md`
 - [x] Nomes dos planos (25/out): Solo, Equipe, Time (R$ 100, `navalha_time`) e Casa cheia (R$ 150)
+- [x] SHA-1/256 da chave do Google (Play App Signing) no Firebase (25/out): login Google funciona na cópia da loja
 - [x] As 4 assinaturas criadas e ativas no Play Console (25/out, pela Android Publisher API): plano base `mensal`, renovação automática, só no Brasil, em BRL
 
 ## Agendar pelo WhatsApp (plano A em `docs/whatsapp-agendamento.md`)

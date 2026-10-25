@@ -21,6 +21,9 @@ Legenda: ✅ o app já cumpre · 🔧 falta no código/projeto · 👤 só o don
   Gerar uma vez (e guardar em dois lugares seguros): `keytool -genkeypair -v -keystore navalha-upload.jks -alias navalha -keyalg RSA -keysize 2048 -validity 10000`,
   ligar no `android/app/build.gradle` e cadastrar o SHA-1 dela no Firebase. A Play guarda a chave final (Play App Signing):
   cadastrar também o SHA-1 da "chave de assinatura do app" que a Play Console mostra, senão o login Google falha nas cópias baixadas da loja.
+  ✅ Feito em 25/out: chave do Google (Play App Signing) SHA-1 `7D:3F:F8:03:E8:3F:E8:34:62:59:06:DB:E4:B4:B0:90:28:F6:DB:E3`
+  e SHA-256 `7A:0B:59:FE:…:EF:01`, lidos do APK que a Play gerou (API `generatedApks`) e cadastrados no Firebase. Sem isso,
+  a cópia da loja dava `DEVELOPER_ERROR` no "Continuar com Google".
 - ✅ Permissões só as necessárias: localização (busca perto), câmera (foto do corte). Sem acesso amplo a fotos
   (a galeria usa o seletor do sistema, como a política de Fotos e Vídeos exige); microfone e sobreposição de tela removidos.
 - 🔧 `versionCode` crescente a cada envio (`android/app/build.gradle`) e `version` em `app.json`.
