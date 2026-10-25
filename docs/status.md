@@ -187,7 +187,8 @@ Relatório na conversa de 22/out (12 achados, L01–L12; não é parecer jurídi
     convites vencidos; convites apagados na exclusão da casa
   - Acesso e portabilidade (L05): Perfil › "Baixar meus dados" (`GET /conta/dados` no Worker, JSON com tudo)
   - Política, Termos, `data-map.md`, `ropa.md` e modelo de dados atualizados. Testes: lógica 57, regras 49, Worker 19
-- [ ] Publicar (Worker, regras + índices, web) — barrado pela permissão automática do Claude Code em 25/out
+- [x] Publicado em 25/out (autorizado pelo dono): Worker (versão aa79689b), regras + índices e web. Conferido no ar:
+  `/conta/dados` e `/conta/excluir` recusam sem login (401); o site publicado tem a tela `/idade` e "Baixar meus dados"
 - [ ] Dono: gerar APK novo (o antigo não tem a tela de idade; até atualizar, declarar a idade uma vez pelo site libera a reserva)
 
 ## Reestruturação das avaliações (decisão do dono, 22/out/2026)
