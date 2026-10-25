@@ -141,6 +141,7 @@ Requisitos da Google Play: `docs/publicar-google-play.md`. Pacote definitivo `co
 - [x] Testes: lógica 40, regras 38, Worker 11; regras, índices, Worker e web publicados
 - [ ] Testar no celular com 3 contas (cliente, barbeiro, dono): push de marcado/cancelado e agenda do barbeiro só com os horários dele
 - [x] Push com o app fechado (25/out): o servidor entrega na hora, mas a Xiaomi (e outras marcas) descarta o push depois de reiniciar sem o app aberto. Ao escolher barbeiro/dono no Android, a tela `/bateria` mostra os passos da marca (`src/lib/bateria.ts`) e abre os ajustes do app; atalho fixo no Perfil. Sem a permissão de ignorar otimização de bateria (política da Play)
+- [x] Botões que levam direto à tela certa (25/out, `expo-intent-launcher`): restrição de bateria do Navalha e, onde é separado, início automático. Mapa por marca em `src/lib/bateria.ts` (Xiaomi, Samsung, Oppo/Realme/OnePlus, Vivo, Huawei/Honor, Asus; demais = tela padrão do Android), com reservas até os detalhes do app. Xiaomi e tela padrão testadas pelo adb no Redmi (HyperOS 2, Android 15)
 - [ ] Conferir no Redmi com o APK novo: liberar, reiniciar, não abrir o app e receber o aviso
 
 ## LGPD — auditoria /codelgpd (22/out/2026)
