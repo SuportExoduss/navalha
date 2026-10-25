@@ -1,7 +1,8 @@
 // Plano da barbearia (só o dono): situação atual, os 4 planos e a compra pelo Google Play.
-// Baixar de plano com mais barbeiros ativos que o novo limite: o dono escolhe quem fica (desliga na equipe) antes.
+// Baixar de plano com mais barbeiros ativos que o novo limite: o dono escolhe aqui mesmo quem sai (cards com "−" e
+// confirmação). Sair = desligar: perde a agenda na hora, mas o cadastro fica para religar num plano maior.
 import { useEffect, useState } from 'react';
-import { Platform, Pressable, Text, View } from 'react-native';
+import { Image, Modal, Platform, Pressable, Text, View } from 'react-native';
 import { Redirect, router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Aviso, Botao, Carregando, Cartao, Secao, Tela, Titulo } from '../components/ui';
@@ -11,11 +12,13 @@ import {
 } from '../services/assinatura';
 import { PLANOS, bloqueiaEm, excedentesPara, type Plano } from '../lib/planos';
 import { dataLocal, formatarData, formatarPreco } from '../lib/agenda';
-import { colors, radius, space, type } from '../theme';
-import type { Barbearia } from '../types/models';
+import { colors, radius, space, sobreFoto, type } from '../theme';
+import { definirBarbeiroAtivo } from '../services/barbearias';
+import { db } from '../services/firebase';
+import type { Barbearia, Barbeiro } from '../types/models';
 
 export default function PlanoTela() {
-  const { barbearia, carregando, ehDono } = useMinhaBarbearia();
+  const { barbearia, equipe, carregando, ehDono } = useMinhaBarbearia();
   const [ofertas, setOfertas] = useState<OfertaPlano[] | null>(null);
   const [escolhido, setEscolhido] = useState<Plano | null>(null);
   const [comprando, setComprando] = useState(false);
@@ -86,8 +89,8 @@ export default function PlanoTela() {
 
       {escolhido && excedentes > 0 ? (
         <Cartao style={{ gap: space(3) }}>
-          <Aviso texto={`O plano ${escolhido.nome} permite ${escolhido.barbeiros} ${escolhido.barbeiros === 1 ? 'barbeiro' : 'barbeiros'} e hoje ${b.barbeirosAtivos} estão ativos. Escolha quem fica: desligue ${excedentes} na equipe e volte aqui.`} />
-          <Botao titulo="Ir para a equipe" variante="secundario" onPress={() => router.push('/casa')} />
+          <Aviso texto={`O plano ${escolhido.nome} permite ${escolhido.barbeiros} ${escolhido.barbeiros === 1 ? 'barbeiro' : 'barbeiros'} e hoje ${b.barbeirosAtivos} estão ativos. Toque no − de ${excedentes === 1 ? 'quem sai' : `${excedentes} barbeiros que saem`}.`} />
+          <QuemSai equipe={equipe.filter(e => e.ativo && e.uid !== b.donoUid)} barbeariaId={b.id} />
         </Cartao>
       ) : null}
 
@@ -113,6 +116,59 @@ export default function PlanoTela() {
         descer vale na próxima renovação. Cancele quando quiser em Play Store › Pagamentos e assinaturas.
       </Text>
     </Tela>
+  );
+}
+
+/** Barbeiros ativos (menos o dono) com "−"; o popup confirma antes de tirar da equipe ativa. */
+function QuemSai({ equipe, barbeariaId }: { equipe: Barbeiro[]; barbeariaId: string }) {
+  const [sai, setSai] = useState<Barbeiro | null>(null);
+  const [removendo, setRemovendo] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const nome = (m: Barbeiro) => m.apelido || m.nome;
+
+  async function remover() {
+    if (!sai) return;
+    setErro(null);
+    setRemovendo(true);
+    try { await definirBarbeiroAtivo(db, barbeariaId, sai.uid, false); setSai(null); }
+    catch { setErro('Não foi possível remover. Tente de novo.'); }
+    finally { setRemovendo(false); }
+  }
+
+  return (
+    <View style={{ gap: space(2) }}>
+      {equipe.map(m => (
+        <View key={m.uid} style={{ flexDirection: 'row', alignItems: 'center', gap: space(3), padding: space(3), borderRadius: radius.card,
+          borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface }}>
+          {m.fotoUrl ? <Image source={{ uri: m.fotoUrl }} style={{ width: 44, height: 44, borderRadius: 22 }} />
+            : <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surfaceRaised, alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="person-outline" size={20} color={colors.textMuted} />
+              </View>}
+          <Text style={[type.body, { flex: 1 }]} numberOfLines={1}>{nome(m)}</Text>
+          <Pressable onPress={() => { setErro(null); setSai(m); }} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Remover ${nome(m)} da equipe`}
+            style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="remove-circle" size={28} color={colors.danger} />
+          </Pressable>
+        </View>
+      ))}
+      <Modal visible={!!sai} transparent animationType="fade" onRequestClose={() => { if (!removendo) setSai(null); }}>
+        <View style={{ flex: 1, backgroundColor: sobreFoto.veu, justifyContent: 'center', padding: space(5) }}>
+          <View accessibilityViewIsModal style={{ backgroundColor: colors.surface, borderRadius: radius.card, padding: space(5), gap: space(4),
+            borderWidth: 1, borderColor: colors.border, width: '100%', maxWidth: 420, alignSelf: 'center' }}>
+            <Titulo>Remover {sai ? nome(sai) : ''}?</Titulo>
+            <Text style={type.body}>
+              Ele sai da equipe e perde o acesso à agenda e aos clientes na hora. O cadastro e o cardápio dele ficam
+              guardados: se voltar a um plano maior, é só religar na aba Barbearia.
+            </Text>
+            {erro ? <Aviso texto={erro} tom="erro" /> : null}
+            <View style={{ flexDirection: 'row', gap: space(2) }}>
+              <Botao titulo="Cancelar" variante="secundario" style={{ flex: 1 }} disabled={removendo} onPress={() => setSai(null)} />
+              <Botao titulo="Remover" style={{ flex: 1, backgroundColor: colors.danger }} carregando={removendo} onPress={remover} />
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 }
 

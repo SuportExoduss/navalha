@@ -15,7 +15,7 @@ O código está pronto: tela de planos, compra, conferência no servidor, limite
 | Renovação mensal | Automática pelo Google Play. No vencimento, o cron pergunta ao Google; se renovou, estende o vencimento (sem aviso ao dono). |
 | Pagamento recusado | O Google tenta de novo; a casa fica `inadimplente` com o aviso de regularizar e, se não acertar, bloqueia 5 dias depois do vencimento. |
 | Subir de plano | Vale na hora, cobra a diferença proporcional do mês. |
-| Descer de plano | Só depois de o dono desligar os barbeiros que passam do novo limite (ele escolhe quem fica). Vale na próxima renovação. |
+| Descer de plano | A tela de planos mostra os barbeiros ativos com "−": o dono escolhe quem sai e confirma no popup (sai = desligado, o cadastro fica para religar). Com a equipe no limite, assina; vale na próxima renovação. |
 
 | Plano | Produto na Play Console | Mensal | Barbeiros |
 | --- | --- | --- | --- |
