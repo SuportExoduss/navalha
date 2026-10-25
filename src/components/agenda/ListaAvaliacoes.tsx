@@ -1,7 +1,7 @@
 // Avaliações da barbearia (aba Avaliações da página da casa): primeiro nome, dia do corte, estrelas e comentário.
 // Pública: nada de foto, capa ou horário do cliente.
 import { Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Cartao } from '../ui';
 import { Estrelas } from './Avaliar';
 import { dataLocal, rotuloDia } from '../../lib/agenda';

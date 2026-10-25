@@ -44,7 +44,8 @@ export async function avaliar(db: Firestore, uid: string, agendamentoId: string,
     { caminho: `avaliacoes/${id}`, criar: true, campos: {
       id, barbeariaId: bid, clienteNome: String(ag.clienteNome ?? 'Cliente').split(' ')[0], direcao: 'cliente_para_barbearia',
       estrelas, comentario: texto || APAGAR, inicio: ag.inicio as number, visivel: true,
-      criadoEm: existente?.criadoEm ?? agora, atualizadoEm: agora,
+      // A aba Avaliações ordena por criadoEm: a editada volta para o topo, como uma nova.
+      criadoEm: agora, atualizadoEm: agora,
     } },
     { caminho: `barbearias/${bid}`, campos: {
       'resumo.notaApp': media(placar), 'resumo.totalAvaliacoesApp': placar.total, 'resumo.somaEstrelasApp': placar.soma,

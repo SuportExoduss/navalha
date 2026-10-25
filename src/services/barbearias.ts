@@ -7,6 +7,7 @@ import {
   setDoc, startAt, updateDoc, where, writeBatch, type Firestore, type Unsubscribe,
 } from 'firebase/firestore';
 import { distanceBetween, geohashForLocation, geohashQueryBounds } from 'geofire-common';
+import type { User } from 'firebase/auth';
 import { cancelar } from './agendamentos';
 import { esquecer, lembrar } from './cache';
 import { DIAS_TESTE, LIMITE_TESTE } from '../lib/planos';
@@ -351,7 +352,14 @@ export const MOTIVO_CASA_ENCERRADA = 'Barbearia encerrada';
  * apaga cardápio, folgas, equipe e a casa, e tira a casa do perfil do dono.
  * Os atendimentos passados ficam no histórico dos clientes (com o nome da casa gravado neles).
  */
-export async function excluirBarbearia(db: Firestore, barbeariaId: string, donoUid: string, agora = Date.now()) {
+export async function excluirBarbearia(db: Firestore, user: User, barbeariaId: string, agora = Date.now()) {
+  const donoUid = user.uid;
+  // Primeiro o Worker: avaliações públicas e fotos (o app não pode apagar). Se falhar, nada foi mexido ainda.
+  const r = await fetch(`${process.env.EXPO_PUBLIC_WORKER_URL}/barbearia/excluir`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await user.getIdToken()}` },
+    body: JSON.stringify({ barbeariaId }),
+  });
+  if (!r.ok) throw new Error(`Falha ao apagar as avaliações e fotos (${r.status}).`);
   // Sem índice novo: lê os agendamentos da casa e filtra os futuros aqui (exclusão é rara).
   const daCasa = await getDocs(query(collection(db, 'agendamentos'), where('barbeariaId', '==', barbeariaId)));
   for (const d of daCasa.docs) {

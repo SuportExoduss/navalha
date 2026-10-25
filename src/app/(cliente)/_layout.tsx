@@ -1,5 +1,5 @@
 import { Redirect, Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import type { ColorValue } from 'react-native';
 import { useAuth } from '../../auth/AuthProvider';
 import { colors } from '../../theme';

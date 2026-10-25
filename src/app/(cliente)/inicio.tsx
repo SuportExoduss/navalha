@@ -1,7 +1,7 @@
 // Início do cliente: localização atual → barbearias mais próximas.
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { CampoBusca, Cartao, Chip, SemSinal, Tela, Titulo, FalhaAoCarregar } from '../../components/ui';
 import { CardBarbearia } from '../../components/CardBarbearia';

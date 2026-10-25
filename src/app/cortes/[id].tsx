@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Image, Pressable, Text, View } from 'react-native';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Carregando, Cartao, FalhaAoCarregar, Tela, Titulo } from '../../components/ui';
 import { Etapa } from '../../components/agenda/Etapa';
 import { dadosDaCasa } from '../../services/barbearias';

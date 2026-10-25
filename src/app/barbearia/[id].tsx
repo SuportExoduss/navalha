@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Image, Linking, Pressable, Text, View } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Aviso, Botao, Carregando, Cartao, Chip, FalhaAoCarregar, Tela, Titulo } from '../../components/ui';
 import { Etapa } from '../../components/agenda/Etapa';
 import { pegarAvisoReserva } from '../../components/agenda/avisoReserva';

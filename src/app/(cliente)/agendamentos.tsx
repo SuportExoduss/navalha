@@ -32,14 +32,14 @@ export default function Agendamentos() {
   const proximos = lista.filter(a => ATIVOS.includes(a.status) && a.fim > agora).sort((a, b) => a.inicio - b.inicio);
   // A casa pediu avaliação (barbeiro finalizou com "pedir avaliação" ligado): vem em destaque, já aberta.
   // Pede uma vez por casa: quem já avaliou aquela barbearia não vê o pedido de novo (só "Editar" no histórico).
-  const pedidos = lista.filter(a => a.pedidoAvaliacao && podeAvaliarCasa(a) && !perfil.avaliouBarbearias?.[a.barbeariaId]);
-  const historico = lista.filter(a => !proximos.includes(a) && !pedidos.includes(a));
-  // Uma avaliação por casa: o "Avaliar"/"Editar" aparece só no corte concluído mais recente de cada barbearia.
+  // Uma avaliação por casa: o "Avaliar"/"Editar" (e o pedido) aparece só no corte concluído mais recente de cada barbearia.
   const ultimoPorCasa = new Map<string, Agendamento>();
   for (const a of lista) {
     const atual = ultimoPorCasa.get(a.barbeariaId);
     if (podeAvaliarCasa(a) && (!atual || a.inicio > atual.inicio)) ultimoPorCasa.set(a.barbeariaId, a);
   }
+  const pedidos = lista.filter(a => a.pedidoAvaliacao && ultimoPorCasa.get(a.barbeariaId)?.id === a.id && !perfil.avaliouBarbearias?.[a.barbeariaId]);
+  const historico = lista.filter(a => !proximos.includes(a) && !pedidos.includes(a));
 
   return (
     <Tela>

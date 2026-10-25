@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { db } from '../../services/firebase';
 import { marcarLidas, ouvirNotificacoes } from '../../services/notificacoes';
 import { LembrarPelaNotificacao } from './LembrarNoWhatsapp';

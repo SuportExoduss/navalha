@@ -7,12 +7,13 @@
 //  POST /avaliacoes            → o cliente avalia a barbearia (uma por casa; de novo, edita). A nota só muda por aqui
 //  POST /avisos/agendamento    → avisa cliente, barbeiro e dono (push + painel) quando alguém marca ou cancela
 //  POST /conta/excluir         → apaga ou anonimiza os dados da pessoa (LGPD); o app apaga o login em seguida
+//  POST /barbearia/excluir     → antes de o dono apagar a casa: avaliações públicas e fotos da casa e do cardápio
 //  cron a cada hora            → lembretes de 24 h e 2 h, casas com plano/teste vencido, prazos de guarda e, no dia 1, resumo do mês
 import { verificarIdToken } from './auth';
 import { conferirVencimentos, migrarAssinaturas, verificarCompra } from './assinatura';
 import { avisarAgendamento, resumoDoMes } from './avisos';
 import { avaliar } from './avaliacoes';
-import { excluirConta, limparAntigos } from './conta';
+import { excluirConta, excluirDadosBarbearia, limparAntigos } from './conta';
 import { Firestore, tokenGoogle } from './firestore';
 import { chaveFoto, janelasLembrete, mensagemFcm, mensagemLembrete, tipoDaImagem, TIPOS } from './util';
 
@@ -142,6 +143,19 @@ export default {
       if (!env.GOOGLE_SA_EMAIL || !env.GOOGLE_SA_PRIVATE_KEY) return json({ erro: 'Servidor sem credenciais.' }, 503, h);
       const tokenSA = await tokenGoogle(env.GOOGLE_SA_EMAIL, env.GOOGLE_SA_PRIVATE_KEY);
       const r = await excluirConta(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA), env.FOTOS, uid);
+      return json(r.corpo, r.status, h);
+    }
+
+    if (url.pathname === '/barbearia/excluir' && req.method === 'POST') {
+      const token = req.headers.get('Authorization')?.replace(/^Bearer /, '') ?? '';
+      const uid = token ? await verificarIdToken(token, env.FIREBASE_PROJECT_ID) : null;
+      if (!uid) return json({ erro: 'Entre na sua conta.' }, 401, h);
+      const corpo = (await req.json().catch(() => null)) as { barbeariaId?: unknown } | null;
+      const barbeariaId = typeof corpo?.barbeariaId === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(corpo.barbeariaId) ? corpo.barbeariaId : '';
+      if (!barbeariaId) return json({ erro: 'Barbearia inválida.' }, 400, h);
+      if (!env.GOOGLE_SA_EMAIL || !env.GOOGLE_SA_PRIVATE_KEY) return json({ erro: 'Servidor sem credenciais.' }, 503, h);
+      const tokenSA = await tokenGoogle(env.GOOGLE_SA_EMAIL, env.GOOGLE_SA_PRIVATE_KEY);
+      const r = await excluirDadosBarbearia(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA), env.FOTOS, uid, barbeariaId);
       return json(r.corpo, r.status, h);
     }
 

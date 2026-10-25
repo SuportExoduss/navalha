@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Image, Platform, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Aviso, Botao, Campo, Cartao, Chip, Linha, Secao, Tela, Titulo } from './ui';
 import { AceitarConvite } from './casa/AceitarConvite';
 import { irParaPapel } from './irParaPapel';

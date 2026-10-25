@@ -4,7 +4,7 @@ import {
   type PressableProps, type StyleProp, type TextInputProps, type ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, minTouch, radius, space, type } from '../theme';
 
 /**

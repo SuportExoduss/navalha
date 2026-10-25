@@ -380,7 +380,14 @@ test('excluir barbearia: só o dono; cancela o futuro, libera os horários e apa
   await assertFails(deleteDoc(doc(dbDe('lucas'), 'barbearias/b1')));
   await assertFails(deleteDoc(doc(dbDe('ana'), 'barbearias/b1')));
 
-  await excluirBarbearia(dbDe('dono'), 'b1', 'dono', 0);
+  // O Worker (avaliações públicas e fotos) fica de fora: aqui só as regras.
+  const fetchOriginal = globalThis.fetch;
+  const pedidos: string[] = [];
+  globalThis.fetch = (async (u: string) => { pedidos.push(String(u)); return new Response('{"ok":true}'); }) as typeof fetch;
+  try {
+    await excluirBarbearia(dbDe('dono'), { uid: 'dono', getIdToken: async () => 't' } as never, 'b1', 0);
+  } finally { globalThis.fetch = fetchOriginal; }
+  assert.ok(pedidos[0].endsWith('/barbearia/excluir'));
   await env.withSecurityRulesDisabled(async ctx => {
     const db = ctx.firestore();
     const a = (await getDoc(doc(db, 'agendamentos/a1'))).data()!;

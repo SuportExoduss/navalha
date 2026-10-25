@@ -102,3 +102,24 @@ export async function limparAntigos(db: Firestore, agora = Date.now()) {
     await db.apagar(velhos.map(v => `${colecao}/${v.id}`));
   }
 }
+
+/**
+ * POST /barbearia/excluir — antes de o app apagar a casa: tira o que as regras não deixam o app apagar (as avaliações
+ * públicas da casa) e as fotos da casa e do cardápio no R2. Os cortes ficam no histórico dos clientes.
+ */
+export async function excluirDadosBarbearia(db: Firestore, fotos: Fotos, uid: string, barbeariaId: string) {
+  const casa = (await db.varios([`barbearias/${barbeariaId}`])).get(`barbearias/${barbeariaId}`);
+  if (!casa) return { status: 200, corpo: { ok: true } }; // já saiu: nada a limpar (pedido repetido)
+  if (casa.donoUid !== uid) return { status: 403, corpo: { erro: 'Só o dono exclui a barbearia.' } };
+  const [servicos, avaliacoes] = await Promise.all([
+    db.query({ from: [{ collectionId: 'servicos' }] }, `barbearias/${barbeariaId}`),
+    db.query(iguais('avaliacoes', 'barbeariaId', barbeariaId)),
+  ]);
+  const caminhos = avaliacoes.map(a => `avaliacoes/${a.id}`);
+  for (let i = 0; i < caminhos.length; i += 500) await db.apagar(caminhos.slice(i, i + 500));
+  // ponytail: até 1000 fotos por pasta (a casa tem no máximo 12 e cada serviço 6).
+  const pastas = await Promise.all([`barbearia/${barbeariaId}/`, ...servicos.map(s => `servico/${s.id}/`)].map(prefix => fotos.list({ prefix })));
+  const chaves = pastas.flatMap(p => p.objects.map(o => o.key));
+  for (let i = 0; i < chaves.length; i += 1000) await fotos.delete(chaves.slice(i, i + 1000));
+  return { status: 200, corpo: { ok: true } };
+}

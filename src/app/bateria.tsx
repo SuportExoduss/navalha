@@ -5,7 +5,7 @@
 // para poucos tipos de app e ela arriscaria a aprovação.
 import { Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Device from 'expo-device';
 import { Botao, Cartao, Tela, Titulo } from '../components/ui';
 import { abrirAjuste } from '../components/abrirAjuste';

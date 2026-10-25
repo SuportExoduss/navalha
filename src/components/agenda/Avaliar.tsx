@@ -2,7 +2,7 @@
 // a nota e "Editar" (salvar nova avaliação ou cancelar a edição). A casa pediu: o formulário já vem aberto.
 import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Aviso, Botao, Campo } from '../ui';
 import { useAuth } from '../../auth/AuthProvider';
 import { avaliarBarbearia } from '../../services/avaliacoes';

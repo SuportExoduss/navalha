@@ -2,7 +2,7 @@
 // quem está do outro lado vê o motivo na agenda ou no histórico.
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, minTouch, radius, space, type } from '../../theme';
 import type { Agendamento } from '../../types/models';
 

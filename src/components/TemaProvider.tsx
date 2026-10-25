@@ -6,7 +6,10 @@ import { router, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SystemUI from 'expo-system-ui';
-import { BarlowCondensed_600SemiBold, BarlowCondensed_700Bold, useFonts } from '@expo-google-fonts/barlow-condensed';
+import { useFonts } from 'expo-font';
+// Import por peso: o índice do pacote puxa os 18 pesos para dentro do app (usamos 2).
+import { BarlowCondensed_600SemiBold } from '@expo-google-fonts/barlow-condensed/600SemiBold';
+import { BarlowCondensed_700Bold } from '@expo-google-fonts/barlow-condensed/700Bold';
 import { aplicarPaleta, paletas, type NomePaleta, type PreferenciaTema } from '../theme';
 
 const CHAVE = 'navalha.tema';

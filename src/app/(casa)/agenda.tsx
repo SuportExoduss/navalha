@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Aviso, Botao, Carregando, Cartao, Chip, Tela, Titulo } from '../../components/ui';
 import { SeletorDia } from '../../components/agenda/SeletorDia';
 import { EtiquetaStatus, ATIVOS } from '../../components/agenda/StatusAgendamento';

@@ -2,7 +2,7 @@
 // Usa a mesma trava do app, então nunca encaixa por cima de outro cliente.
 import { useEffect, useState } from 'react';
 import { BackHandler, Pressable, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Haptics from 'expo-haptics';
 import { Aviso, Botao, Campo, Carregando, Cartao, Chip, Secao, Tela, Titulo } from '../ui';
 import { GradeHorarios } from './GradeHorarios';

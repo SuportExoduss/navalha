@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Aviso, Botao, Campo, Carregando, Cartao, Chip, Interruptor, Secao, Tela, Titulo } from '../components/ui';
 import { useMinhaBarbearia } from '../hooks/useMinhaBarbearia';
 import {

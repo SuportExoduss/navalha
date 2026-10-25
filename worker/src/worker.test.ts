@@ -218,7 +218,7 @@ test('avaliar: uma avaliação por cliente por casa; de novo, edita; a nota e o 
   r = docs.get('barbearias/b1')!.resumo as Record<string, number>;
   assert.deepEqual([r.notaApp, r.totalAvaliacoesApp, r.somaEstrelasApp], [3.5, 2, 7]);
   const editada = docs.get(`avaliacoes/${id}`) as Record<string, unknown>;
-  assert.deepEqual([editada.estrelas, editada.comentario, editada.criadoEm, editada.atualizadoEm], [3, undefined, agora, agora + 1000]);
+  assert.deepEqual([editada.estrelas, editada.comentario, editada.criadoEm, editada.atualizadoEm], [3, undefined, agora + 1000, agora + 1000]);
 });
 
 test('Firestore REST: APAGAR tira o campo (fica na máscara sem valor) e apagar manda deletes', async () => {
@@ -309,4 +309,28 @@ test('prazos de guarda: apaga métricas e erros com mais de 12 meses e avisos co
   await limparAntigos(db, agora);
   assert.deepEqual(limites, { eventos: agora - 365 * DIA, erros: agora - 365 * DIA, notificacoes: agora - 90 * DIA });
   assert.deepEqual(apagados, ['eventos/eventos-velho', 'erros/erros-velho', 'notificacoes/notificacoes-velho']);
+});
+
+test('excluir barbearia: só o dono; apaga as avaliações públicas e as fotos da casa e do cardápio', async () => {
+  const { excluirDadosBarbearia } = await import('./conta');
+  const docs = new Map<string, Record<string, unknown>>([['barbearias/b1', { donoUid: 'dono' }]]);
+  const apagados: string[] = [], fotosApagadas: string[] = [], pastas: string[] = [];
+  const db = {
+    varios: async (cs: string[]) => new Map(cs.filter(c => docs.has(c)).map(c => [c, docs.get(c)!])),
+    query: async (q: { from: { collectionId: string }[] }, pai = '') => q.from[0].collectionId === 'servicos'
+      ? (assert.equal(pai, 'barbearias/b1'), [{ id: 's1', dados: {} }])
+      : [{ id: 'h1', dados: {} }, { id: 'h2', dados: {} }],
+    apagar: async (l: string[]) => { apagados.push(...l); },
+  } as never;
+  const bucket = {
+    list: async ({ prefix }: { prefix: string }) => { pastas.push(prefix); return { objects: [{ key: `${prefix}x.webp` }] }; },
+    delete: async (k: string[]) => { fotosApagadas.push(...k); },
+  } as never;
+  assert.equal((await excluirDadosBarbearia(db, bucket, 'intruso', 'b1')).status, 403);
+  assert.deepEqual([apagados.length, fotosApagadas.length], [0, 0]);
+  assert.equal((await excluirDadosBarbearia(db, bucket, 'dono', 'b1')).status, 200);
+  assert.deepEqual(apagados, ['avaliacoes/h1', 'avaliacoes/h2']);
+  assert.deepEqual(pastas, ['barbearia/b1/', 'servico/s1/']);
+  assert.deepEqual(fotosApagadas, ['barbearia/b1/x.webp', 'servico/s1/x.webp']);
+  assert.equal((await excluirDadosBarbearia(db, bucket, 'dono', 'sumiu')).status, 200); // já excluída: nada a fazer
 });

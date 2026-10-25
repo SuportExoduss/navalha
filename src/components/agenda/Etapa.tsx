@@ -1,7 +1,7 @@
 // Cabeçalho de etapa do agendamento (1 barbeiro, 2 corte, 3 horário): número, o que fazer e
 // o check quando a etapa já está resolvida. A ordem é fixa: só se agenda passando pelas três.
 import { Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, space, type } from '../../theme';
 
 export function Etapa({ numero, titulo, feito, dica }: { numero: 1 | 2 | 3; titulo: string; feito?: boolean; dica?: string }) {

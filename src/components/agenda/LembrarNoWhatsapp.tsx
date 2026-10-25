@@ -2,7 +2,7 @@
 // WhatsApp do próprio barbeiro com a mensagem pronta (saudação, dia e horário, link do Navalha). Sem API paga.
 import { useState } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { db } from '../../services/firebase';
 import { lerAgendamento } from '../../services/agendamentos';
 import { linkWhatsapp, mensagemLembreteCliente } from '../../lib/lembreteWhatsapp';

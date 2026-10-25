@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Redirect } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tela, Titulo } from '../components/ui';
 import { useAuth } from '../auth/AuthProvider';
 import { db } from '../services/firebase';

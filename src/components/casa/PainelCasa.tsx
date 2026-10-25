@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Image, Linking, Pressable, Share, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Aviso, Cartao, Interruptor, Linha, Secao } from '../ui';
 import { criarConvite, definirBarbeiroAtivo, linksDeRota } from '../../services/barbearias';
 import { LIMITE_TESTE, cabeMaisUm } from '../../lib/planos';

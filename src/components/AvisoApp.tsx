@@ -2,7 +2,7 @@
 // funcionam melhor lá). Fechou, some por 7 dias. No app nativo, no iPhone e no computador não aparece.
 import { useEffect, useState } from 'react';
 import { Image, Linking, Platform, Pressable, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { LINK_PLAY_STORE, ehAndroidNoNavegador, mostrarAvisoApp } from '../lib/dispositivo';
 import { colors, radius, space, type } from '../theme';
 

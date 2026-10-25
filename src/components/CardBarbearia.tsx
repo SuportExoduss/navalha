@@ -1,6 +1,6 @@
 // Card da lista "Perto de você": 1 leitura por card, graças ao resumo desnormalizado.
 import { Image, Pressable, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import type { BarbeariaPerto } from '../services/barbearias';
 import { formatarPreco } from '../lib/agenda';

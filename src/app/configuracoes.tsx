@@ -4,12 +4,12 @@
 import { useEffect, useState } from 'react';
 import { Image, Pressable, Share, Text, View } from 'react-native';
 import { Redirect, router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Aviso, Botao, Campo, Carregando, Cartao, Interruptor, Linha, Secao, Tela, Titulo } from '../components/ui';
 import { useMinhaBarbearia } from '../hooks/useMinhaBarbearia';
 import { atualizarBarbearia, excluirBarbearia, listarServicos } from '../services/barbearias';
 import { escolherEEnviar } from '../services/fotos';
-import { db } from '../services/firebase';
+import { auth, db } from '../services/firebase';
 import { colors, radius, space, type, sobreFoto } from '../theme';
 import { PLANOS } from '../lib/planos';
 import { SITE } from '../lib/legal';
@@ -187,10 +187,12 @@ function ExcluirBarbearia({ b }: { b: Barbearia }) {
   const confere = confirmacao.trim().toLowerCase() === b.nome.trim().toLowerCase();
 
   async function excluir() {
+    const user = auth.currentUser;
+    if (!user) return;
     setErro(null);
     setExcluindo(true);
     try {
-      await excluirBarbearia(db, b.id, b.donoUid);
+      await excluirBarbearia(db, user, b.id);
       router.replace('/casa');
     } catch {
       setErro('Não foi possível excluir agora. Verifique a conexão e tente de novo.');

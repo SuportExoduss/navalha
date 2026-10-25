@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Image, Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { Redirect, router } from 'expo-router';
 import { IDADE_MINIMA } from '../lib/legal';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Aviso, Botao, Campo, Cartao, Tela } from '../components/ui';
 import { entrarComGoogle } from '../services/googleSignIn';
 import { entrarComEmail } from '../services/acessoRevisao';

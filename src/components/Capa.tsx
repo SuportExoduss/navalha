@@ -1,7 +1,7 @@
 // Capa (banner) de perfil: faixa no topo do perfil do cliente e da ficha do barbeiro. Sem capa, um espaço discreto
 // para adicionar; com capa, a foto ocupa a faixa. O selo da câmera indica que dá para trocar.
 import { Image, Pressable, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, radius, space, type, sobreFoto } from '../theme';
 
 export const ALTURA_CAPA = 120;

@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Haptics from 'expo-haptics';
 import { Aviso, Botao, Carregando, Cartao, FalhaAoCarregar, Secao, Tela, Titulo } from '../../components/ui';
 import { SeletorDia } from '../../components/agenda/SeletorDia';

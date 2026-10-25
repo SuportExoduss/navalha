@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import * as Location from 'expo-location';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { Aviso, Botao, Campo, Cartao, Titulo } from '../ui';
 import { criarBarbearia, jaUsouTeste } from '../../services/barbearias';
