@@ -48,7 +48,7 @@
     "typecheck": "tsc --noEmit",
     "test": "tsx --test src/lib/*.test.ts src/services/*.test.ts",
     "emulators": "firebase emulators:start --only auth,firestore",
-    "export:web": "expo export --platform web",
+    "export:web": "expo export --platform web && node scripts/preparar-web.cjs",
     "test:regras": "firebase emulators:exec --only firestore \"tsx --test tests/regras.test.ts\"",
     "worker:dev": "cd worker && npx wrangler dev"
   },

@@ -81,7 +81,9 @@ worker/             Cloudflare Worker (R2 + lembretes)
 ## Versão web
 
 Publicada em **https://navalha.web.app** (Firebase Hosting do projeto, site `navalha`, plano gratuito):
-`npx expo export --platform web && npx firebase deploy --only hosting --project prod`.
+`npm run export:web && npx firebase deploy --only hosting --project prod`.
+Use sempre o `npm run export:web`: ele roda `scripts/preparar-web.cjs`, que tira as fontes e os ícones da pasta
+`assets/node_modules` (o Firebase Hosting não publica pastas `node_modules`; sem isso o site fica sem fontes e ícones).
 
 ## App Android sem conta Expo
 

@@ -200,7 +200,7 @@ Para isso, nesta ordem:
    - [x] Foto no "Concluído" → aparece no histórico do cliente; Faltou; painel do dono; lembrete com o app fechado (19/out)
    - [x] Rodada completa do roteiro docs/teste-manual.md pelo adb (19/out): 9 bugs achados e corrigidos; falta só o que exige 2ª conta, câmera, iPhone ou ficar sem internet
    - Bugs achados e corrigidos no teste: Firestore travava no Android (long polling), capa recusada pelo Worker (tipo pelos bytes), permissão de push engolida no 1º login, falha do FCM silenciosa no Worker (agora vai para o log).
-4. [x] Versão web publicada em **https://navalha.web.app** (Firebase Hosting, plano gratuito; `npx expo export --platform web && npx firebase deploy --only hosting --project prod`); domínio autorizado no login do Firebase. A versão antiga na Cloudflare (navalha-web) foi desativada em 19/out; o Worker de fotos e lembretes segue lá. Falta o dono entrar com Google uma vez para conferir.
+4. [x] Versão web publicada em **https://navalha.web.app** (Firebase Hosting, plano gratuito; `npm run export:web && npx firebase deploy --only hosting --project prod`; o `export:web` move as fontes para fora de `assets/node_modules`, que o Hosting não publica — corrigido em 25/out); domínio autorizado no login do Firebase. A versão antiga na Cloudflare (navalha-web) foi desativada em 19/out; o Worker de fotos e lembretes segue lá. Falta o dono entrar com Google uma vez para conferir.
    - Corrigido: `src/services/firebase.ts` lia `env.EXPO_PUBLIC_*` por um apelido de `process.env`, que o Expo não embute no build; o app real cairia no emulador.
 5. Colocar 3 barbearias amigas para usar de 28/dez a 3/jan.
 
