@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Aviso, Botao, Campo, Cartao, Chip, Linha, Secao, Tela, Titulo } from './ui';
 import { AceitarConvite } from './casa/AceitarConvite';
+import { irParaPapel } from './irParaPapel';
 import { Capa } from './Capa';
 import { useAuth } from '../auth/AuthProvider';
 import { auth, db } from '../services/firebase';
@@ -115,6 +116,11 @@ export function PerfilConta() {
 
       <SeletorTema />
       {Platform.OS === 'web' ? <LembretesWeb uid={perfil.uid} /> : null}
+      {/* Barbeiro e dono no Android: o atalho para liberar a bateria fica sempre à mão (a Xiaomi segura o push). */}
+      {Platform.OS === 'android' && perfil.papelAtivo !== 'cliente' ? (
+        <Linha icone="notifications-outline" titulo="Avisos com o app fechado" dica="Liberar a bateria para receber os horários na hora"
+          onPress={() => router.push('/bateria')} />
+      ) : null}
 
       <Botao titulo="Trocar conta Google" variante="secundario" onPress={sair} />
       <ExcluirConta />
@@ -143,7 +149,7 @@ function Modo() {
 
   async function ir(p: Role, destino: '/inicio' | '/agenda' | '/casa') {
     setTrocando(p);
-    try { await escolherPapel(db, perfil!, p); router.replace(destino); }
+    try { await escolherPapel(db, perfil!, p); irParaPapel(p, destino); }
     finally { setTrocando(null); }
   }
 

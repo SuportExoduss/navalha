@@ -2,13 +2,14 @@
 // papéis e alternar entre eles no perfil.
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { Redirect, router } from 'expo-router';
+import { Redirect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Tela, Titulo } from '../components/ui';
 import { useAuth } from '../auth/AuthProvider';
 import { db } from '../services/firebase';
 import { registrarPush } from '../services/push';
 import { escolherPapel } from '../services/usuarios';
+import { irParaPapel } from '../components/irParaPapel';
 import { colors, radius, space, type } from '../theme';
 import type { Role } from '../types/models';
 
@@ -30,8 +31,8 @@ export default function Papel() {
     // Android nega sem mostrar o diálogo. Aqui o app está em primeiro plano, por um toque da pessoa.
     if (!perfil.pushToken) registrarPush(perfil.uid).catch(() => undefined);
     await escolherPapel(db, perfil, papel);
-    // Dono e barbeiro caem direto na aba Barbearia: lá está o cadastro da casa ou o campo do convite.
-    router.replace(papel === 'cliente' ? '/inicio' : '/casa');
+    // Dono e barbeiro caem na aba Barbearia (cadastro da casa ou campo do convite), no Android depois de liberar a bateria.
+    irParaPapel(papel, papel === 'cliente' ? '/inicio' : '/casa');
   }
 
   return (

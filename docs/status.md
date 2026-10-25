@@ -140,6 +140,8 @@ Requisitos da Google Play: `docs/publicar-google-play.md`. Pacote definitivo `co
 - [x] Ícone monocromático nas notificações do Android
 - [x] Testes: lógica 40, regras 38, Worker 11; regras, índices, Worker e web publicados
 - [ ] Testar no celular com 3 contas (cliente, barbeiro, dono): push de marcado/cancelado e agenda do barbeiro só com os horários dele
+- [x] Push com o app fechado (25/out): o servidor entrega na hora, mas a Xiaomi (e outras marcas) descarta o push depois de reiniciar sem o app aberto. Ao escolher barbeiro/dono no Android, a tela `/bateria` mostra os passos da marca (`src/lib/bateria.ts`) e abre os ajustes do app; atalho fixo no Perfil. Sem a permissão de ignorar otimização de bateria (política da Play)
+- [ ] Conferir no Redmi com o APK novo: liberar, reiniciar, não abrir o app e receber o aviso
 
 ## LGPD — auditoria /codelgpd (22/out/2026)
 Relatório na conversa de 22/out (12 achados, L01–L12; não é parecer jurídico). Etapa 1 = correções de código.
