@@ -1,0 +1,14 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.trevotec.navalha",
+      "sha256_cert_fingerprints": [
+        "7A:0B:59:FE:79:CA:30:19:3B:12:2F:91:0E:F5:3F:72:0A:E1:5B:D2:BA:24:1F:A1:9C:17:30:B8:CE:33:EF:01",
+        "BB:CE:F4:8C:B8:39:79:BD:1D:7D:ED:36:07:2D:F3:B3:D9:10:CF:82:2A:8B:3F:BC:AB:56:53:C7:A0:39:79:1D",
+        "FA:C6:17:45:DC:09:03:78:6F:B9:ED:E6:2A:96:2B:39:9F:73:48:F0:BB:6F:89:9B:83:32:66:75:91:03:3B:9C"
+      ]
+    }
+  }
+]

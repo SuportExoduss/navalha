@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ehAndroidNoNavegador, mostrarAvisoApp } from './dispositivo';
+import { ehAndroidNoNavegador, linkAbrirNoApp, mostrarAvisoApp } from './dispositivo';
 
 const ANDROID = 'Mozilla/5.0 (Linux; Android 14; 23124RA7EO) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Mobile Safari/537.36';
 const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
@@ -18,4 +18,9 @@ test('aviso do app: fechado volta só depois de 7 dias', () => {
   assert.equal(mostrarAvisoApp(null, 0), true);
   assert.equal(mostrarAvisoApp(0, 3 * dia), false);
   assert.equal(mostrarAvisoApp(0, 8 * dia), true);
+});
+
+test('abrir no app: mesma tela do site, no pacote do Navalha', () => {
+  assert.equal(linkAbrirNoApp('/barbearia/abc?x=1'), 'intent://navalha.web.app/barbearia/abc?x=1#Intent;scheme=https;package=com.trevotec.navalha;end');
+  assert.equal(linkAbrirNoApp('inicio'), 'intent://navalha.web.app/inicio#Intent;scheme=https;package=com.trevotec.navalha;end');
 });

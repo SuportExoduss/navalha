@@ -26,6 +26,8 @@
   </queries>
   <application android:name=".MainApplication" android:label="@string/app_name" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:allowBackup="false" android:theme="@style/AppTheme" android:supportsRtl="true" android:enableOnBackInvokedCallback="false">
     <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="lembretes"/>
+    <!-- Liga o app ao site: o Chrome confirma ao site que o Navalha está instalado e o site abre o app. -->
+    <meta-data android:name="asset_statements" android:resource="@string/asset_statements"/>
     <!-- Ícone monocromático do "N" na barra de notificações (sem ele o Android mostra um quadrado branco) -->
     <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/notification_icon"/>
     <meta-data android:name="com.google.firebase.messaging.default_notification_color" android:resource="@color/notification_icon_color"/>

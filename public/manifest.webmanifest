@@ -9,6 +9,8 @@
   "orientation": "portrait",
   "background_color": "#0E0F11",
   "theme_color": "#0E0F11",
+  "related_applications": [{ "platform": "play", "id": "com.trevotec.navalha", "url": "https://play.google.com/store/apps/details?id=com.trevotec.navalha" }],
+  "prefer_related_applications": false,
   "icons": [
     { "src": "/icone-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "/icone-512.png", "sizes": "512x512", "type": "image/png" },
