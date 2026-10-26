@@ -10,6 +10,7 @@ import { Etapa } from '../../components/agenda/Etapa';
 import { pegarAvisoReserva } from '../../components/agenda/avisoReserva';
 import { dadosDaCasa } from '../../services/barbearias';
 import { VerNoMapa } from '../../components/VerNoMapa';
+import { ClubeDaCasa } from '../../components/clube/ClubeDaCasa';
 import { db } from '../../services/firebase';
 import { registrarEvento } from '../../services/agendamentos';
 import { Estrelas } from '../../components/agenda/Avaliar';
@@ -151,6 +152,8 @@ export default function PaginaBarbearia() {
           })}
         </View>
       )}
+
+      <ClubeDaCasa casa={{ id: b.id, nome: b.nome }} servicos={servicos} />
 
       {/* Fotos da casa e dos cortes: referência, fora do fluxo de agendar. */}
       {fotos.length ? (

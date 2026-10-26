@@ -114,6 +114,9 @@ export function PerfilConta() {
       <Modo />
 
 
+      {perfil.papelAtivo === 'cliente' ? (
+        <Linha icone="ribbon-outline" titulo="Meu clube" dica="Suas assinaturas de barbearia e o vencimento" onPress={() => router.push('/meu-clube')} />
+      ) : null}
       <SeletorTema />
       {Platform.OS === 'web' ? <LembretesWeb uid={perfil.uid} /> : null}
       {/* Barbeiro e dono no Android: o atalho para liberar a bateria fica sempre à mão (a Xiaomi segura o push). */}

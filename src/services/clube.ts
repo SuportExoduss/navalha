@@ -1,7 +1,7 @@
 // Clube de assinatura, lado da casa (docs/clube.md): planos, pedidos, "Recebi o pagamento" e encerrar.
 // O app não cobra: a equipe marca o que recebeu na casa. Vencido, lembretes e reservas ficam com o Worker.
 import {
-  collection, deleteDoc, deleteField, doc, onSnapshot, query, setDoc, updateDoc, where, writeBatch,
+  collection, deleteDoc, deleteField, doc, getDocs, onSnapshot, query, setDoc, updateDoc, where, writeBatch,
   type Firestore, type Unsubscribe,
 } from 'firebase/firestore';
 import { novoCiclo } from '../lib/clube';
@@ -59,5 +59,44 @@ export async function recusar(db: Firestore, m: Membro) {
 
 /** Encerrar pela casa. ponytail: as reservas futuras do horário fixo o Worker cancela (etapa 6 do docs/clube.md). */
 export async function encerrar(db: Firestore, m: Membro) {
+  await updateDoc(doc(db, 'clubeMembros', m.id), { status: 'saiu', horarioFixo: deleteField(), atualizadoEm: Date.now() });
+}
+
+// ---------- Lado do cliente ----------
+
+/** Planos abertos da casa, para a página dela (leitura só ao abrir a página). */
+export async function planosAbertos(db: Firestore, barbeariaId: string): Promise<PlanoClube[]> {
+  const s = await getDocs(query(collection(db, 'barbearias', barbeariaId, 'clubePlanos'), where('ativo', '==', true)));
+  return s.docs.map(d => d.data() as PlanoClube).sort((a, b) => a.precoCentavos - b.precoCentavos);
+}
+
+/** Os clubes da pessoa (em todas as casas): poucos documentos, um por casa. */
+export function ouvirMeusClubes(db: Firestore, uid: string, cb: (l: Membro[]) => void, erro?: () => void): Unsubscribe {
+  return onSnapshot(query(collection(db, 'clubeMembros'), where('clienteUid', '==', uid)),
+    s => cb(s.docs.map(d => ({ ...(d.data() as MembroClube), id: d.id })).sort((a, b) => b.atualizadoEm - a.atualizadoEm)), () => erro?.());
+}
+
+/**
+ * "Quero assinar": nasce o pedido, ou volta a pedir depois de recusado ou de ter saído (pode trocar de plano).
+ * Nome e limite vêm do plano: as regras conferem com o plano ativo.
+ */
+export async function solicitar(
+  db: Firestore, casa: { id: string; nome: string }, plano: PlanoClube, cliente: { uid: string; nome: string }, anterior?: Membro,
+) {
+  const agora = Date.now();
+  const id = `${casa.id}_${cliente.uid}`;
+  const pedido = { status: 'solicitado' as const, planoId: plano.id, planoNome: plano.nome, clienteNome: cliente.nome.slice(0, 80), atualizadoEm: agora };
+  if (anterior) {
+    await updateDoc(doc(db, 'clubeMembros', id), { ...pedido, cortesPorMes: plano.cortesPorMes ?? deleteField() });
+    return;
+  }
+  await setDoc(doc(db, 'clubeMembros', id), {
+    ...pedido, ...(plano.cortesPorMes ? { cortesPorMes: plano.cortesPorMes } : {}),
+    barbeariaId: casa.id, barbeariaNome: casa.nome, clienteUid: cliente.uid, criadoEm: agora,
+  });
+}
+
+/** O cliente sai do clube (ou desiste do pedido). O horário fixo sai junto. */
+export async function sair(db: Firestore, m: Membro) {
   await updateDoc(doc(db, 'clubeMembros', m.id), { status: 'saiu', horarioFixo: deleteField(), atualizadoEm: Date.now() });
 }

@@ -872,3 +872,16 @@ test('clube: horário do clube só o Worker reserva; o cliente não marca o pró
     tx.set(doc(db, 'users', 'ana'), { uid: 'ana', ultimaReserva: serverTimestamp(), maiorDeIdadeEm: 1 }, { merge: true });
   }));
 });
+
+test('clube: listas: o cliente lista só os próprios clubes; a casa, os membros dela; ninguém lista os de outra casa', async () => {
+  await membroAtivo('ana');
+  await membroAtivo('beto');
+  const minhas = await assertSucceeds(getDocs(query(collection(dbDe('ana'), 'clubeMembros'), where('clienteUid', '==', 'ana'))));
+  assert.equal(minhas.size, 1);
+  await assertFails(getDocs(query(collection(dbDe('ana'), 'clubeMembros'), where('barbeariaId', '==', 'b1'))));
+  await assertFails(getDocs(collection(dbDe('ana'), 'clubeMembros')));
+  const daCasa = await assertSucceeds(getDocs(query(collection(dbDe('lucas'), 'clubeMembros'),
+    where('barbeariaId', '==', 'b1'), where('status', 'in', ['solicitado', 'ativo', 'vencido']))));
+  assert.equal(daCasa.size, 2);
+  await assertFails(getDocs(query(collection(dbDe('estranho'), 'clubeMembros'), where('barbeariaId', '==', 'b1'))));
+});

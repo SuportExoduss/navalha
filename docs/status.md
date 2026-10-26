@@ -235,7 +235,9 @@ Substitui a seção "Avaliações, nota Google e ranking" acima e o `docs/roadma
   não publicadas no Firebase
 - [x] 2. Dono/barbeiro: tela `/clube` (aba Barbearia › Clube de assinatura): pedidos, vencidos, vencem em 7 dias, em dia,
   "Recebi o pagamento" com confirmação, encerrar e planos (só o dono edita). Conferida no navegador com o emulador (26/out)
-- [ ] 3. Cliente: solicitar e "Meu clube"
+- [x] 3. Cliente: planos e "Quero assinar" na página da casa (pedido, assinante, vencido, pedir de novo); tela
+  `/meu-clube` (Perfil › Meu clube) com sair/desistir. Conferido no navegador com o emulador (26/out). Aviso de pedido
+  novo para a casa (push/sino) fica com o Worker, na etapa 4
 - [ ] 4. Worker: lembretes de vencimento e vencidos
 - [ ] 5. "Usar o clube" ao agendar, com limite
 - [ ] 6. Horário fixo (app + Worker + selo na agenda)
