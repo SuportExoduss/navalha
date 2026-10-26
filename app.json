@@ -67,8 +67,6 @@
       "./plugins/modo-imersivo",
       "./plugins/android-studio",
       "expo-router",
-      "@react-native-firebase/app",
-      "@react-native-firebase/crashlytics",
       [
         "expo-location",
         {
