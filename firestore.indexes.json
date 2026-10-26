@@ -9,6 +9,14 @@
       ]
     },
     {
+      "collectionGroup": "clubeMembros",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "venceEm", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "barbearias",
       "queryScope": "COLLECTION",
       "fields": [

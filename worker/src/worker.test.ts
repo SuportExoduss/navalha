@@ -510,3 +510,52 @@ test('métricas: CSV da Play em UTF-16 vira total por dia', async () => {
   assert.equal(r.ativos, 40); // o dia mais recente, não a última linha
   assert.deepEqual(meses(Date.UTC(2026, 0, 15)), ['202512', '202601']);
 });
+
+test('clube: pedido avisa dono e barbeiros; vencido muda o status e avisa; rodar de novo não repete', async () => {
+  const { rotinaClube } = await import('./clube');
+  const { paraMillis } = await import('../../src/lib/agenda');
+  const D = 86_400_000;
+  const agora = paraMillis('2026-11-23', 16 * 60);
+  const base = { barbeariaId: 'b1', barbeariaNome: 'Navalha de Ouro', planoId: 'p1', planoNome: '4 cortes', criadoEm: 1 };
+  const docs = new Map<string, Record<string, unknown>>([
+    ['barbearias/b1', { donoUid: 'dono' }],
+    ['clubeMembros/b1_ana', { ...base, clienteUid: 'ana', clienteNome: 'Ana', status: 'solicitado', atualizadoEm: agora - 1000 }],
+    ['clubeMembros/b1_beto', { ...base, clienteUid: 'beto', clienteNome: 'Beto', status: 'ativo', venceEm: paraMillis('2026-11-26', 15 * 60), atualizadoEm: 1 }],
+    ['clubeMembros/b1_carla', { ...base, clienteUid: 'carla', clienteNome: 'Carla', status: 'ativo', venceEm: agora - 2 * D, atualizadoEm: 1 }],
+    ['users/beto', { pushToken: 'tk-beto' }],
+    ['users/dono', { pushToken: 'tk-dono' }],
+  ]);
+  const membros = (status: string) => [...docs].filter(([c, d]) => c.startsWith('clubeMembros/') && d.status === status)
+    .map(([c, d]) => ({ id: c.split('/')[1], dados: d }));
+  const db = {
+    query: async (q: { from: { collectionId: string }[]; where: { fieldFilter?: { value: { stringValue?: string } }; compositeFilter?: unknown } }) => {
+      if (q.from[0].collectionId === 'barbeiros') return [{ id: 'lucas', dados: { ativo: true } }];
+      return q.where.compositeFilter ? membros('ativo') : membros(q.where.fieldFilter!.value.stringValue!);
+    },
+    varios: async (cs: string[]) => new Map(cs.filter(c => docs.has(c)).map(c => [c, docs.get(c)!])),
+    escrever: async (l: { caminho: string; campos: Record<string, unknown> }[]) => {
+      for (const w of l) {
+        const atual = { ...(docs.get(w.caminho) ?? {}) };
+        for (const [k, v] of Object.entries(w.campos)) {
+          if (k.startsWith('lembretes.')) atual.lembretes = { ...(atual.lembretes as object), [k.slice(10)]: v }; else atual[k] = v;
+        }
+        docs.set(w.caminho, atual);
+      }
+    },
+  } as never;
+  const pushes: string[] = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (_u: string, init: { body: string }) => { pushes.push(JSON.parse(init.body).message.token); return new Response('{}'); }) as typeof fetch;
+  try {
+    assert.deepEqual(await rotinaClube(db, 't', 'p', agora), { avisos: 5 }); // pedido: dono + lucas; beto: d3; carla: cliente + dono
+    assert.deepEqual(await rotinaClube(db, 't', 'p', agora + 60_000), { avisos: 0 });
+  } finally { globalThis.fetch = original; }
+  assert.equal(docs.get('clubeMembros/b1_carla')!.status, 'vencido');
+  assert.equal(docs.get('clubeMembros/b1_beto')!.status, 'ativo');
+  assert.ok((docs.get('clubeMembros/b1_beto')!.lembretes as Record<string, number>).d3);
+  const notifs = [...docs.keys()].filter(c => c.startsWith('notificacoes/'));
+  assert.equal(notifs.length, 5);
+  assert.ok(notifs.some(c => c.includes('b1_ana_pedido') && c.endsWith('_lucas')));
+  assert.equal(docs.get(notifs.find(c => c.includes('b1_beto_d3'))!)!.tipo, 'clube');
+  assert.deepEqual(pushes.sort(), ['tk-beto', 'tk-dono', 'tk-dono']); // só quem tem token recebe push
+});

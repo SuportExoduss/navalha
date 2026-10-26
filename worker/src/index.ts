@@ -12,6 +12,7 @@
 //  POST /barbearia/excluir     → antes de o dono apagar a casa: avaliações públicas e fotos da casa e do cardápio
 //  GET  /metricas              → página de métricas (Play, Android vitals, Firebase); GET /metricas/dados e POST /metricas/atualizar exigem ADMIN_TOKEN
 //  cron 9h e 21h UTC           → atualiza as métricas (6h e 18h em Brasília)
+//  cron minuto 35 de cada hora → clube: aviso de pedido novo à casa, lembretes de vencimento e vencidos (+1 dia)
 //  cron a cada hora            → lembretes de 24 h e 2 h, casas com plano/teste vencido, prazos de guarda, WhatsApp do cliente 24 h após o horário e, no dia 1, resumo do mês
 import { verificarIdToken } from './auth';
 import { conferirVencimentos, migrarAssinaturas, resgatarCupom, verificarCompra } from './assinatura';
@@ -20,6 +21,7 @@ import { avaliar } from './avaliacoes';
 import { excluirConta, excluirDadosBarbearia, exportarDados, limparAntigos, limparLegado, tirarTelefonesVencidos } from './conta';
 import { Firestore, tokenGoogle } from './firestore';
 import { atualizarMetricas, lerMetricas, PAGINA } from './metricas';
+import { rotinaClube } from './clube';
 import { chaveFoto, janelasLembrete, mensagemFcm, mensagemLembrete, tipoDaImagem, TIPOS } from './util';
 
 export interface Env {
@@ -224,12 +226,20 @@ export default {
   async scheduled(ev: ScheduledEvent, env: Env, ctx: ExecutionContext) {
     // Cron próprio para as métricas: cada execução tem sua cota de chamadas, sem dividir com os lembretes.
     if (ev.cron === CRON_METRICAS) { ctx.waitUntil(metricas(env)); return; }
+    if (ev.cron === CRON_CLUBE) { ctx.waitUntil(clube(env)); return; }
     ctx.waitUntil(enviarLembretes(env));
     ctx.waitUntil(vencimentos(env));
   },
 };
 
 const CRON_METRICAS = '0 9,21 * * *';
+const CRON_CLUBE = '35 * * * *';
+
+async function clube(env: Env) {
+  if (!env.GOOGLE_SA_EMAIL || !env.GOOGLE_SA_PRIVATE_KEY) return;
+  const tokenSA = await tokenGoogle(env.GOOGLE_SA_EMAIL, env.GOOGLE_SA_PRIVATE_KEY);
+  await rotinaClube(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA), tokenSA, env.FIREBASE_PROJECT_ID).catch(e => console.error('Clube falhou', e));
+}
 
 async function metricas(env: Env) {
   if (!env.GOOGLE_SA_EMAIL || !env.GOOGLE_SA_PRIVATE_KEY) return;

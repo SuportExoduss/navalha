@@ -41,3 +41,25 @@ test('separarMembros: pedidos, vencidos (inclusive antes do Worker marcar), venc
   assert.equal(g.vence_logo.length, 1);
   assert.equal(g.em_dia.length, 1);
 });
+
+test('avisoDevido: pedido uma vez; 3 dias antes e no dia só de dia; vencido 1 dia depois', async () => {
+  const { avisoDevido, textoAvisoClube } = await import('./clube');
+  const vence = paraMillis('2026-11-26', 15 * 60);
+  const as = (agora: number, extra: Record<string, unknown> = {}) => avisoDevido({ status: 'ativo', venceEm: vence, atualizadoEm: 1, ...extra } as never, agora);
+  assert.equal(avisoDevido({ status: 'solicitado', atualizadoEm: 100 } as never, 200), 'pedido');
+  assert.equal(avisoDevido({ status: 'solicitado', atualizadoEm: 100, lembretes: { pedido: 150 } } as never, 200), null);
+  assert.equal(avisoDevido({ status: 'solicitado', atualizadoEm: 300, lembretes: { pedido: 150 } } as never, 400), 'pedido'); // pediu de novo
+  assert.equal(as(paraMillis('2026-11-20', 10 * 60)), null); // 6 dias antes
+  assert.equal(as(paraMillis('2026-11-23', 16 * 60)), 'd3');
+  assert.equal(as(paraMillis('2026-11-23', 23 * 60)), null); // de noite espera a manhã
+  assert.equal(as(paraMillis('2026-11-24', 10 * 60), { lembretes: { d3: 1 } }), null);
+  assert.equal(as(paraMillis('2026-11-26', 9 * 60), { lembretes: { d3: 1 } }), 'd0');
+  assert.equal(as(paraMillis('2026-11-27', 10 * 60), { lembretes: { d3: 1, d0: 1 } }), null); // dia de tolerância
+  assert.equal(as(paraMillis('2026-11-27', 15 * 60 + 1), { lembretes: { d3: 1, d0: 1 } }), 'vencido');
+  assert.equal(as(paraMillis('2026-11-28', 3 * 60)), 'vencido'); // vencido não espera o dia
+  assert.equal(avisoDevido({ status: 'saiu', venceEm: vence, atualizadoEm: 1 } as never, vence + 5 * DIA), null);
+  const m = { planoNome: '4 cortes', barbeariaNome: 'Navalha de Ouro', clienteNome: 'Ana', venceEm: vence };
+  assert.equal(textoAvisoClube('d3', m, 'cliente', paraMillis('2026-11-23', 600)).corpo, '4 cortes na Navalha de Ouro vence Qui 26/11. Pague na barbearia para continuar.');
+  assert.match(textoAvisoClube('pedido', m, 'casa', 0).corpo, /^Ana quer assinar o 4 cortes/);
+  assert.match(textoAvisoClube('vencido', m, 'casa', vence + 2 * DIA).corpo, /Recebi o pagamento/);
+});

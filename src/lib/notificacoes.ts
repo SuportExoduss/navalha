@@ -3,7 +3,7 @@
 import { formatarHora, formatarPreco, rotuloDia, dataLocal } from './agenda';
 import type { Agendamento, Millis } from '../types/models';
 
-export type TipoNotificacao = 'agendado' | 'cancelado' | 'resumo_mes' | 'avaliar' | 'plano';
+export type TipoNotificacao = 'agendado' | 'cancelado' | 'resumo_mes' | 'avaliar' | 'plano' | 'clube';
 
 /** notificacoes/{id}: gravada só pelo Worker; o destinatário só lê e marca como lida. */
 export interface Notificacao {
