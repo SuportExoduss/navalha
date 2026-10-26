@@ -2,6 +2,7 @@
   <string name="app_name">Navalha</string>
   <string name="expo_system_ui_user_interface_style" translatable="false">automatic</string>
   <string name="expo_splash_screen_resize_mode" translatable="false">contain</string>
-  <!-- O site navalha.web.app pergunta ao Chrome se o app está instalado (getInstalledRelatedApps) e abre o app. -->
-  <string name="asset_statements" translatable="false">[{\"include\": \"https://navalha.web.app/.well-known/assetlinks.json\"}]</string>
+  <!-- O app declara que pertence ao site navalha.web.app: assim o Chrome responde ao site (getInstalledRelatedApps)
+       que o app está instalado e o site abre o app. -->
+  <string name="asset_statements" translatable="false">[{\"relation\": [\"delegate_permission/common.handle_all_urls\"], \"target\": {\"namespace\": \"web\", \"site\": \"https://navalha.web.app\"}}]</string>
 </resources>

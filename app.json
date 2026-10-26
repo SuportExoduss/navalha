@@ -3,7 +3,7 @@
     "name": "Navalha",
     "slug": "navalha",
     "scheme": "navalha",
-    "version": "0.4.0",
+    "version": "0.4.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -67,6 +67,8 @@
       "./plugins/modo-imersivo",
       "./plugins/android-studio",
       "expo-router",
+      "@react-native-firebase/app",
+      "@react-native-firebase/crashlytics",
       [
         "expo-location",
         {
