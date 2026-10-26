@@ -49,8 +49,9 @@ export default function Privacidade() {
         <Item forte="Notificações:">um identificador do aparelho para enviar lembretes e avisos de horário marcado ou cancelado,
           e os avisos do sino dentro do app. Base: consentimento, que você retira nas configurações do celular.</Item>
         <Item forte="Uso e erros:">registros de ações no app (por exemplo, "agendou" ou "cancelou") e de falhas técnicas
-          (mensagem do erro, tela, sistema e versão do app), ligados ao identificador da conta. Servem para corrigir erros,
-          entender o uso e evitar abuso. Base: legítimo interesse (art. 7º, IX), sem uso para publicidade.</Item>
+          (mensagem do erro, tela, sistema e versão do app), ligados ao identificador da conta. No Android, os relatórios de
+          falha vão também ao Firebase Crashlytics (modelo e sistema do aparelho, sem o identificador da conta). Servem para
+          corrigir erros, entender o uso e evitar abuso. Base: legítimo interesse (art. 7º, IX), sem uso para publicidade.</Item>
         <Paragrafo>
           Não coletamos dados sensíveis (saúde, religião, biometria etc.) e não tomamos decisões automáticas sobre você. Não
           avaliamos clientes.
@@ -63,7 +64,7 @@ export default function Privacidade() {
           equipe perde o acesso na hora. A barbearia só pode usar esses dados para atender você (regra dos Termos de uso).</Item>
         <Item forte="Qualquer pessoa:">só os dados públicos das barbearias, com a média de estrelas delas. Nenhum dado
           seu é público.</Item>
-        <Item forte="Serviços que operam o app para nós:">Google Firebase (login, banco de dados, notificações e site),
+        <Item forte="Serviços que operam o app para nós:">Google Firebase (login, banco de dados, notificações, relatórios de falha e site),
           Cloudflare (servidor do app e armazenamento das fotos) e Google Play (pagamento das assinaturas). Eles tratam os
           dados só para prestar esse serviço, sob os termos de proteção de dados de cada um.</Item>
         <Item forte="Autoridades:">quando a lei ou uma ordem judicial exigir.</Item>
@@ -72,7 +73,7 @@ export default function Privacidade() {
       <Topico titulo="Onde os dados ficam">
         <Paragrafo>
           O banco de dados fica no Brasil (Google Cloud em São Paulo). As fotos e o servidor do app ficam na rede da Cloudflare,
-          e o login, as notificações e o Google Play podem processar dados em outros países. Essas transferências seguem as
+          e o login, as notificações, os relatórios de falha e o Google Play podem processar dados em outros países. Essas transferências seguem as
           garantias contratuais dos termos de proteção de dados de cada serviço (LGPD, art. 33).
         </Paragrafo>
         <Paragrafo>

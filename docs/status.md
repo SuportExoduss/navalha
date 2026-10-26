@@ -221,6 +221,14 @@ Substitui a seção "Avaliações, nota Google e ranking" acima e o `docs/roadma
 - [x] Publicado: regras, Worker (versão bc148a0e) e web. Produção limpa: 1 foto de corte apagada do R2 e o campo de
   foto tirado dos 15 agendamentos
 - [ ] Dono: APK/AAB novo (o "Ver no mapa" com Waze/Uber depende do AndroidManifest novo)
+- [x] Página de métricas no Worker (`GET /metricas`, `worker/src/metricas.ts`): instalações, desinstalações e visitas à
+  página da Play (relatórios do bucket), falhas/ANRs (Android vitals) e contagens do Firebase; botão Recarregar e cron
+  9h/21h UTC. Testado com dados de exemplo; falta publicar e ligar as fontes:
+- [ ] Dono: `PLAY_BUCKET` no wrangler.toml; conta de serviço com "Ver informações do app" GLOBAL na Play Console;
+  ativar a "Google Play Developer Reporting API" no projeto do Google Cloud da conta; `ADMIN_TOKEN` definido; `npx wrangler deploy`
+- [ ] Crashlytics no app Android (`@react-native-firebase/app` + `crashlytics` 27.1.0, plugin Gradle 3.0.8 à mão em
+  `android/`; erros de JS vão por `src/services/crashlytics.native.ts`, sem uid). Política de privacidade atualizada
+  (relatórios de falha). Build debug do Gradle passou (25/out). Falta: testar uma falha no celular e ver no console do Firebase
 
 ## Fase 1 — o que falta para o portão da Fase 2
 O código do MVP está completo. O portão é "3 barbearias amigas usando por 1 semana sem erro grave e nenhum horário duplicado".
