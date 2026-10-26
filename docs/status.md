@@ -241,7 +241,7 @@ Substitui a seção "Avaliações, nota Google e ranking" acima e o `docs/roadma
   clube chega com o próximo AAB gerado a partir deste código
 - [x] 4. Worker (`worker/src/clube.ts`, cron próprio no minuto 35): pedido novo avisa dono e barbeiros ativos; lembrete
   ao cliente 3 dias antes e no dia (9h–21h); 1 dia depois do vencimento vira "vencido" e avisa cliente e dono. Sino +
-  push, sem repetir. Testado no Worker com banco falso (26/out). Falta publicar Worker e índice (status + venceEm)
+  push, sem repetir. Testado no Worker com banco falso. Publicado em 26/out: Worker (versão 82b6a31e), índice e site
 - [ ] 5. "Usar o clube" ao agendar, com limite
 - [ ] 6. Horário fixo (app + Worker + selo na agenda)
 - [ ] 7. Ponta a ponta, LGPD e status
