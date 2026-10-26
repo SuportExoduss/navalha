@@ -495,3 +495,18 @@ test('plano vencido: aviso no sino ao entrar nos 5 dias, uma vez só; cortesia n
   assert.equal(n.titulo, 'Plano vencido');
   assert.match(String(n.corpo), /Navalha de Ouro venceu\. Assine até .* para a barbearia não ficar bloqueada\./);
 });
+
+test('métricas: CSV da Play em UTF-16 vira total por dia', async () => {
+  const { lerCsv, juntarPlay, meses } = await import('./metricas');
+  const utf16 = (s: string) => { const b = Buffer.from('﻿' + s, 'utf16le'); return b.buffer.slice(b.byteOffset, b.byteOffset + b.length); };
+  const inst = lerCsv(utf16('Date,Package Name,Daily Device Installs,Daily Device Uninstalls,Installs on active devices\n2026-10-02,p,3,1,40\n2026-10-01,p,5,0,38\n'));
+  assert.deepEqual(inst[0], { Date: '2026-10-02', 'Package Name': 'p', 'Daily Device Installs': '3', 'Daily Device Uninstalls': '1', 'Installs on active devices': '40' });
+  const loja = lerCsv(utf16('Date,Package name,Country,Store listing acquisitions,Store listing visitors,Store listing conversion rate\n2026-10-01,p,BR,4,20,0.2\n2026-10-01,p,PT,0,2,0\n'));
+  const r = juntarPlay(inst, loja);
+  assert.deepEqual(r.dias, [
+    { data: '2026-10-01', instalacoes: 5, desinstalacoes: 0, visitas: 22 },
+    { data: '2026-10-02', instalacoes: 3, desinstalacoes: 1, visitas: 0 },
+  ]);
+  assert.equal(r.ativos, 40); // o dia mais recente, não a última linha
+  assert.deepEqual(meses(Date.UTC(2026, 0, 15)), ['202512', '202601']);
+});

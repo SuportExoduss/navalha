@@ -10,6 +10,8 @@
 //  POST /conta/excluir         → apaga ou anonimiza os dados da pessoa (LGPD); o app apaga o login em seguida
 //  GET  /conta/dados           → todos os dados da pessoa em JSON (LGPD: acesso e portabilidade)
 //  POST /barbearia/excluir     → antes de o dono apagar a casa: avaliações públicas e fotos da casa e do cardápio
+//  GET  /metricas              → página de métricas (Play, Android vitals, Firebase); GET /metricas/dados e POST /metricas/atualizar exigem ADMIN_TOKEN
+//  cron 9h e 21h UTC           → atualiza as métricas (6h e 18h em Brasília)
 //  cron a cada hora            → lembretes de 24 h e 2 h, casas com plano/teste vencido, prazos de guarda, WhatsApp do cliente 24 h após o horário e, no dia 1, resumo do mês
 import { verificarIdToken } from './auth';
 import { conferirVencimentos, migrarAssinaturas, resgatarCupom, verificarCompra } from './assinatura';
@@ -17,6 +19,7 @@ import { avisarAgendamento, resumoDoMes } from './avisos';
 import { avaliar } from './avaliacoes';
 import { excluirConta, excluirDadosBarbearia, exportarDados, limparAntigos, limparLegado, tirarTelefonesVencidos } from './conta';
 import { Firestore, tokenGoogle } from './firestore';
+import { atualizarMetricas, lerMetricas, PAGINA } from './metricas';
 import { chaveFoto, janelasLembrete, mensagemFcm, mensagemLembrete, tipoDaImagem, TIPOS } from './util';
 
 export interface Env {
@@ -30,7 +33,9 @@ export interface Env {
   // Segredos (wrangler secret put):
   GOOGLE_SA_EMAIL?: string;
   GOOGLE_SA_PRIVATE_KEY?: string;
-  /** Só para rotas de manutenção (migração). */
+  /** ID do bucket dos relatórios da Play (pubsite_prod_…), em Play Console › Baixar relatórios. */
+  PLAY_BUCKET?: string;
+  /** Só para rotas de manutenção (migração) e para a página de métricas. */
   ADMIN_TOKEN?: string;
 }
 
@@ -188,6 +193,23 @@ export default {
       return json(r.corpo, r.status, h);
     }
 
+    if (url.pathname === '/metricas' && req.method === 'GET') {
+      return new Response(PAGINA, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });
+    }
+
+    if (url.pathname === '/metricas/dados' || url.pathname === '/metricas/atualizar') {
+      const chave = req.headers.get('Authorization')?.replace(/^Bearer /, '') ?? '';
+      if (!env.ADMIN_TOKEN || chave !== env.ADMIN_TOKEN) return json({ erro: 'Não autorizado.' }, 401, h);
+      if (!env.GOOGLE_SA_EMAIL || !env.GOOGLE_SA_PRIVATE_KEY) return json({ erro: 'Servidor sem credenciais.' }, 503, h);
+      const tokenSA = await tokenGoogle(env.GOOGLE_SA_EMAIL, env.GOOGLE_SA_PRIVATE_KEY);
+      const db = new Firestore(env.FIREBASE_PROJECT_ID, tokenSA);
+      if (req.method === 'GET') return json(await lerMetricas(db), 200, { ...h, 'Cache-Control': 'no-store' });
+      if (req.method !== 'POST') return json({ erro: 'Use GET ou POST.' }, 405, h);
+      // Cada recarga gasta ~10 chamadas ao Google: no máximo 20 por minuto.
+      if (env.LIMITE_FOTOS && !(await env.LIMITE_FOTOS.limit({ key: 'metricas' })).success) return json({ erro: 'Espere um minuto e tente de novo.' }, 429, h);
+      return json(await atualizarMetricas(db, tokenSA, env.PLAY_BUCKET), 200, { ...h, 'Cache-Control': 'no-store' });
+    }
+
     if (url.pathname === '/admin/migrar-assinaturas' && req.method === 'POST') {
       const chave = req.headers.get('Authorization')?.replace(/^Bearer /, '') ?? '';
       if (!env.ADMIN_TOKEN || chave !== env.ADMIN_TOKEN) return json({ erro: 'Não autorizado.' }, 401, h);
@@ -199,11 +221,21 @@ export default {
     return json({ erro: 'Rota não encontrada.' }, 404, h);
   },
 
-  async scheduled(_ev: ScheduledEvent, env: Env, ctx: ExecutionContext) {
+  async scheduled(ev: ScheduledEvent, env: Env, ctx: ExecutionContext) {
+    // Cron próprio para as métricas: cada execução tem sua cota de chamadas, sem dividir com os lembretes.
+    if (ev.cron === CRON_METRICAS) { ctx.waitUntil(metricas(env)); return; }
     ctx.waitUntil(enviarLembretes(env));
     ctx.waitUntil(vencimentos(env));
   },
 };
+
+const CRON_METRICAS = '0 9,21 * * *';
+
+async function metricas(env: Env) {
+  if (!env.GOOGLE_SA_EMAIL || !env.GOOGLE_SA_PRIVATE_KEY) return;
+  const tokenSA = await tokenGoogle(env.GOOGLE_SA_EMAIL, env.GOOGLE_SA_PRIVATE_KEY);
+  await atualizarMetricas(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA), tokenSA, env.PLAY_BUCKET).catch(e => console.error('Métricas falharam', e));
+}
 
 /** Casas com teste ou mensalidade vencida saem da busca (ou renovam, se o Google confirmar). */
 async function vencimentos(env: Env) {

@@ -18,7 +18,9 @@ export async function tokenGoogle(email: string, chavePem: string): Promise<stri
   const agora = Math.floor(Date.now() / 1000);
   const corpo = `${b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))}.${b64url(JSON.stringify({
     // androidpublisher: conferir as assinaturas no Google Play (a conta precisa estar ligada na Play Console).
-    iss: email, scope: 'https://www.googleapis.com/auth/datastore https://www.googleapis.com/auth/firebase.messaging https://www.googleapis.com/auth/androidpublisher',
+    iss: email, scope: 'https://www.googleapis.com/auth/datastore https://www.googleapis.com/auth/firebase.messaging https://www.googleapis.com/auth/androidpublisher' +
+      // métricas: relatórios da Play no bucket do desenvolvedor e Android vitals.
+      ' https://www.googleapis.com/auth/devstorage.read_only https://www.googleapis.com/auth/playdeveloperreporting',
     aud: 'https://oauth2.googleapis.com/token', iat: agora, exp: agora + 3600,
   }))}`;
   const assinatura = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', chave, new TextEncoder().encode(corpo));
@@ -64,6 +66,17 @@ export class Firestore {
       id: l.document!.name.split('/').pop()!,
       dados: Object.fromEntries(Object.entries(l.document!.fields).map(([k, v]) => [k, lerValor(v)])),
     }));
+  }
+
+  /** Quantos documentos a consulta acha (agregação: 1 leitura a cada 1.000 documentos). */
+  async contar(structuredQuery: unknown): Promise<number> {
+    const r = await fetch(`${this.base}:runAggregationQuery`, {
+      method: 'POST', headers: this.headers(),
+      body: JSON.stringify({ structuredAggregationQuery: { structuredQuery, aggregations: [{ alias: 'n', count: {} }] } }),
+    });
+    if (!r.ok) throw new Error(`runAggregationQuery ${r.status}: ${await r.text()}`);
+    const [l] = (await r.json()) as { result?: { aggregateFields?: { n?: Valor } } }[];
+    return Number(lerValor(l?.result?.aggregateFields?.n) ?? 0);
   }
 
   /** Vários documentos numa chamada só (o plano grátis do Worker limita as chamadas por execução). */

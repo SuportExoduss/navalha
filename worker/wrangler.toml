@@ -9,14 +9,18 @@ FIREBASE_PROJECT_ID = "navalha-1a8f5"
 FOTOS_URL_PUBLICA = ""
 # Só a versão web do app (o app Android não manda Origin e não passa por CORS). SEC-016.
 ORIGENS_PERMITIDAS = "https://navalha.web.app,http://localhost:8081"
+# Página /metricas: bucket dos relatórios da Play (Play Console › Baixar relatórios › Estatísticas › copiar o URI
+# do Cloud Storage; só o nome, ex.: pubsite_prod_rev_0123456789). A conta de serviço precisa de "Ver informações
+# do app" com acesso GLOBAL em Usuários e permissões.
+PLAY_BUCKET = ""
 
 [[r2_buckets]]
 binding = "FOTOS"
 bucket_name = "navalha-fotos"
 
-# Lembretes: 1 das 5 tarefas agendadas gratuitas. Minuto 5 de cada hora.
+# Lembretes: minuto 5 de cada hora. Métricas: 9h e 21h UTC (6h e 18h em Brasília). 2 das 5 gratuitas.
 [triggers]
-crons = ["5 * * * *"]
+crons = ["5 * * * *", "0 9,21 * * *"]
 
 # Segredos (não versionar):
 #   npx wrangler secret put GOOGLE_SA_EMAIL
