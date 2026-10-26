@@ -228,6 +228,17 @@ Substitui a seção "Avaliações, nota Google e ranking" acima e o `docs/roadma
 - [ ] Dono: `PLAY_BUCKET` no wrangler.toml; conta de serviço com "Ver informações do app" GLOBAL na Play Console;
   ativar a "Google Play Developer Reporting API" no projeto do Google Cloud da conta; `ADMIN_TOKEN` definido; `npx wrangler deploy`
 
+## Clube de assinatura (pedido do dono, 26/out/2026; desenho em `docs/clube.md`)
+- [x] Desenho com as decisões do dono (vencido libera o horário 1 dia depois; limite de cortes por plano; cliente
+  solicita e casa aceita; em todos os planos do Navalha; sem cobrança pelo app)
+- [ ] 1. Modelo, regras e testes de regras
+- [ ] 2. Dono/barbeiro: planos, solicitações, "Recebi o pagamento", vencimentos
+- [ ] 3. Cliente: solicitar e "Meu clube"
+- [ ] 4. Worker: lembretes de vencimento e vencidos
+- [ ] 5. "Usar o clube" ao agendar, com limite
+- [ ] 6. Horário fixo (app + Worker + selo na agenda)
+- [ ] 7. Ponta a ponta, LGPD e status
+
 ## Fase 1 — o que falta para o portão da Fase 2
 O código do MVP está completo. O portão é "3 barbearias amigas usando por 1 semana sem erro grave e nenhum horário duplicado".
 Para isso, nesta ordem:

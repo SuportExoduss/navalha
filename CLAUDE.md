@@ -11,7 +11,8 @@ Leia também `AGENTS.md` (regras do Expo SDK 58: não confie na memória, consul
 - Web: publique com `npm run export:web` (move as fontes para fora de `assets/node_modules`, que o Hosting não publica).
 - Próxima fase: **Fase 2 (piloto)**, código pronto; o resto é do dono (teste fechado no Play, barbearias).
 - **Fases 3, 4 e 5 estão fora do plano** (decisão do dono, 20/out/2026): não proponha nem construa pagamento do corte,
-  iOS, clube, fidelidade, multiunidades etc. sem o dono pedir. Ficam (feitos): mensalidades pelo Google Play e
+  iOS, fidelidade, multiunidades etc. sem o dono pedir. Exceção: o **clube de assinatura** voltou em 26/out, sem cobrança
+  pelo app (desenho em `docs/clube.md`). Ficam (feitos): mensalidades pelo Google Play e
   **avaliação da barbearia + ranking** (uma por cliente, editável; sem Google e sem avaliar cliente/barbeiro desde 22/out).
   Notas só o Worker grava (`worker/src/avaliacoes.ts`).
 

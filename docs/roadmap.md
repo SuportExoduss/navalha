@@ -195,7 +195,8 @@ Com a base pagando, o foco vira fazer o cliente voltar e a barbearia faturar mai
 
 **Recursos**
 
-- [ ] **Clube de assinatura do cliente:** a barbearia cria planos (ex.: 2 cortes/mês) cobrados no automático pelo Asaas — o recurso que mais gera receita recorrente nos concorrentes
+- [ ] **Clube de assinatura do cliente:** **trazido de volta pelo dono em 26/out/2026, sem cobrança pelo app** (paga na casa;
+  o app organiza planos, vencimento, limite de cortes e horário fixo). Desenho em `docs/clube.md`
 - [ ] **Lista de espera:** dia cheio → cliente entra na fila e recebe push se alguém cancelar
 - [ ] **Fidelidade:** a cada 10 cortes, 1 grátis (regra definida pelo dono)
 - [ ] **"Repetir último corte"** e lembrete inteligente ("faz 3 semanas do seu degradê")
