@@ -81,6 +81,7 @@ export function PainelCasa({ b, equipe, ehDono, uid }: { b: Barbearia; equipe: B
       {ehDono ? <PainelDono barbeariaId={b.id} /> : null}
 
       <Linha icone="cut-outline" titulo="Cardápio de cortes" dica="Seus cortes, preços e fotos" onPress={() => router.push('/cardapio')} />
+      <Linha icone="ribbon-outline" titulo="Clube de assinatura" dica="Pedidos, vencimentos e planos" onPress={() => router.push('/clube')} />
       {ehDono ? <LinhaPlano b={b} /> : null}
 
       <Secao titulo={`Equipe (${ativos} de ${limite})`} acao={ehDono ? (gerando ? 'Gerando…' : 'Convidar barbeiro') : undefined} onAcao={convidar}>

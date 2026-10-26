@@ -25,3 +25,19 @@ test('novoCiclo: em dia conta do vencimento; vencido há mais de 1 dia conta de 
   assert.equal(novoCiclo(vence, hoje).cicloInicio, hoje);
   assert.equal(novoCiclo(undefined, hoje).cicloInicio, hoje); // aceite: o primeiro ciclo começa hoje
 });
+
+test('separarMembros: pedidos, vencidos (inclusive antes do Worker marcar), vencem em 7 dias e em dia', async () => {
+  const { separarMembros } = await import('./clube');
+  const agora = paraMillis('2026-11-10', 600);
+  const m = (status: string, venceEm?: number, criadoEm = 1) => ({ status, venceEm, criadoEm }) as never;
+  const g = separarMembros([
+    m('solicitado', undefined, 5), m('solicitado', undefined, 2),
+    m('vencido', agora - 3 * DIA), m('ativo', agora - 60_000),
+    m('ativo', agora + 2 * DIA), m('ativo', agora + 20 * DIA),
+    m('saiu', agora + 20 * DIA), m('recusado'),
+  ], agora);
+  assert.deepEqual(g.pedido.map((x: { criadoEm: number }) => x.criadoEm), [2, 5]);
+  assert.equal(g.vencido.length, 2);
+  assert.equal(g.vence_logo.length, 1);
+  assert.equal(g.em_dia.length, 1);
+});

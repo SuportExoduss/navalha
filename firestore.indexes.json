@@ -1,6 +1,14 @@
 {
   "indexes": [
     {
+      "collectionGroup": "clubeMembros",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "barbeariaId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "barbearias",
       "queryScope": "COLLECTION",
       "fields": [

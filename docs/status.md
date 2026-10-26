@@ -233,7 +233,8 @@ Substitui a seção "Avaliações, nota Google e ranking" acima e o `docs/roadma
   solicita e casa aceita; em todos os planos do Navalha; sem cobrança pelo app)
 - [x] 1. Modelo (`src/types/models.ts`, ciclo em `src/lib/clube.ts`), regras e 9 testes de regras (26/out). Regras ainda
   não publicadas no Firebase
-- [ ] 2. Dono/barbeiro: planos, solicitações, "Recebi o pagamento", vencimentos
+- [x] 2. Dono/barbeiro: tela `/clube` (aba Barbearia › Clube de assinatura): pedidos, vencidos, vencem em 7 dias, em dia,
+  "Recebi o pagamento" com confirmação, encerrar e planos (só o dono edita). Conferida no navegador com o emulador (26/out)
 - [ ] 3. Cliente: solicitar e "Meu clube"
 - [ ] 4. Worker: lembretes de vencimento e vencidos
 - [ ] 5. "Usar o clube" ao agendar, com limite
