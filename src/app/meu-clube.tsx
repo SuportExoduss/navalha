@@ -7,7 +7,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Aviso, Botao, Carregando, Cartao, Chip, FalhaAoCarregar, Tela, Titulo } from '../components/ui';
 import { usosDoPlano } from '../components/clube/ClubeDaCasa';
 import { useAuth } from '../auth/AuthProvider';
-import { ouvirMeusClubes, sair, type Membro } from '../services/clube';
+import { ouvirMeusClubes, planoEUsos, sair, type Membro } from '../services/clube';
 import { db } from '../services/firebase';
 import { dataLocal, formatarData } from '../lib/agenda';
 import { situacao } from '../lib/clube';
@@ -46,6 +46,11 @@ function Assinatura({ m }: { m: Membro }) {
   const [confirmar, setConfirmar] = useState(false);
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  // Plano com limite: quantos já foram usados no ciclo (horários pelo clube não cancelados).
+  const [usos, setUsos] = useState<number | null>(null);
+  useEffect(() => {
+    if (m.status === 'ativo' && m.cortesPorMes) planoEUsos(db, m).then(r => setUsos(r.usos)).catch(() => undefined);
+  }, [m.id, m.status, m.cicloInicio]);
   const s = situacao(m, Date.now());
   const vence = m.venceEm !== undefined ? formatarData(dataLocal(m.venceEm), dataLocal(Date.now())) : '';
   const texto = m.status === 'recusado' ? 'A barbearia não aceitou o pedido. Fale com eles ou peça de novo na página da casa.'
@@ -63,7 +68,7 @@ function Assinatura({ m }: { m: Membro }) {
     <Cartao style={{ gap: space(2), borderColor: s === 'vencido' ? colors.danger : s === 'pedido' ? colors.accent : colors.border }}>
       <View style={{ gap: 2 }}>
         <Text style={[type.body, { fontWeight: '600' }]}>{m.barbeariaNome}</Text>
-        <Text style={type.caption}>{m.planoNome} · {usosDoPlano(m.cortesPorMes)}</Text>
+        <Text style={type.caption}>{m.planoNome} · {usos !== null && m.cortesPorMes ? `${usos} de ${m.cortesPorMes} usados neste ciclo` : usosDoPlano(m.cortesPorMes)}</Text>
       </View>
       <Text style={type.body}>{texto}</Text>
       {confirmar ? (

@@ -242,7 +242,12 @@ Substitui a seção "Avaliações, nota Google e ranking" acima e o `docs/roadma
 - [x] 4. Worker (`worker/src/clube.ts`, cron próprio no minuto 35): pedido novo avisa dono e barbeiros ativos; lembrete
   ao cliente 3 dias antes e no dia (9h–21h); 1 dia depois do vencimento vira "vencido" e avisa cliente e dono. Sino +
   push, sem repetir. Testado no Worker com banco falso. Publicado em 26/out: Worker (versão 82b6a31e), índice e site
-- [ ] 5. "Usar o clube" ao agendar, com limite
+- [x] 5. "Usar o clube" ao agendar, com limite: no popup de confirmação o membro ativo vê "Usar o clube (X de Y usados)"
+  (ligado por padrão) ou o motivo de não dar (fora do plano, limite, passa do vencimento). Quem grava é o Worker
+  (`POST /clube/agendar`): confere idade, membro, plano, limite do ciclo, casa em dia, corte e barbeiro ativos e o horário,
+  e cria agendamento (origem "clube", preço 0) + blocos de ocupação num commit só (bloco pego = nada gravado).
+  Agenda, Meus horários e atendimento mostram "Clube" no lugar do preço; Meu clube mostra os usos. Testado no Worker
+  e no navegador com o emulador (código real do Worker gravando no emulador). Publicado em 26/out: Worker 342966c0 e site
 - [ ] 6. Horário fixo (app + Worker + selo na agenda)
 - [ ] 7. Ponta a ponta, LGPD e status
 

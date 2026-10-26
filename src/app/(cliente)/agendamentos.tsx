@@ -103,7 +103,7 @@ function ItemAgendamento({ a, uid, podeCancelar, pedido, avaliar }: { a: Agendam
         <View style={{ flex: 1, gap: 2 }}>
           <Text style={[type.heading, type.number]}>{rotuloDia(a.data, hoje)} · {formatarHora(a.inicio)}</Text>
           <Text style={type.body}>{a.servicoNome}{a.barbeiroNome ? ` com ${a.barbeiroNome}` : ''}</Text>
-          <Text style={type.caption}>{a.barbeariaNome ? `${a.barbeariaNome} · ` : ''}{a.duracaoMin} min · {formatarPreco(a.precoCentavos)}</Text>
+          <Text style={type.caption}>{a.barbeariaNome ? `${a.barbeariaNome} · ` : ''}{a.duracaoMin} min · {a.origem === 'clube' ? 'Clube' : formatarPreco(a.precoCentavos)}</Text>
         </View>
         <EtiquetaStatus status={a.status} />
       </View>

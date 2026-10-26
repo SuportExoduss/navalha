@@ -1,11 +1,13 @@
 // Clube de assinatura, lado da casa (docs/clube.md): planos, pedidos, "Recebi o pagamento" e encerrar.
 // O app não cobra: a equipe marca o que recebeu na casa. Vencido, lembretes e reservas ficam com o Worker.
 import {
-  collection, deleteDoc, deleteField, doc, getDocs, onSnapshot, query, setDoc, updateDoc, where, writeBatch,
+  collection, deleteDoc, deleteField, doc, getDoc, getDocs, onSnapshot, query, setDoc, updateDoc, where, writeBatch,
   type Firestore, type Unsubscribe,
 } from 'firebase/firestore';
-import { novoCiclo } from '../lib/clube';
-import type { MembroClube, PlanoClube } from '../types/models';
+import { novoCiclo, usosNoCiclo } from '../lib/clube';
+import { auth } from './firebase';
+import { HorarioOcupadoError } from './agendamentos';
+import type { Agendamento, MembroClube, PlanoClube } from '../types/models';
 
 /** Membro com o id do documento (barbeariaId_uid), que as listas e as gravações usam. */
 export type Membro = MembroClube & { id: string };
@@ -99,4 +101,38 @@ export async function solicitar(
 /** O cliente sai do clube (ou desiste do pedido). O horário fixo sai junto. */
 export async function sair(db: Firestore, m: Membro) {
   await updateDoc(doc(db, 'clubeMembros', m.id), { status: 'saiu', horarioFixo: deleteField(), atualizadoEm: Date.now() });
+}
+
+/**
+ * O clube da pessoa nesta casa, com o plano e os usos do ciclo (para o "Usar o clube" e o "X de Y usados").
+ * Sem clube: null (1 leitura). Com clube: plano + os horários dela pelo clube (poucos, um por uso).
+ */
+export async function meuClubeNaCasa(db: Firestore, barbeariaId: string, uid: string) {
+  const s = await getDoc(doc(db, 'clubeMembros', `${barbeariaId}_${uid}`));
+  if (!s.exists()) return null;
+  const membro = { ...(s.data() as MembroClube), id: s.id };
+  if (membro.status !== 'ativo') return { membro, plano: null, usos: 0 };
+  return { membro, ...(await planoEUsos(db, membro)) };
+}
+
+export async function planoEUsos(db: Firestore, m: Membro) {
+  const [p, ags] = await Promise.all([
+    getDoc(doc(db, 'barbearias', m.barbeariaId, 'clubePlanos', m.planoId)),
+    getDocs(query(collection(db, 'agendamentos'), where('clienteUid', '==', m.clienteUid), where('clubeMembroId', '==', m.id))),
+  ]);
+  return { plano: p.exists() ? (p.data() as PlanoClube) : null, usos: usosNoCiclo(ags.docs.map(d => d.data() as Agendamento), m) };
+}
+
+/** Reserva pelo clube: quem grava é o Worker (confere o limite e trava o horário). Devolve o id do agendamento. */
+export async function agendarPeloClube(barbeariaId: string, servicoId: string, inicio: number): Promise<string> {
+  const idToken = await auth.currentUser?.getIdToken();
+  if (!idToken) throw new Error('Entre na sua conta.');
+  const r = await fetch(`${process.env.EXPO_PUBLIC_WORKER_URL}/clube/agendar`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ barbeariaId, servicoId, inicio }),
+  }).catch(() => { throw new Error('Sem conexão. Confira a internet e tente de novo.'); });
+  const j = (await r.json().catch(() => ({}))) as { erro?: string; ocupado?: boolean; agendamentoId?: string };
+  if (j.ocupado) throw new HorarioOcupadoError();
+  if (!r.ok || !j.agendamentoId) throw new Error(j.erro ?? 'Não foi possível reservar pelo clube. Tente de novo.');
+  return j.agendamentoId;
 }

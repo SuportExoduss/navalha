@@ -5,6 +5,7 @@
 //  POST /assinatura/verificar → confere no Google Play a compra do plano e libera a casa
 //  POST /cupom/resgatar      → cupom do Navalha: libera o plano do cupom (cortesia, sem Google Play), só o dono
 //  POST /admin/migrar-assinaturas → migração única das casas antigas (exige ADMIN_TOKEN)
+//  POST /clube/agendar        → o cliente marca pelo clube (sem preço), com o limite do ciclo; só o Worker cria origem "clube"
 //  POST /avaliacoes            → o cliente avalia a barbearia (uma por casa; de novo, edita). A nota só muda por aqui
 //  POST /avisos/agendamento    → avisa cliente, barbeiro e dono (push + painel) quando alguém marca ou cancela
 //  POST /conta/excluir         → apaga ou anonimiza os dados da pessoa (LGPD); o app apaga o login em seguida
@@ -21,7 +22,7 @@ import { avaliar } from './avaliacoes';
 import { excluirConta, excluirDadosBarbearia, exportarDados, limparAntigos, limparLegado, tirarTelefonesVencidos } from './conta';
 import { Firestore, tokenGoogle } from './firestore';
 import { atualizarMetricas, lerMetricas, PAGINA } from './metricas';
-import { rotinaClube } from './clube';
+import { agendarPeloClube, rotinaClube } from './clube';
 import { chaveFoto, janelasLembrete, mensagemFcm, mensagemLembrete, tipoDaImagem, TIPOS } from './util';
 
 export interface Env {
@@ -142,6 +143,21 @@ export default {
       if (!env.GOOGLE_SA_EMAIL || !env.GOOGLE_SA_PRIVATE_KEY) return json({ erro: 'Servidor sem credenciais.' }, 503, h);
       const tokenSA = await tokenGoogle(env.GOOGLE_SA_EMAIL, env.GOOGLE_SA_PRIVATE_KEY);
       const r = await avisarAgendamento(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA), tokenSA, env.FIREBASE_PROJECT_ID, uid, agendamentoId);
+      return json(r.corpo, r.status, h);
+    }
+
+    if (url.pathname === '/clube/agendar' && req.method === 'POST') {
+      const token = req.headers.get('Authorization')?.replace(/^Bearer /, '') ?? '';
+      const uid = token ? await verificarIdToken(token, env.FIREBASE_PROJECT_ID) : null;
+      if (!uid) return json({ erro: 'Entre na sua conta.' }, 401, h);
+      if (env.LIMITE_FOTOS && !(await env.LIMITE_FOTOS.limit({ key: `clube:${uid}` })).success) return json({ erro: 'Muitas tentativas. Espere um minuto.' }, 429, h);
+      const corpo = (await req.json().catch(() => null)) as { barbeariaId?: unknown; servicoId?: unknown; inicio?: unknown } | null;
+      const id = (x: unknown) => (typeof x === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(x) ? x : '');
+      const barbeariaId = id(corpo?.barbeariaId), servicoId = id(corpo?.servicoId);
+      if (!barbeariaId || !servicoId || typeof corpo?.inicio !== 'number') return json({ erro: 'Dados inválidos.' }, 400, h);
+      if (!env.GOOGLE_SA_EMAIL || !env.GOOGLE_SA_PRIVATE_KEY) return json({ erro: 'Servidor sem credenciais.' }, 503, h);
+      const tokenSA = await tokenGoogle(env.GOOGLE_SA_EMAIL, env.GOOGLE_SA_PRIVATE_KEY);
+      const r = await agendarPeloClube(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA), uid, barbeariaId, servicoId, corpo.inicio);
       return json(r.corpo, r.status, h);
     }
 

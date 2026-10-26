@@ -115,6 +115,23 @@ export class Firestore {
     if (!r.ok) throw new Error(`commit ${r.status}: ${await r.text()}`);
   }
 
+  /**
+   * Cria vários documentos num commit só, todos ou nenhum: se algum já existe, não grava nada e devolve false.
+   * É a trava contra horário duplo do lado do Worker (a mesma ideia da transação de reservar()).
+   */
+  async criarTodos(lista: { caminho: string; campos: Record<string, unknown> }[]): Promise<boolean> {
+    const raiz = `projects/${this.projectId}/databases/(default)/documents/`;
+    const writes = lista.map(({ caminho, campos }) => ({
+      update: { name: raiz + caminho, fields: (paraValor(campos).mapValue?.fields ?? {}) },
+      currentDocument: { exists: false },
+    }));
+    const r = await fetch(`${this.base}:commit`, { method: 'POST', headers: this.headers(), body: JSON.stringify({ writes }) });
+    if (r.ok) return true;
+    const t = await r.text();
+    if (r.status === 409 || /ALREADY_EXISTS|FAILED_PRECONDITION/.test(t)) return false;
+    throw new Error(`commit ${r.status}: ${t}`);
+  }
+
   /** Apaga vários documentos numa chamada só (até 500; documento que não existe é ignorado). */
   async apagar(caminhos: string[]) {
     if (!caminhos.length) return;

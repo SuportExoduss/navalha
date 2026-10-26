@@ -559,3 +559,46 @@ test('clube: pedido avisa dono e barbeiros; vencido muda o status e avisa; rodar
   assert.equal(docs.get(notifs.find(c => c.includes('b1_beto_d3'))!)!.tipo, 'clube');
   assert.deepEqual(pushes.sort(), ['tk-beto', 'tk-dono', 'tk-dono']); // só quem tem token recebe push
 });
+
+test('clube/agendar: confere membro, plano, limite e horário; grava agendamento e blocos juntos; bloco pego = 409', async () => {
+  const { agendarPeloClube } = await import('./clube');
+  const agora = 1_800_000_000_000, DIA = 86_400_000, inicio = agora + DIA;
+  const docs = new Map<string, Record<string, unknown>>([
+    ['users/ana', { uid: 'ana', nome: 'Ana Souza', maiorDeIdadeEm: 1 }],
+    ['users/beto', { uid: 'beto', nome: 'Beto', maiorDeIdadeEm: 1 }],
+    ['clubeMembros/b1_ana', { status: 'ativo', planoId: 'p1', cortesPorMes: 2, cicloInicio: agora - 20 * DIA, venceEm: agora + 10 * DIA }],
+    ['barbearias/b1', { nome: 'Casa', emDia: true, passoMin: 30, janelaDias: 14 }],
+    ['barbearias/b1/servicos/s1', { barbeiroId: 'lucas', nome: 'Corte', precoCentavos: 5000, duracaoMin: 45, ativo: true }],
+    ['barbearias/b1/servicos/s2', { barbeiroId: 'lucas', nome: 'Barba', precoCentavos: 3000, duracaoMin: 30, ativo: true }],
+    ['barbearias/b1/barbeiros/lucas', { nome: 'Lucas', ativo: true }],
+    ['barbearias/b1/clubePlanos/p1', { servicoIds: ['s1'] }],
+  ]);
+  const db = {
+    varios: async (cs: string[]) => new Map(cs.filter(c => docs.has(c)).map(c => [c, docs.get(c)!])),
+    query: async () => [...docs].filter(([c, d]) => c.startsWith('agendamentos/') && d.clubeMembroId === 'b1_ana').map(([c, d]) => ({ id: c, dados: d })),
+    criarTodos: async (l: { caminho: string; campos: Record<string, unknown> }[]) => {
+      if (l.some(w => docs.has(w.caminho))) return false;
+      for (const w of l) docs.set(w.caminho, w.campos);
+      return true;
+    },
+  } as never;
+  assert.equal((await agendarPeloClube(db, 'beto', 'b1', 's1', inicio, agora)).status, 403); // não é membro
+  assert.equal((await agendarPeloClube(db, 'ana', 'b1', 's2', inicio, agora)).status, 403); // fora do plano
+  assert.equal((await agendarPeloClube(db, 'ana', 'b1', 's1', inicio + 60_000, agora)).status, 400); // fora do passo
+  assert.equal((await agendarPeloClube(db, 'ana', 'b1', 's1', agora - 1_800_000, agora)).status, 400); // passado
+  const r = await agendarPeloClube(db, 'ana', 'b1', 's1', inicio, agora);
+  assert.equal(r.status, 200);
+  const ag = docs.get(`agendamentos/${(r.corpo as { agendamentoId: string }).agendamentoId}`)!;
+  assert.deepEqual([ag.origem, ag.precoCentavos, ag.status, ag.clubeMembroId, ag.fim], ['clube', 0, 'reservado', 'b1_ana', inicio + 45 * 60_000]);
+  assert.equal((ag.slots as string[]).length, 2);
+  for (const k of ag.slots as string[]) assert.equal(docs.get(`ocupacao/${k}`)!.agendamentoId, ag.id);
+  // Mesmo horário de novo: algum bloco já existe, nada é gravado.
+  const antes = docs.size;
+  assert.deepEqual((await agendarPeloClube(db, 'ana', 'b1', 's1', inicio, agora)).corpo, { erro: 'Esse horário acabou de ser ocupado. Escolha outro.', ocupado: true });
+  assert.equal(docs.size, antes);
+  // Segundo uso passa; o terceiro bate no limite de 2 do ciclo. Casa bloqueada não recebe.
+  assert.equal((await agendarPeloClube(db, 'ana', 'b1', 's1', inicio + DIA, agora)).status, 200);
+  assert.match(String((await agendarPeloClube(db, 'ana', 'b1', 's1', inicio + 2 * DIA, agora)).corpo.erro), /já usou os 2/);
+  docs.set('barbearias/b1', { ...docs.get('barbearias/b1'), emDia: false });
+  assert.equal((await agendarPeloClube(db, 'ana', 'b1', 's1', inicio + 3 * DIA, agora)).status, 409);
+});

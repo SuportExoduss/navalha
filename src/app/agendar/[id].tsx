@@ -18,6 +18,8 @@ import { db } from '../../services/firebase';
 import { dadosDaCasa } from '../../services/barbearias';
 import { esquecer } from '../../services/cache';
 import { HorarioOcupadoError, ouvirHorariosLivres, registrarEvento, reservar } from '../../services/agendamentos';
+import { agendarPeloClube, meuClubeNaCasa } from '../../services/clube';
+import { motivoSemClube } from '../../lib/clube';
 import { dataLocal, formatarHora, formatarPreco, proximosDias, rotuloDia } from '../../lib/agenda';
 import { colors, radius, space, type, sobreFoto } from '../../theme';
 import type { Barbearia, Barbeiro, ISODate, Millis, Servico } from '../../types/models';
@@ -40,6 +42,13 @@ export default function Agendar() {
   const [falhou, setFalhou] = useState(false);
   const [tentativa, setTentativa] = useState(0);
   const abriuEm = useRef(Date.now());
+  // Clube da pessoa nesta casa (null = não é membro): oferece "Usar o clube" no popup.
+  const [clube, setClube] = useState<Awaited<ReturnType<typeof meuClubeNaCasa>>>(null);
+  const [usarClube, setUsarClube] = useState(true);
+
+  useEffect(() => {
+    if (id && perfil?.uid) meuClubeNaCasa(db, id, perfil.uid).then(setClube).catch(() => setClube(null));
+  }, [id, perfil?.uid]);
 
   useEffect(() => {
     if (!id) return;
@@ -94,12 +103,17 @@ export default function Agendar() {
   const nomeBarbeiro = barbeiro.apelido || barbeiro.nome.split(' ')[0];
   const dias = proximosDias(Date.now(), Math.min(b.janelaDias, DIAS_VISIVEIS));
 
+  // Membro ativo: a linha do clube aparece; motivo = por que não dá neste horário (ex.: limite do mês).
+  const membroAtivo = clube?.membro.status === 'ativo';
+  const motivoClube = membroAtivo && escolhido && servico ? motivoSemClube(clube!.membro, clube!.plano, servico.id, escolhido, clube!.usos) : null;
+  const peloClube = membroAtivo && !motivoClube && usarClube;
+
   async function confirmar() {
     if (!escolhido || !b || !servico || !perfil) return;
     setErro(null);
     setSalvando(true);
     try {
-      const agendamentoId = await reservar(db, {
+      const agendamentoId = peloClube ? await agendarPeloClube(b.id, servico.id, escolhido) : await reservar(db, {
         barbeariaId: b.id, barbeariaNome: b.nome, barbeiroId: barbeiro!.uid, barbeiroNome: nomeBarbeiro,
         servico, cliente: { uid: perfil.uid, nome: perfil.apelido || perfil.nome, ...(perfil.telefone ? { telefone: perfil.telefone } : {}) },
         inicio: escolhido, passoMin: b.passoMin, origem: 'app',
@@ -118,6 +132,8 @@ export default function Agendar() {
         setErro(e.message);
         setEscolhido(null);
         setRecarregar(n => n + 1);
+      } else if (peloClube && e instanceof Error) {
+        setErro(e.message); // o Worker diz o motivo (limite, vencimento, casa bloqueada)
       } else if ((e as { code?: string })?.code === 'permission-denied') {
         // Recusado pelas regras: limite de 20 s entre reservas OU o cardápio mudou (preço/duração) depois
         // da leitura guardada. Relê a casa do servidor e pede para tentar de novo.
@@ -162,10 +178,21 @@ export default function Agendar() {
                 <Linha rotulo="Barbeiro" valor={nomeBarbeiro} />
                 <Linha rotulo="Corte" valor={`${servico.nome} · ${servico.duracaoMin} min`} />
                 <Linha rotulo="Quando" valor={`${rotuloDia(dia, hoje)} às ${formatarHora(escolhido)}`} />
-                <Linha rotulo="Valor" valor={formatarPreco(servico.precoCentavos)} destaque />
+                <Linha rotulo="Valor" valor={peloClube ? 'Clube' : formatarPreco(servico.precoCentavos)} destaque />
               </View>
             ) : null}
-            <Text style={type.caption}>Pagamento no balcão. Cancelamento grátis até {b.politica.cancelamentoGratisHoras} h antes.</Text>
+            {membroAtivo ? (
+              motivoClube ? <Aviso texto={motivoClube} /> : (
+                <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: usarClube }} onPress={() => setUsarClube(v => !v)}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: space(2), minHeight: 44 }}>
+                  <Ionicons name={usarClube ? 'checkbox' : 'square-outline'} size={22} color={usarClube ? colors.accent : colors.textMuted} />
+                  <Text style={[type.body, { flex: 1 }]}>
+                    Usar o clube{clube!.membro.cortesPorMes ? ` (${clube!.usos} de ${clube!.membro.cortesPorMes} usados)` : ''}
+                  </Text>
+                </Pressable>
+              )
+            ) : null}
+            <Text style={type.caption}>{peloClube ? 'Pelo clube: nada a pagar no balcão.' : 'Pagamento no balcão.'} Cancelamento grátis até {b.politica.cancelamentoGratisHoras} h antes.</Text>
             {erro ? <Aviso texto={erro} tom="erro" /> : null}
             <View style={{ flexDirection: 'row', gap: space(2) }}>
               <Botao titulo="Voltar" variante="secundario" style={{ flex: 1 }} disabled={salvando} onPress={() => { setErro(null); setEscolhido(null); }} />

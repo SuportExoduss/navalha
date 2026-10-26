@@ -4,8 +4,9 @@
 //  - 1 dia depois do vencimento sem pagamento → status "vencido" e aviso ao cliente e ao dono.
 // O que avisar e os textos ficam em src/lib/clube.ts (testados). Cada aviso grava a marca em `lembretes` junto
 // com a notificação, então rodar de novo não repete.
-import { avisoDevido, textoAvisoClube, type AvisoClube } from '../../src/lib/clube';
-import type { MembroClube } from '../../src/types/models';
+import { avisoDevido, motivoSemClube, textoAvisoClube, usosNoCiclo, type AvisoClube } from '../../src/lib/clube';
+import { chavesOcupacao, dataLocal } from '../../src/lib/agenda';
+import type { Agendamento, MembroClube, PlanoClube } from '../../src/types/models';
 import { enviarPush } from './avisos';
 import type { Firestore } from './firestore';
 
@@ -70,4 +71,54 @@ export async function rotinaClube(db: Firestore, tokenSA: string, projectId: str
     if (token) await enviarPush(projectId, tokenSA, { token, title: n.titulo, body: n.corpo, agendamentoId: n.id, link: n.link });
   }
   return { avisos: notifs.length };
+}
+
+/**
+ * POST /clube/agendar — o cliente marca um horário pelo clube (sem preço). Só o Worker cria agendamento com origem
+ * "clube" (as regras barram o app): aqui ele confere o membro, o plano, o limite do ciclo e a casa, e grava o
+ * agendamento e os blocos de ocupação num commit só, que falha inteiro se algum bloco já foi pego.
+ * ponytail: contar os usos e gravar não é uma transação; duas reservas no mesmo segundo podem passar o limite em 1.
+ * Transação REST (beginTransaction + runQuery) se isso aparecer.
+ */
+export async function agendarPeloClube(
+  db: Firestore, uid: string, barbeariaId: string, servicoId: string, inicio: number, agora = Date.now(),
+) {
+  const erro = (status: number, msg: string) => ({ status, corpo: { erro: msg } });
+  const membroId = `${barbeariaId}_${uid}`;
+  const docs = await db.varios([`users/${uid}`, `clubeMembros/${membroId}`, `barbearias/${barbeariaId}`, `barbearias/${barbeariaId}/servicos/${servicoId}`]);
+  const perfil = docs.get(`users/${uid}`);
+  const m = docs.get(`clubeMembros/${membroId}`) as unknown as MembroClube | undefined;
+  const casa = docs.get(`barbearias/${barbeariaId}`);
+  const s = docs.get(`barbearias/${barbeariaId}/servicos/${servicoId}`);
+  if (typeof perfil?.maiorDeIdadeEm !== 'number') return erro(403, 'Confirme sua idade no app antes de reservar.');
+  if (!casa || casa.emDia !== true) return erro(409, 'Esta barbearia não está recebendo horários agora.');
+  if (!s || s.ativo === false) return erro(409, 'Este corte saiu do cardápio.');
+  const passoMin = Number(casa.passoMin), duracaoMin = Number(s.duracaoMin), barbeiroId = String(s.barbeiroId);
+  if (!Number.isInteger(inicio) || inicio <= agora || inicio % (passoMin * 60_000) !== 0
+    || inicio > agora + (Number(casa.janelaDias) + 1) * DIA) return erro(400, 'Horário inválido.');
+
+  const extra = await db.varios([...(m ? [`barbearias/${barbeariaId}/clubePlanos/${m.planoId}`] : []), `barbearias/${barbeariaId}/barbeiros/${barbeiroId}`]);
+  const barbeiro = extra.get(`barbearias/${barbeariaId}/barbeiros/${barbeiroId}`);
+  if (!barbeiro || barbeiro.ativo === false) return erro(409, 'Este barbeiro não atende mais aqui.');
+  const plano = m ? extra.get(`barbearias/${barbeariaId}/clubePlanos/${m.planoId}`) as unknown as PlanoClube | undefined : undefined;
+  const ags = m ? await db.query({ from: [{ collectionId: 'agendamentos' }],
+    where: { fieldFilter: { field: { fieldPath: 'clubeMembroId' }, op: 'EQUAL', value: { stringValue: membroId } } } }) : [];
+  const motivo = motivoSemClube(m, plano, servicoId, inicio, m ? usosNoCiclo(ags.map(a => a.dados as unknown as Agendamento), m) : 0);
+  if (motivo) return erro(403, motivo);
+
+  const id = crypto.randomUUID().replace(/-/g, '').slice(0, 20);
+  const slots = chavesOcupacao(barbeiroId, inicio, duracaoMin, passoMin);
+  const telefone = typeof perfil.telefone === 'string' ? perfil.telefone : '';
+  const ag = {
+    id, barbeariaId, barbeiroId, barbeariaNome: casa.nome, barbeiroNome: barbeiro.apelido || barbeiro.nome,
+    clienteUid: uid, clienteNome: perfil.apelido || perfil.nome || 'Cliente', ...(telefone ? { clienteTelefone: telefone } : {}),
+    servicoId, servicoNome: s.nome, precoCentavos: 0, duracaoMin,
+    data: dataLocal(inicio), inicio, fim: inicio + duracaoMin * 60_000, slots,
+    status: 'reservado', origem: 'clube', clubeMembroId: membroId, lembretes: {}, criadoEm: agora, atualizadoEm: agora,
+  };
+  const ok = await db.criarTodos([
+    { caminho: `agendamentos/${id}`, campos: ag },
+    ...slots.map(k => ({ caminho: `ocupacao/${k}`, campos: { barbeariaId, barbeiroId, agendamentoId: id, inicio } })),
+  ]);
+  return ok ? { status: 200, corpo: { ok: true, agendamentoId: id } } : { status: 409, corpo: { erro: 'Esse horário acabou de ser ocupado. Escolha outro.', ocupado: true } };
 }

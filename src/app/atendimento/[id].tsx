@@ -52,7 +52,7 @@ export default function CorteAtual() {
       <Cartao style={{ gap: space(2) }}>
         <Text style={type.heading}>{a.clienteNome}</Text>
         <Text style={type.body}>{a.servicoNome}{a.barbeiroNome ? ` com ${a.barbeiroNome}` : ''}</Text>
-        <Text style={[type.caption, type.number]}>Marcado {formatarHora(a.inicio)}–{formatarHora(a.fim)} · {a.duracaoMin} min · {formatarPreco(a.precoCentavos)}</Text>
+        <Text style={[type.caption, type.number]}>Marcado {formatarHora(a.inicio)}–{formatarHora(a.fim)} · {a.duracaoMin} min · {a.origem === 'clube' ? 'Clube' : formatarPreco(a.precoCentavos)}</Text>
       </Cartao>
 
       {aberto ? (
