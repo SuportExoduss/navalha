@@ -15,6 +15,11 @@ service cloud.firestore {
       return logado() && exists(/databases/$(database)/documents/barbearias/$(bid)/barbeiros/$(eu()));
     }
     function ehDaCasa(bid) { return ehDono(bid) || ehBarbeiro(bid); }
+    // Dono ou barbeiro que ainda está ativo na casa (desligado perde o acesso na hora).
+    function equipeAtiva(bid) {
+      let b = /databases/$(database)/documents/barbearias/$(bid)/barbeiros/$(eu());
+      return ehDono(bid) || (logado() && exists(b) && get(b).data.get('ativo', true) == true);
+    }
     function mudou(campos) { return request.resource.data.diff(resource.data).affectedKeys().hasAny(campos); }
     // Fotos só do nosso Worker (R2) ou a foto da conta Google: nada de imagem externa ou pixel de rastreio (SEC-009).
     // O endereço local é o do emulador nos testes; em produção ele simplesmente não carrega.
@@ -136,6 +141,21 @@ service cloud.firestore {
         allow delete: if ehDono(bid) || (ehBarbeiro(bid) && resource.data.barbeiroId == eu());
       }
 
+      // Planos do clube de assinatura (docs/clube.md): leitura aberta como o cardápio; só o dono cria e edita.
+      match /clubePlanos/{pid} {
+        function planoOk(d) {
+          return d.keys().hasOnly(['id', 'nome', 'precoCentavos', 'servicoIds', 'cortesPorMes', 'ativo', 'criadoEm', 'atualizadoEm'])
+            && d.id == pid && d.nome is string && d.nome.size() >= 1 && d.nome.size() <= 60
+            && d.precoCentavos is int && d.precoCentavos >= 0 && d.precoCentavos <= 10000000
+            && d.servicoIds is list && d.servicoIds.size() >= 1 && d.servicoIds.size() <= 30
+            && (!('cortesPorMes' in d) || (d.cortesPorMes is int && d.cortesPorMes >= 1 && d.cortesPorMes <= 60))
+            && d.ativo is bool;
+        }
+        allow read: if true;
+        allow create, update: if ehDono(bid) && planoOk(request.resource.data);
+        allow delete: if ehDono(bid);
+      }
+
       // Folgas e pausas pontuais: o barbeiro cuida das próprias; o dono, de todas.
       // Qualquer cliente lê (os horários livres descontam as folgas), então aqui não vai o motivo.
       match /bloqueios/{id} {
@@ -177,6 +197,87 @@ service cloud.firestore {
     match /assinaturas/{bid} {
       allow read: if ehDono(bid);
       allow write: if false;
+    }
+
+    // ---------- Clube de assinatura (docs/clube.md) ----------
+    // Um documento por cliente por casa (id = barbeariaId_uid). O cliente solicita, sai e escolhe o horário fixo;
+    // a equipe aceita, recusa, encerra e marca o pagamento. Vencido, lembretes e reservas: só o Worker.
+    match /clubeMembros/{mid} {
+      function m() { return resource.data; }
+      function n() { return request.resource.data; }
+      function plano(bid, pid) { return /databases/$(database)/documents/barbearias/$(bid)/clubePlanos/$(pid); }
+      // Nome e limite copiados do plano ativo: ninguém pede um limite maior que o do plano.
+      function bateComPlano(d) {
+        let p = get(plano(d.barbeariaId, d.planoId)).data;
+        return p.ativo == true && d.planoNome == p.nome && d.get('cortesPorMes', null) == p.get('cortesPorMes', null);
+      }
+      function solicitacaoOk(d) {
+        return mid == d.barbeariaId + '_' + eu() && d.clienteUid == eu() && d.status == 'solicitado'
+          && d.clienteNome is string && d.clienteNome.size() >= 1 && d.clienteNome.size() <= 80
+          && barbearia(d.barbeariaId).get('emDia', false) == true && bateComPlano(d);
+      }
+      // Horário fixo: barbeiro ativo da casa, serviço dele e coberto pelo plano, hora no passo da casa.
+      function horarioFixoOk(d) {
+        let h = d.horarioFixo;
+        let s = get(/databases/$(database)/documents/barbearias/$(d.barbeariaId)/servicos/$(h.servicoId)).data;
+        let b = /databases/$(database)/documents/barbearias/$(d.barbeariaId)/barbeiros/$(h.barbeiroId);
+        return h.keys().hasOnly(['barbeiroId', 'servicoId', 'diaSemana', 'minutos', 'frequencia', 'ancora'])
+          && exists(b) && get(b).data.get('ativo', true) == true
+          && s.barbeiroId == h.barbeiroId && s.get('ativo', true) != false
+          && get(plano(d.barbeariaId, d.planoId)).data.servicoIds.hasAny([h.servicoId])
+          && h.diaSemana is int && h.diaSemana >= 0 && h.diaSemana <= 6
+          && h.minutos is int && h.minutos >= 0 && h.minutos < 1440 && h.minutos % barbearia(d.barbeariaId).passoMin == 0
+          && h.frequencia in ['semanal', 'quinzenal', 'mensal']
+          && h.ancora is string && h.ancora.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}');
+      }
+      // Ciclo de 28 a 31 dias (src/lib/clube.ts, somarMes).
+      function cicloOk(d) {
+        return d.cicloInicio is int && d.venceEm is int
+          && d.venceEm >= d.cicloInicio + 28 * 86400000 && d.venceEm <= d.cicloInicio + 31 * 86400000 + 3600000;
+      }
+      function so(campos) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(campos); }
+      function agora() { return request.time.toMillis(); }
+      function comecaAgora(d) { return d.cicloInicio > agora() - 3600000 && d.cicloInicio <= agora() + 60000; }
+
+      allow read: if logado() && (m().clienteUid == eu() || equipeAtiva(m().barbeariaId));
+      allow create: if logado() && solicitacaoOk(n())
+        && n().keys().hasOnly(['barbeariaId', 'barbeariaNome', 'planoId', 'planoNome', 'cortesPorMes', 'clienteUid', 'clienteNome', 'status', 'criadoEm', 'atualizadoEm']);
+      allow update: if logado() && n().barbeariaId == m().barbeariaId && n().clienteUid == m().clienteUid && (
+        // Cliente: sai (ou desiste do pedido); o horário fixo vai junto.
+        (m().clienteUid == eu() && m().status in ['solicitado', 'ativo', 'vencido'] && n().status == 'saiu'
+           && !('horarioFixo' in n()) && so(['status', 'horarioFixo', 'atualizadoEm']))
+        // Cliente: pede de novo depois de recusado ou de ter saído (pode trocar de plano).
+        || (m().clienteUid == eu() && m().status in ['recusado', 'saiu'] && solicitacaoOk(n())
+           && so(['status', 'planoId', 'planoNome', 'cortesPorMes', 'clienteNome', 'atualizadoEm']))
+        // Cliente ativo: escolhe, troca ou tira o horário fixo.
+        || (m().clienteUid == eu() && m().status == 'ativo' && n().status == 'ativo'
+           && so(['horarioFixo', 'atualizadoEm']) && (!('horarioFixo' in n()) || horarioFixoOk(n())))
+        // Equipe: aceita (vale como o 1º pagamento: o ciclo começa agora) ou recusa.
+        || (equipeAtiva(m().barbeariaId) && m().status == 'solicitado' && n().status == 'ativo'
+           && cicloOk(n()) && comecaAgora(n()) && so(['status', 'cicloInicio', 'venceEm', 'atualizadoEm']))
+        || (equipeAtiva(m().barbeariaId) && m().status == 'solicitado' && n().status == 'recusado' && so(['status', 'atualizadoEm']))
+        // Equipe: "Recebi o pagamento". O ciclo novo começa no vencimento antigo (em dia) ou agora (vencido).
+        // Os lembretes do ciclo velho saem junto.
+        || (equipeAtiva(m().barbeariaId) && m().status in ['ativo', 'vencido'] && n().status == 'ativo' && cicloOk(n())
+           && (n().cicloInicio == m().venceEm || comecaAgora(n())) && n().venceEm > m().venceEm
+           && !('lembretes' in n()) && so(['status', 'cicloInicio', 'venceEm', 'lembretes', 'atualizadoEm']))
+        // Equipe: encerra a assinatura.
+        || (equipeAtiva(m().barbeariaId) && m().status in ['ativo', 'vencido'] && n().status == 'saiu'
+           && !('horarioFixo' in n()) && so(['status', 'horarioFixo', 'atualizadoEm']))
+      );
+      allow delete: if false;
+
+      // Histórico de "Recebi o pagamento": a equipe registra; cliente e equipe leem; ninguém altera.
+      match /pagamentos/{pid} {
+        function membro() { return get(/databases/$(database)/documents/clubeMembros/$(mid)).data; }
+        allow read: if logado() && (membro().clienteUid == eu() || equipeAtiva(membro().barbeariaId));
+        allow create: if equipeAtiva(membro().barbeariaId)
+          && request.resource.data.keys().hasOnly(['em', 'porUid', 'valorCentavos', 'venceEmNovo'])
+          && request.resource.data.porUid == eu() && request.resource.data.em is int
+          && request.resource.data.valorCentavos is int && request.resource.data.valorCentavos >= 0
+          && request.resource.data.valorCentavos <= 10000000 && request.resource.data.venceEmNovo is int;
+        allow update, delete: if false;
+      }
     }
 
     // ---------- Notificações da casa (marcado, cancelado, resumo do mês) ----------

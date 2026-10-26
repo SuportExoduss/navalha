@@ -231,7 +231,8 @@ Substitui a seção "Avaliações, nota Google e ranking" acima e o `docs/roadma
 ## Clube de assinatura (pedido do dono, 26/out/2026; desenho em `docs/clube.md`)
 - [x] Desenho com as decisões do dono (vencido libera o horário 1 dia depois; limite de cortes por plano; cliente
   solicita e casa aceita; em todos os planos do Navalha; sem cobrança pelo app)
-- [ ] 1. Modelo, regras e testes de regras
+- [x] 1. Modelo (`src/types/models.ts`, ciclo em `src/lib/clube.ts`), regras e 9 testes de regras (26/out). Regras ainda
+  não publicadas no Firebase
 - [ ] 2. Dono/barbeiro: planos, solicitações, "Recebi o pagamento", vencimentos
 - [ ] 3. Cliente: solicitar e "Meu clube"
 - [ ] 4. Worker: lembretes de vencimento e vencidos

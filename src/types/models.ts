@@ -188,7 +188,10 @@ export interface Agendamento {
   /** IDs dos documentos de ocupação (slots) que este agendamento trava. */
   slots: string[];
   status: StatusAgendamento;
-  origem: 'app' | 'balcao';
+  /** 'clube': reservado pelo Worker para um assinante do clube (horário fixo ou "Usar o clube"). */
+  origem: 'app' | 'balcao' | 'clube';
+  /** Assinatura do clube que pagou este horário (só com origem 'clube'). */
+  clubeMembroId?: string;
   lembretes: { h24?: Millis; h2?: Millis };
   pagamentoId?: string;
   /** Quem cancelou e por quê: a barbearia vê o motivo do cliente e o cliente vê o da barbearia. */
@@ -201,6 +204,72 @@ export interface Agendamento {
   pedidoAvaliacao?: boolean;
   criadoEm: Millis;
   atualizadoEm: Millis;
+}
+
+// ---------- Clube de assinatura (docs/clube.md): o app não cobra; a casa recebe e marca ----------
+
+/** barbearias/{bid}/clubePlanos/{planoId} — o dono cria. */
+export interface PlanoClube {
+  id: string;
+  nome: string;
+  /** Mensalidade combinada com o cliente (informativa: o pagamento é na casa). */
+  precoCentavos: number;
+  /** Serviços do cardápio que o clube cobre. */
+  servicoIds: string[];
+  /** Usos por ciclo; sem o campo = ilimitado. */
+  cortesPorMes?: number;
+  /** Pausado = some da página da casa; quem já assina continua. */
+  ativo: boolean;
+  criadoEm: Millis;
+  atualizadoEm: Millis;
+}
+
+export type StatusMembroClube = 'solicitado' | 'ativo' | 'vencido' | 'recusado' | 'saiu';
+export type FrequenciaClube = 'semanal' | 'quinzenal' | 'mensal';
+
+/** Horário fixo do assinante, reservado pelo Worker dentro do ciclo pago. */
+export interface HorarioFixo {
+  barbeiroId: string;
+  servicoId: string;
+  /** 0 = domingo … 6 = sábado (Brasília). */
+  diaSemana: number;
+  /** Minutos desde 00:00, no passo da casa. */
+  minutos: number;
+  /** 'mensal' = a cada 4 semanas, no mesmo dia da semana. */
+  frequencia: FrequenciaClube;
+  /** Primeira data do horário fixo: quinzenal e mensal contam as semanas a partir dela. */
+  ancora: ISODate;
+}
+
+/** clubeMembros/{barbeariaId}_{clienteUid} — um por cliente por casa. */
+export interface MembroClube {
+  barbeariaId: string;
+  barbeariaNome: string;
+  planoId: string;
+  /** Copiados do plano na solicitação: a lista não precisa ler o plano. */
+  planoNome: string;
+  cortesPorMes?: number;
+  clienteUid: string;
+  clienteNome: string;
+  status: StatusMembroClube;
+  /** Ciclo pago: de cicloInicio até venceEm. Existem a partir do aceite. */
+  cicloInicio?: Millis;
+  venceEm?: Millis;
+  horarioFixo?: HorarioFixo;
+  /** Até onde o Worker já reservou o horário fixo (só o Worker grava). */
+  reservadoAte?: ISODate;
+  /** Lembretes de vencimento já enviados neste ciclo (só o Worker grava). */
+  lembretes?: { d3?: Millis; d0?: Millis };
+  criadoEm: Millis;
+  atualizadoEm: Millis;
+}
+
+/** clubeMembros/{id}/pagamentos/{pagamentoId} — "Recebi o pagamento" (histórico; o dinheiro é na casa). */
+export interface PagamentoClube {
+  em: Millis;
+  porUid: string;
+  valorCentavos: number;
+  venceEmNovo: Millis;
 }
 
 /** pagamentos/{pagamentoId} — Fase 3 (Asaas) */

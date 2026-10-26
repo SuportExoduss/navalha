@@ -720,3 +720,155 @@ test('cupons: o app não lê, não lista, não cria nem gasta cupom (só o servi
   // E a cortesia não se dá pelo app: assinatura e "em dia" só o servidor grava.
   await assertFails(updateDoc(doc(dbDe('dono'), 'barbearias/b1'), { 'assinatura.status': 'cortesia', 'assinatura.venceEm': Date.now() + 365 * 86_400_000 }));
 });
+
+// ---------- Clube de assinatura (docs/clube.md) ----------
+
+const DIA = 86_400_000;
+const planoClube = { id: 'p1', nome: 'Clube 4 cortes', precoCentavos: 12000, servicoIds: ['s'], cortesPorMes: 4, ativo: true, criadoEm: 1, atualizadoEm: 1 };
+const pedido = (uid: string, extra: Record<string, unknown> = {}) => ({
+  barbeariaId: 'b1', barbeariaNome: 'Casa', planoId: 'p1', planoNome: 'Clube 4 cortes', cortesPorMes: 4,
+  clienteUid: uid, clienteNome: uid, status: 'solicitado', criadoEm: 1, atualizadoEm: 1, ...extra,
+});
+const fixo = (extra: Record<string, unknown> = {}) => ({
+  barbeiroId: 'lucas', servicoId: 's', diaSemana: 2, minutos: 10 * 60, frequencia: 'semanal', ancora: '2030-01-08', ...extra,
+});
+async function comoServidor(f: (db: Firestore) => Promise<unknown>) {
+  await env.withSecurityRulesDisabled(async ctx => { await f(ctx.firestore() as unknown as Firestore); });
+}
+async function membroAtivo(uid: string, venceEm = Date.now() + 10 * DIA, extra: Record<string, unknown> = {}) {
+  await comoServidor(db => setDoc(doc(db, 'clubeMembros', 'b1_' + uid), { ...pedido(uid), status: 'ativo', cicloInicio: venceEm - 30 * DIA, venceEm, ...extra }));
+}
+
+test('clube: planos com leitura aberta; só o dono cria e edita, e com limite válido', async () => {
+  await assertSucceeds(setDoc(doc(dbDe('dono'), 'barbearias/b1/clubePlanos/p1'), planoClube));
+  await assertSucceeds(getDoc(doc(dbDe('ana'), 'barbearias/b1/clubePlanos/p1')));
+  await assertFails(setDoc(doc(dbDe('lucas'), 'barbearias/b1/clubePlanos/p2'), { ...planoClube, id: 'p2' }));
+  await assertFails(setDoc(doc(dbDe('ana'), 'barbearias/b1/clubePlanos/p2'), { ...planoClube, id: 'p2' }));
+  await assertFails(setDoc(doc(dbDe('dono'), 'barbearias/b1/clubePlanos/p2'), { ...planoClube, id: 'p2', cortesPorMes: 0 }));
+  await assertFails(setDoc(doc(dbDe('dono'), 'barbearias/b1/clubePlanos/p2'), { ...planoClube, id: 'p2', servicoIds: [] }));
+  const { cortesPorMes: _, ...ilimitado } = planoClube;
+  await assertSucceeds(setDoc(doc(dbDe('dono'), 'barbearias/b1/clubePlanos/p3'), { ...ilimitado, id: 'p3' }));
+  await assertFails(deleteDoc(doc(dbDe('lucas'), 'barbearias/b1/clubePlanos/p1')));
+  await assertSucceeds(deleteDoc(doc(dbDe('dono'), 'barbearias/b1/clubePlanos/p1')));
+});
+
+test('clube: o cliente só solicita para si, com o nome e o limite do plano ativo', async () => {
+  await comoServidor(db => setDoc(doc(db, 'barbearias/b1/clubePlanos/p1'), planoClube));
+  await assertFails(setDoc(doc(dbDe('ana'), 'clubeMembros/b1_beto'), pedido('beto')));
+  await assertFails(setDoc(doc(dbDe('ana'), 'clubeMembros/b1_ana'), pedido('ana', { status: 'ativo' })));
+  await assertFails(setDoc(doc(dbDe('ana'), 'clubeMembros/b1_ana'), pedido('ana', { cortesPorMes: 99 })));
+  await assertFails(setDoc(doc(dbDe('ana'), 'clubeMembros/b1_ana'), pedido('ana', { venceEm: Date.now() + 365 * DIA })));
+  await assertSucceeds(setDoc(doc(dbDe('ana'), 'clubeMembros/b1_ana'), pedido('ana')));
+  // Plano pausado ou casa bloqueada: não aceita pedido novo.
+  await comoServidor(db => updateDoc(doc(db, 'barbearias/b1/clubePlanos/p1'), { ativo: false }));
+  await assertFails(setDoc(doc(dbDe('beto'), 'clubeMembros/b1_beto'), pedido('beto')));
+  await comoServidor(async db => {
+    await updateDoc(doc(db, 'barbearias/b1/clubePlanos/p1'), { ativo: true });
+    await updateDoc(doc(db, 'barbearias/b1'), { emDia: false });
+  });
+  await assertFails(setDoc(doc(dbDe('beto'), 'clubeMembros/b1_beto'), pedido('beto')));
+});
+
+test('clube: o assinante e a equipe ativa leem; outro cliente e barbeiro desligado não', async () => {
+  await membroAtivo('ana');
+  await assertSucceeds(getDoc(doc(dbDe('ana'), 'clubeMembros/b1_ana')));
+  await assertSucceeds(getDoc(doc(dbDe('dono'), 'clubeMembros/b1_ana')));
+  await assertSucceeds(getDoc(doc(dbDe('lucas'), 'clubeMembros/b1_ana')));
+  await assertFails(getDoc(doc(dbDe('beto'), 'clubeMembros/b1_ana')));
+  await comoServidor(db => updateDoc(doc(db, 'barbearias/b1/barbeiros/lucas'), { ativo: false }));
+  await assertFails(getDoc(doc(dbDe('lucas'), 'clubeMembros/b1_ana')));
+});
+
+test('clube: a equipe aceita (ciclo começa agora, 28 a 31 dias) ou recusa; o cliente não se aceita', async () => {
+  await comoServidor(db => setDoc(doc(db, 'clubeMembros/b1_ana'), pedido('ana')));
+  const agora = Date.now();
+  const aceite = { status: 'ativo', cicloInicio: agora, venceEm: agora + 30 * DIA };
+  await assertFails(updateDoc(doc(dbDe('ana'), 'clubeMembros/b1_ana'), aceite));
+  await assertFails(updateDoc(doc(dbDe('beto'), 'clubeMembros/b1_ana'), aceite));
+  await assertFails(updateDoc(doc(dbDe('lucas'), 'clubeMembros/b1_ana'), { ...aceite, venceEm: agora + 90 * DIA }));
+  await assertFails(updateDoc(doc(dbDe('lucas'), 'clubeMembros/b1_ana'), { status: 'ativo', cicloInicio: agora - 60 * DIA, venceEm: agora - 30 * DIA }));
+  await assertSucceeds(updateDoc(doc(dbDe('lucas'), 'clubeMembros/b1_ana'), aceite));
+  // Recusar: só pedido pendente, só a equipe.
+  await comoServidor(db => setDoc(doc(db, 'clubeMembros/b1_beto'), pedido('beto')));
+  await assertFails(updateDoc(doc(dbDe('beto'), 'clubeMembros/b1_beto'), { status: 'recusado' }));
+  await assertSucceeds(updateDoc(doc(dbDe('dono'), 'clubeMembros/b1_beto'), { status: 'recusado' }));
+});
+
+test('clube: "Recebi o pagamento" só a equipe; o ciclo segue do vencimento ou de hoje; vencido e reservas são do Worker', async () => {
+  const vence = Date.now() + 2 * DIA;
+  await membroAtivo('ana', vence, { lembretes: { d3: 1 } });
+  const emDia = { cicloInicio: vence, venceEm: vence + 30 * DIA, lembretes: deleteField() };
+  await assertFails(updateDoc(doc(dbDe('ana'), 'clubeMembros/b1_ana'), emDia));
+  await assertFails(updateDoc(doc(dbDe('lucas'), 'clubeMembros/b1_ana'), { cicloInicio: vence, venceEm: vence + 365 * DIA }));
+  await assertFails(updateDoc(doc(dbDe('lucas'), 'clubeMembros/b1_ana'), { ...emDia, reservadoAte: '2031-01-01' }));
+  await assertSucceeds(updateDoc(doc(dbDe('lucas'), 'clubeMembros/b1_ana'), emDia));
+  // Vencido paga: o ciclo novo começa hoje.
+  await membroAtivo('beto', Date.now() - 5 * DIA, { status: 'vencido' });
+  const agora = Date.now();
+  await assertSucceeds(updateDoc(doc(dbDe('dono'), 'clubeMembros/b1_beto'), { status: 'ativo', cicloInicio: agora, venceEm: agora + 30 * DIA }));
+  // Ninguém marca vencido nem mexe nas marcas do Worker pelo app.
+  await assertFails(updateDoc(doc(dbDe('dono'), 'clubeMembros/b1_beto'), { status: 'vencido' }));
+  await assertFails(updateDoc(doc(dbDe('ana'), 'clubeMembros/b1_ana'), { reservadoAte: '2031-01-01' }));
+  await assertFails(updateDoc(doc(dbDe('ana'), 'clubeMembros/b1_ana'), { lembretes: {} }));
+  await assertFails(deleteDoc(doc(dbDe('dono'), 'clubeMembros/b1_ana')));
+});
+
+test('clube: histórico de pagamentos: a equipe registra; o assinante lê; ninguém altera', async () => {
+  await membroAtivo('ana');
+  const pg = { em: Date.now(), porUid: 'lucas', valorCentavos: 12000, venceEmNovo: Date.now() + 40 * DIA };
+  await assertFails(setDoc(doc(dbDe('ana'), 'clubeMembros/b1_ana/pagamentos/x'), { ...pg, porUid: 'ana' }));
+  await assertFails(setDoc(doc(dbDe('lucas'), 'clubeMembros/b1_ana/pagamentos/x'), { ...pg, porUid: 'dono' }));
+  await assertSucceeds(setDoc(doc(dbDe('lucas'), 'clubeMembros/b1_ana/pagamentos/x'), pg));
+  await assertSucceeds(getDoc(doc(dbDe('ana'), 'clubeMembros/b1_ana/pagamentos/x')));
+  await assertFails(getDoc(doc(dbDe('beto'), 'clubeMembros/b1_ana/pagamentos/x')));
+  await assertFails(updateDoc(doc(dbDe('dono'), 'clubeMembros/b1_ana/pagamentos/x'), { valorCentavos: 0 }));
+  await assertFails(deleteDoc(doc(dbDe('dono'), 'clubeMembros/b1_ana/pagamentos/x')));
+});
+
+test('clube: horário fixo só do assinante ativo, com barbeiro, serviço do plano e hora no passo da casa', async () => {
+  await comoServidor(async db => {
+    await setDoc(doc(db, 'barbearias/b1/clubePlanos/p1'), planoClube);
+    await setDoc(doc(db, 'clubeMembros/b1_beto'), pedido('beto'));
+  });
+  await membroAtivo('ana');
+  const ref = doc(dbDe('ana'), 'clubeMembros/b1_ana');
+  await assertFails(updateDoc(doc(dbDe('beto'), 'clubeMembros/b1_beto'), { horarioFixo: fixo() })); // ainda não aceito
+  await assertFails(updateDoc(doc(dbDe('beto'), 'clubeMembros/b1_ana'), { horarioFixo: fixo() })); // de outro
+  await assertFails(updateDoc(ref, { horarioFixo: fixo({ servicoId: 's1' }) })); // fora do plano
+  await assertFails(updateDoc(ref, { horarioFixo: fixo({ minutos: 10 * 60 + 7 }) })); // fora do passo de 15 min
+  await assertFails(updateDoc(ref, { horarioFixo: fixo({ frequencia: 'diaria' }) }));
+  await assertFails(updateDoc(ref, { horarioFixo: fixo({ barbeiroId: 'rafael' }) })); // não é da casa
+  await assertFails(updateDoc(ref, { horarioFixo: fixo(), venceEm: Date.now() + 365 * DIA }));
+  await assertSucceeds(updateDoc(ref, { horarioFixo: fixo() }));
+  await assertSucceeds(updateDoc(ref, { horarioFixo: fixo({ diaSemana: 4, frequencia: 'quinzenal' }) }));
+  await assertSucceeds(updateDoc(ref, { horarioFixo: deleteField() }));
+});
+
+test('clube: o cliente sai (o horário fixo vai junto) e pode pedir de novo; a equipe encerra', async () => {
+  await comoServidor(db => setDoc(doc(db, 'barbearias/b1/clubePlanos/p1'), planoClube));
+  await membroAtivo('ana', Date.now() + 10 * DIA, { horarioFixo: fixo() });
+  const ref = doc(dbDe('ana'), 'clubeMembros/b1_ana');
+  await assertFails(updateDoc(ref, { status: 'saiu' })); // sem tirar o horário fixo
+  await assertSucceeds(updateDoc(ref, { status: 'saiu', horarioFixo: deleteField() }));
+  await assertFails(updateDoc(ref, { status: 'ativo' }));
+  await assertSucceeds(updateDoc(ref, { status: 'solicitado' }));
+  await membroAtivo('beto');
+  await assertFails(updateDoc(doc(dbDe('ana'), 'clubeMembros/b1_beto'), { status: 'saiu' }));
+  await assertSucceeds(updateDoc(doc(dbDe('dono'), 'clubeMembros/b1_beto'), { status: 'saiu' }));
+});
+
+test('clube: horário do clube só o Worker reserva; o cliente não marca o próprio como do clube', async () => {
+  await membroAtivo('ana');
+  const db = dbDe('ana');
+  const slots = chavesOcupacao('lucas', inicio, 30, 15);
+  await assertFails(runTransaction(db, async tx => {
+    tx.set(doc(db, 'agendamentos', 'c1'), {
+      id: 'c1', barbeariaId: 'b1', barbeiroId: 'lucas', clienteUid: 'ana', clienteNome: 'ana',
+      servicoId: 's', servicoNome: 'Corte', precoCentavos: 4500, duracaoMin: 30,
+      data: '2030-01-10', inicio, fim: inicio + 30 * 60_000, slots, status: 'reservado', origem: 'clube', clubeMembroId: 'b1_ana',
+      lembretes: {}, criadoEm: Date.now(), atualizadoEm: Date.now(),
+    });
+    for (const k of slots) tx.set(doc(db, 'ocupacao', k), { barbeariaId: 'b1', barbeiroId: 'lucas', agendamentoId: 'c1', inicio });
+    tx.set(doc(db, 'users', 'ana'), { uid: 'ana', ultimaReserva: serverTimestamp(), maiorDeIdadeEm: 1 }, { merge: true });
+  }));
+});
