@@ -63,3 +63,23 @@ test('avisoDevido: pedido uma vez; 3 dias antes e no dia só de dia; vencido 1 d
   assert.match(textoAvisoClube('pedido', m, 'casa', 0).corpo, /^Ana quer assinar o 4 cortes/);
   assert.match(textoAvisoClube('vencido', m, 'casa', vence + 2 * DIA).corpo, /Recebi o pagamento/);
 });
+
+test('usar o clube: conta usos do ciclo (falta conta, cancelado não) e barra fora do plano, do ciclo ou do limite', async () => {
+  const { motivoSemClube, usosNoCiclo } = await import('./clube');
+  const inicio = paraMillis('2026-11-01', 600), vence = paraMillis('2026-12-01', 600);
+  const m = { status: 'ativo' as const, cicloInicio: inicio, venceEm: vence, cortesPorMes: 2 };
+  const ags = [
+    { inicio: inicio + DIA, status: 'concluido' as const }, { inicio: inicio + 2 * DIA, status: 'cancelado' as const },
+    { inicio: inicio + 3 * DIA, status: 'faltou' as const }, { inicio: inicio - DIA, status: 'concluido' as const }, // ciclo anterior
+    { inicio: vence + 3_600_000, status: 'reservado' as const }, // dia de tolerância ainda é deste ciclo
+  ];
+  assert.equal(usosNoCiclo(ags, m), 3);
+  const plano = { servicoIds: ['s1'] };
+  assert.equal(motivoSemClube(m, plano, 's1', inicio + 5 * DIA, 1), null);
+  assert.match(motivoSemClube(m, plano, 's1', inicio + 5 * DIA, 2)!, /já usou os 2/);
+  assert.equal(motivoSemClube({ ...m, cortesPorMes: undefined }, plano, 's1', inicio + 5 * DIA, 99), null); // ilimitado
+  assert.match(motivoSemClube(m, plano, 's2', inicio + 5 * DIA, 0)!, /não faz parte/);
+  assert.match(motivoSemClube(m, plano, 's1', vence + 2 * DIA, 0)!, /passa do vencimento/);
+  assert.match(motivoSemClube({ ...m, status: 'vencido' }, plano, 's1', inicio, 0)!, /não tem clube ativo/);
+  assert.match(motivoSemClube(m, null, 's1', inicio, 0)!, /não existe mais/);
+});

@@ -1,7 +1,7 @@
 // Clube de assinatura: datas do ciclo. Lógica pura (testada em clube.test.ts); as regras do Firestore
 // aceitam vencimento de 28 a 31 dias depois do início do ciclo, que é o que estas funções produzem.
 import { dataLocal, formatarData, paraMillis } from './agenda';
-import type { MembroClube, Millis } from '../types/models';
+import type { Agendamento, MembroClube, Millis, PlanoClube } from '../types/models';
 
 const DIA = 86_400_000;
 
@@ -83,4 +83,30 @@ export function textoAvisoClube(
   return para === 'cliente'
     ? { titulo: 'Seu clube venceu', corpo: `${m.planoNome} na ${m.barbeariaNome} venceu ${vence}. O horário fixo foi liberado; pague na barbearia para voltar.` }
     : { titulo: 'Assinatura vencida', corpo: `${m.clienteNome} não renovou o ${m.planoNome} (venceu ${vence}). Se ele pagar, toque em "Recebi o pagamento".` };
+}
+
+// ---------- Usar o clube ao agendar (a reserva é do Worker: POST /clube/agendar) ----------
+
+/** Fim do ciclo pago para reservar: vencimento + 1 dia de tolerância (decisão do dono). */
+export const fimDoCiclo = (m: Pick<MembroClube, 'venceEm'>) => (m.venceEm ?? 0) + DIA;
+
+/**
+ * Usos do ciclo: horários do clube que caem nele e não foram cancelados (falta conta como uso; cancelar devolve).
+ */
+export function usosNoCiclo(ags: Pick<Agendamento, 'inicio' | 'status'>[], m: Pick<MembroClube, 'cicloInicio' | 'venceEm'>): number {
+  const de = m.cicloInicio ?? 0, ate = fimDoCiclo(m);
+  return ags.filter(a => a.status !== 'cancelado' && a.inicio >= de && a.inicio < ate).length;
+}
+
+/** Pode marcar este horário pelo clube? null = pode; senão, o motivo (mostrado ao cliente). */
+export function motivoSemClube(
+  m: Pick<MembroClube, 'status' | 'venceEm' | 'cicloInicio' | 'cortesPorMes'> | null | undefined,
+  plano: Pick<PlanoClube, 'servicoIds'> | null | undefined, servicoId: string, inicio: Millis, usos: number,
+): string | null {
+  if (!m || m.status !== 'ativo' || m.venceEm === undefined) return 'Você não tem clube ativo nesta barbearia.';
+  if (!plano) return 'O plano do seu clube não existe mais. Fale com a barbearia.';
+  if (!plano.servicoIds.includes(servicoId)) return 'Este corte não faz parte do seu plano.';
+  if (inicio >= fimDoCiclo(m)) return 'Este dia passa do vencimento do clube. Pague na barbearia para usar no mês seguinte.';
+  if (m.cortesPorMes && usos >= m.cortesPorMes) return `Você já usou os ${m.cortesPorMes} do clube neste mês.`;
+  return null;
 }
