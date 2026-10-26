@@ -231,13 +231,14 @@ Substitui a seção "Avaliações, nota Google e ranking" acima e o `docs/roadma
 ## Clube de assinatura (pedido do dono, 26/out/2026; desenho em `docs/clube.md`)
 - [x] Desenho com as decisões do dono (vencido libera o horário 1 dia depois; limite de cortes por plano; cliente
   solicita e casa aceita; em todos os planos do Navalha; sem cobrança pelo app)
-- [x] 1. Modelo (`src/types/models.ts`, ciclo em `src/lib/clube.ts`), regras e 9 testes de regras (26/out). Regras ainda
-  não publicadas no Firebase
+- [x] 1. Modelo (`src/types/models.ts`, ciclo em `src/lib/clube.ts`), regras e testes de regras (26/out)
 - [x] 2. Dono/barbeiro: tela `/clube` (aba Barbearia › Clube de assinatura): pedidos, vencidos, vencem em 7 dias, em dia,
   "Recebi o pagamento" com confirmação, encerrar e planos (só o dono edita). Conferida no navegador com o emulador (26/out)
 - [x] 3. Cliente: planos e "Quero assinar" na página da casa (pedido, assinante, vencido, pedir de novo); tela
   `/meu-clube` (Perfil › Meu clube) com sair/desistir. Conferido no navegador com o emulador (26/out). Aviso de pedido
   novo para a casa (push/sino) fica com o Worker, na etapa 4
+- [x] Publicado em 26/out: regras e índice (`firebase deploy --only firestore`) e o site navalha.web.app. No Android, o
+  clube chega com o próximo AAB gerado a partir deste código
 - [ ] 4. Worker: lembretes de vencimento e vencidos
 - [ ] 5. "Usar o clube" ao agendar, com limite
 - [ ] 6. Horário fixo (app + Worker + selo na agenda)
