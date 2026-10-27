@@ -96,14 +96,21 @@ const AQUI = { latitude: -23.5015, longitude: -47.4526 };
   await shot(L.p, '4-concluido');
   await L.p.goto('http://127.0.0.1:8099/casa'); await L.p.waitForTimeout(4000);
   t = await texto(L.p);
-  assert.match(t, /Resumo da casa/); assert.match(t, /Faturado em 7 dias/); assert.match(t, /R\$ 45,00/);
+  assert.match(t, /Resumo da casa/); assert.match(t, /Faturado/);
+  // O corte concluído entra no faturado de algum dos filtros (o dia reservado pode ser amanhã ou na outra semana).
+  let achou = false;
+  for (const f of ['Hoje', 'Semana', 'Mês']) {
+    await L.p.getByText(f, { exact: true }).first().click(); await L.p.waitForTimeout(400);
+    if (/Faturado\s*R\$ 45,00/.test(await texto(L.p))) achou = true;
+  }
+  assert.ok(achou, 'faturado de R$ 45,00 em nenhum filtro');
   await shot(L.p, '5-painel-do-dono');
 
   // 5) Perfil do cliente: telefone e opção de excluir conta
   await A.p.goto('http://127.0.0.1:8099/perfil'); await A.p.waitForTimeout(3000);
   await A.p.getByPlaceholder('(15) 99999-0000').fill('15 99999-0000');
-  await A.p.getByText('Salvar', { exact: true }).click(); await A.p.waitForTimeout(1500);
-  assert.match(await texto(A.p), /Salvo/);
+  await A.p.getByText('Salvar', { exact: true }).click(); await A.p.waitForTimeout(2500);
+  assert.match(await texto(A.p), /Dados atualizados/);
   await A.p.getByText('Excluir minha conta').click(); await A.p.waitForTimeout(400);
   assert.match(await texto(A.p), /não pode ser desfeito/);
   await shot(A.p, '6-perfil-excluir-conta');

@@ -1,6 +1,6 @@
 // Abre a primeira tela de ajustes que existir no celular (lista de src/lib/bateria.ts). O expo-intent-launcher
 // rejeita na hora quando a tela não existe ou é protegida, então é só tentar a próxima.
-import { Linking, Platform } from 'react-native';
+import { Linking, NativeModules, Platform } from 'react-native';
 import * as IntentLauncher from 'expo-intent-launcher';
 import type { TelaAjuste } from '../lib/bateria';
 
@@ -17,4 +17,11 @@ export async function abrirAjuste(telas: TelaAjuste[]): Promise<void> {
     } catch { /* esta marca/versão não tem essa tela: tenta a próxima */ }
   }
   await Linking.openSettings().catch(() => undefined); // última reserva (a lista já termina nos detalhes do app)
+}
+
+/** A bateria do Navalha já está sem restrição? Módulo nativo BateriaPackage.kt; fora do Android não há o que liberar. */
+export async function bateriaLiberada(): Promise<boolean> {
+  if (Platform.OS !== 'android') return true;
+  const m = NativeModules.NavalhaBateria as { liberada(): Promise<boolean> } | undefined;
+  return m ? m.liberada().catch(() => false) : false;
 }

@@ -16,7 +16,7 @@ export function AceitarConvite({ perfil, compacto, aoEntrar }: { perfil: UserPro
     setErro(null);
     setEnviando(true);
     try {
-      await aceitarConvite(db, codigo, { uid: perfil.uid, nome: perfil.apelido || perfil.nome, fotoUrl: perfil.fotoUrl });
+      await aceitarConvite(db, codigo, { uid: perfil.uid, nome: perfil.apelido || perfil.nome, fotoUrl: perfil.fotoUrl, telefone: perfil.telefone });
       await aoEntrar?.();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não foi possível entrar na barbearia.');

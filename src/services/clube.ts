@@ -69,9 +69,10 @@ export async function encerrar(db: Firestore, m: Membro) {
 // ---------- Lado do cliente ----------
 
 /** Planos abertos da casa, para a página dela (leitura só ao abrir a página). */
-export async function planosAbertos(db: Firestore, barbeariaId: string): Promise<PlanoClube[]> {
-  const s = await getDocs(query(collection(db, 'barbearias', barbeariaId, 'clubePlanos'), where('ativo', '==', true)));
-  return s.docs.map(d => d.data() as PlanoClube).sort((a, b) => a.precoCentavos - b.precoCentavos);
+/** Planos abertos da casa, em tempo real (plano novo ou preço mudado aparecem sozinhos na página da casa). */
+export function ouvirPlanosAbertos(db: Firestore, barbeariaId: string, cb: (l: PlanoClube[]) => void): Unsubscribe {
+  return onSnapshot(query(collection(db, 'barbearias', barbeariaId, 'clubePlanos'), where('ativo', '==', true)),
+    s => cb(s.docs.map(d => d.data() as PlanoClube).sort((a, b) => a.precoCentavos - b.precoCentavos)), () => cb([]));
 }
 
 /** Os clubes da pessoa (em todas as casas): poucos documentos, um por casa. */

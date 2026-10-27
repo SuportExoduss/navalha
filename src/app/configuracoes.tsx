@@ -13,6 +13,7 @@ import { auth, db } from '../services/firebase';
 import { colors, radius, space, type, sobreFoto } from '../theme';
 import { SITE } from '../lib/legal';
 import type { Barbearia } from '../types/models';
+import { DADOS_ATUALIZADOS, SEM_CONEXAO, noServidor } from '../lib/noServidor';
 
 export default function Configuracoes() {
   const { barbearia, carregando, ehDono } = useMinhaBarbearia();
@@ -62,6 +63,7 @@ function PedirAvaliacao({ b }: { b: Barbearia }) {
 function Identidade({ b }: { b: Barbearia }) {
   const [nome, setNome] = useState(b.nome);
   const [enviando, setEnviando] = useState<'logo' | 'capa' | null>(null);
+  const [salvando, setSalvando] = useState(false);
   const [msg, setMsg] = useState<{ texto: string; tom: 'erro' | 'ok' } | null>(null);
 
   async function trocar(qual: 'logo' | 'capa') {
@@ -78,8 +80,10 @@ function Identidade({ b }: { b: Barbearia }) {
   async function salvarNome() {
     const n = nome.trim();
     if (n.length < 2) return setMsg({ texto: 'Digite o nome da barbearia.', tom: 'erro' });
-    try { await atualizarBarbearia(db, b.id, { nome: n }); setMsg({ texto: 'Nome salvo.', tom: 'ok' }); }
-    catch { setMsg({ texto: 'Não foi possível salvar.', tom: 'erro' }); }
+    setSalvando(true);
+    try { await noServidor(atualizarBarbearia(db, b.id, { nome: n })); setMsg({ texto: DADOS_ATUALIZADOS, tom: 'ok' }); }
+    catch (e) { setMsg({ texto: e instanceof Error && e.message === SEM_CONEXAO ? SEM_CONEXAO : 'Não foi possível salvar. Tente de novo.', tom: 'erro' }); }
+    finally { setSalvando(false); }
   }
 
   return (
@@ -102,7 +106,7 @@ function Identidade({ b }: { b: Barbearia }) {
       </View>
       <Campo rotulo="Nome da barbearia" value={nome} onChangeText={t => { setMsg(null); setNome(t); }} />
       {msg ? <Aviso texto={msg.texto} tom={msg.tom} /> : null}
-      {nome.trim() !== b.nome ? <Botao titulo="Salvar nome" onPress={salvarNome} /> : null}
+      {nome.trim() !== b.nome || salvando ? <Botao titulo="Salvar nome" onPress={salvarNome} carregando={salvando} /> : null}
     </Secao>
   );
 }

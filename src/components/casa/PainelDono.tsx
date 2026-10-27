@@ -1,48 +1,59 @@
-// Painel simples do dono: hoje e últimos 7 dias, com uma única consulta.
-// Fica na aba Barbearia e funciona na web (onde a assinatura será vendida na Fase 3).
+// Resumo da casa para o dono: Hoje, Semana (segunda a domingo) e Mês (dia 1 até hoje), com uma escuta só,
+// em tempo real (reserva nova ou corte concluído mudam os números na hora). Fica na aba Barbearia.
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
-import { Cartao, Secao } from '../ui';
+import { Cartao, Chip, Secao } from '../ui';
 import { db } from '../../services/firebase';
-import { agendamentosDaSemana } from '../../services/agendamentos';
-import { lembrar } from '../../services/cache';
+import { ouvirAgendamentosDaCasa } from '../../services/agendamentos';
 import { dataLocal, formatarPreco } from '../../lib/agenda';
-import { calcularPainel, type Painel } from '../../lib/painel';
+import { intervaloDoPainel, resumir, type Periodo } from '../../lib/painel';
 import { colors, space, type } from '../../theme';
 import { useVersao } from '../../hooks/useAtualizar';
+import type { Agendamento } from '../../types/models';
+
+const PERIODOS: { id: Periodo; rotulo: string; texto: string }[] = [
+  { id: 'dia', rotulo: 'Hoje', texto: 'Hoje' },
+  { id: 'semana', rotulo: 'Semana', texto: 'Nesta semana (segunda a domingo)' },
+  { id: 'mes', rotulo: 'Mês', texto: 'Neste mês, do dia 1 até hoje' },
+];
 
 export function PainelDono({ barbeariaId }: { barbeariaId: string }) {
-  const [p, setP] = useState<Painel | null>(null);
+  const [lista, setLista] = useState<Agendamento[] | null>(null);
   const [erro, setErro] = useState(false);
+  const [periodo, setPeriodo] = useState<Periodo>('dia');
   const versao = useVersao();
+  const hoje = dataLocal(Date.now());
 
   useEffect(() => {
-    const agora = Date.now();
-    // Uma consulta da semana, guardada 5 min: voltar para a aba ou trocar o tema não relê.
-    lembrar(`painel:${barbeariaId}:${dataLocal(agora)}`, () => agendamentosDaSemana(db, barbeariaId, dataLocal(agora)))
-      .then(l => setP(calcularPainel(l, agora)))
-      .catch(() => setErro(true));
-  }, [barbeariaId, versao]);
+    const { de, ate } = intervaloDoPainel(hoje);
+    setErro(false);
+    return ouvirAgendamentosDaCasa(db, barbeariaId, de, ate, setLista, () => setErro(true));
+  }, [barbeariaId, hoje, versao]);
 
   if (erro) return null;
+  const r = lista ? resumir(lista, periodo, hoje) : null;
+  const texto = PERIODOS.find(p => p.id === periodo)!.texto;
   return (
     <Secao titulo="Resumo da casa">
-      {!p ? <Text style={type.caption}>Calculando…</Text> : (
+      <View style={{ flexDirection: 'row', gap: space(2) }}>
+        {PERIODOS.map(p => <Chip key={p.id} rotulo={p.rotulo} ativo={periodo === p.id} onPress={() => setPeriodo(p.id)} />)}
+      </View>
+      {!r ? <Text style={type.caption}>Calculando…</Text> : (
         <>
           <View style={{ flexDirection: 'row', gap: space(3) }}>
-            <Numero rotulo="Clientes hoje" valor={String(p.hoje.clientes)} />
-            <Numero rotulo="Previsto hoje" valor={formatarPreco(p.hoje.previstoCentavos)} />
+            <Numero rotulo="Agendamentos" valor={String(r.agendamentos)} />
+            <Numero rotulo="Faturado" valor={formatarPreco(r.faturadoCentavos)} />
           </View>
           <View style={{ flexDirection: 'row', gap: space(3) }}>
-            <Numero rotulo="Faturado em 7 dias" valor={formatarPreco(p.semana.faturadoCentavos)} />
-            <Numero rotulo="Faltas em 7 dias" valor={`${p.semana.taxaFaltaPercent}%`} alerta={p.semana.taxaFaltaPercent >= 15} />
+            <Numero rotulo="A receber" valor={formatarPreco(r.aReceberCentavos)} />
+            <Numero rotulo="Faltas" valor={`${r.taxaFaltaPercent}%`} alerta={r.taxaFaltaPercent >= 15} />
           </View>
           <Cartao style={{ gap: space(1) }}>
             <Text style={type.caption}>
-              Últimos 7 dias: {qtd(p.semana.agendamentos, 'agendamento')} ({p.semana.pelaApp} pelo app), {qtd(p.semana.concluidos, 'concluído')},
-              {' '}{qtd(p.semana.faltas, 'falta')} e {qtd(p.semana.cancelados, 'cancelado')}.
+              {texto}: {qtd(r.agendamentos, 'agendamento')} ({r.pelaApp} pelo app), {qtd(r.concluidos, 'concluído')},
+              {' '}{qtd(r.faltas, 'falta')} e {qtd(r.cancelados, 'cancelado')}.
             </Text>
-            {p.maisPedido ? <Text style={type.caption}>Mais pedido: <Text style={{ color: colors.text }}>{p.maisPedido.nome}</Text> ({p.maisPedido.vezes}×)</Text> : null}
+            {r.maisPedido ? <Text style={type.caption}>Mais pedido: <Text style={{ color: colors.text }}>{r.maisPedido.nome}</Text> ({r.maisPedido.vezes}×)</Text> : null}
           </Cartao>
         </>
       )}

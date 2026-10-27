@@ -267,13 +267,10 @@ export function registrarEvento(db: Firestore, e: EventoUso) {
   addDoc(collection(db, 'eventos'), e).catch(() => undefined);
 }
 
-/** Agendamentos da casa dos últimos 7 dias até hoje (painel do dono): uma consulta só. */
-export async function agendamentosDaSemana(db: Firestore, barbeariaId: string, hoje: ISODate): Promise<Agendamento[]> {
-  const q = query(
-    collection(db, 'agendamentos'),
-    where('barbeariaId', '==', barbeariaId),
-    where('data', '>=', somarDias(hoje, -6)),
-    where('data', '<=', hoje),
-  );
-  return (await getDocs(q)).docs.map(d => d.data() as Agendamento);
+/** Agendamentos da casa entre duas datas, em tempo real (resumo da casa): reserva nova ou corte concluído mudam os números na hora. */
+export function ouvirAgendamentosDaCasa(
+  db: Firestore, barbeariaId: string, de: ISODate, ate: ISODate, cb: (l: Agendamento[]) => void, erro: (e: Error) => void,
+): Unsubscribe {
+  const q = query(collection(db, 'agendamentos'), where('barbeariaId', '==', barbeariaId), where('data', '>=', de), where('data', '<=', ate));
+  return onSnapshot(q, s => cb(s.docs.map(d => d.data() as Agendamento)), erro);
 }

@@ -1,12 +1,13 @@
 // Perfil compartilhado por cliente e barbearia: foto, nome, apelido, telefone,
 // modo ativo, aparência (tema), trocar conta Google e excluir a conta.
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Image, Platform, Pressable, Share, Text, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Aviso, Botao, Campo, Cartao, Chip, Linha, Secao, Tela, Titulo } from './ui';
 import { AceitarConvite } from './casa/AceitarConvite';
 import { irParaPapel } from './irParaPapel';
+import { bateriaLiberada } from './abrirAjuste';
 import { Capa } from './Capa';
 import { useAuth } from '../auth/AuthProvider';
 import { auth, db } from '../services/firebase';
@@ -18,6 +19,7 @@ import { colors, radius, space, type, type PreferenciaTema } from '../theme';
 import { useTema } from './TemaProvider';
 import { ativarLembretesWeb, estadoLembretesWeb, type EstadoLembretesWeb } from '../services/push';
 import type { Role } from '../types/models';
+import { DADOS_ATUALIZADOS, SEM_CONEXAO, noServidor } from '../lib/noServidor';
 
 const NOMES: Record<Role, string> = { cliente: 'Cliente', barbeiro: 'Barbeiro', dono: 'Dono' };
 const ORDEM_MODOS: Role[] = ['cliente', 'barbeiro', 'dono'];
@@ -44,12 +46,14 @@ export function PerfilConta() {
     if (tel && (tel.length < 10 || tel.length > 11)) return setErro('Telefone com DDD, ex.: (15) 99999-0000.');
     setSalvando(true);
     try {
-      await atualizarPerfil(db, perfil!.uid, { nome: nome.trim() || perfil!.nome, apelido: apelido.trim(), telefone: tel });
-      // Quem atende numa casa: o dono vê o telefone na ficha do barbeiro.
-      await telefoneNaEquipe(db, perfil!.barbearias, perfil!.uid, tel);
-      if (tel !== (perfil!.telefone ?? '')) await telefoneNosAgendamentos(db, perfil!.uid, tel);
-      setSalvo(true); setTimeout(() => setSalvo(false), 2000);
-    } catch { setErro('Não foi possível salvar.'); }
+      await noServidor((async () => {
+        await atualizarPerfil(db, perfil!.uid, { nome: nome.trim() || perfil!.nome, apelido: apelido.trim(), telefone: tel });
+        // Quem atende numa casa: o dono vê o telefone na ficha do barbeiro.
+        await telefoneNaEquipe(db, perfil!.barbearias, perfil!.uid, tel);
+        if (tel !== (perfil!.telefone ?? '')) await telefoneNosAgendamentos(db, perfil!.uid, tel);
+      })());
+      setSalvo(true); setTimeout(() => setSalvo(false), 4000);
+    } catch (e) { setErro(e instanceof Error && e.message === SEM_CONEXAO ? SEM_CONEXAO : 'Não foi possível salvar. Tente de novo.'); }
     finally { setSalvando(false); }
   }
 
@@ -109,7 +113,8 @@ export function PerfilConta() {
         <Campo rotulo="WhatsApp (a barbearia usa só para falar sobre seus horários)" value={telefone} onChangeText={setTelefone}
           keyboardType="phone-pad" placeholder="(15) 99999-0000" />
         {erro ? <Aviso texto={erro} tom="erro" /> : null}
-        <Botao titulo={salvo ? 'Salvo' : 'Salvar'} onPress={salvar} carregando={salvando} />
+        {salvo ? <Aviso texto={DADOS_ATUALIZADOS} tom="ok" /> : null}
+        <Botao titulo="Salvar" onPress={salvar} carregando={salvando} />
       </Cartao>
 
       <Modo />
@@ -120,11 +125,7 @@ export function PerfilConta() {
       ) : null}
       <SeletorTema />
       {Platform.OS === 'web' ? <LembretesWeb uid={perfil.uid} /> : null}
-      {/* Barbeiro e dono no Android: o atalho para liberar a bateria fica sempre à mão (a Xiaomi segura o push). */}
-      {Platform.OS === 'android' && perfil.papelAtivo !== 'cliente' ? (
-        <Linha icone="notifications-outline" titulo="Avisos com o app fechado" dica="Liberar a bateria para receber os horários na hora"
-          onPress={() => router.push('/bateria')} />
-      ) : null}
+      {perfil.papelAtivo !== 'cliente' ? <AtalhoBateria /> : null}
 
       <BaixarDados />
       <Botao titulo="Trocar conta Google" variante="secundario" onPress={sair} />
@@ -328,4 +329,12 @@ function LembretesWeb({ uid }: { uid: string }) {
       {estado === 'pedir' ? <Botao titulo="Ativar lembretes" carregando={ativando} onPress={ativar} /> : null}
     </Cartao>
   );
+}
+/** Barbeiro e dono no Android: atalho para liberar a bateria (a Xiaomi segura o push). Some quando já está liberada. */
+function AtalhoBateria() {
+  const [liberada, setLiberada] = useState(true);
+  useFocusEffect(useCallback(() => { bateriaLiberada().then(setLiberada); }, []));
+  if (liberada) return null;
+  return <Linha icone="notifications-outline" titulo="Avisos com o app fechado" dica="Liberar a bateria para receber os horários na hora"
+    onPress={() => router.push('/bateria')} />;
 }

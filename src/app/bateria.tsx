@@ -1,23 +1,33 @@
-// Receber avisos com o app fechado (só Android, só barbeiro e dono). Cada botão abre direto a tela certa da marca
-// do celular (src/lib/bateria.ts): a restrição de bateria do Navalha e, onde é separado, o início automático.
-// Aparece ao escolher barbeiro/dono (com `depois`, para onde seguir) e pelo Perfil.
+// Receber avisos com o app fechado (só Android, só barbeiro e dono). O botão abre direto a tela certa da marca do
+// celular (src/lib/bateria.ts). O app confere sozinho se a bateria já está sem restrição (BateriaPackage.kt): ao
+// escolher barbeiro/dono a tela nem aparece se já estiver; aqui, ao voltar dos ajustes liberado, segue sozinho.
 // Não usamos o pedido automático de "ignorar otimização de bateria": a Google Play só aceita essa permissão
 // para poucos tipos de app e ela arriscaria a aprovação.
-import { Pressable, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { AppState, Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Device from 'expo-device';
-import { Botao, Cartao, Tela, Titulo } from '../components/ui';
-import { abrirAjuste } from '../components/abrirAjuste';
-import { passosBateria, telasBateria, telasInicioAutomatico } from '../lib/bateria';
+import { Aviso, Botao, Cartao, Carregando, Tela, Titulo } from '../components/ui';
+import { abrirAjuste, bateriaLiberada } from '../components/abrirAjuste';
+import { passosBateria, telasBateria } from '../lib/bateria';
 import { colors, space, type } from '../theme';
 
 export default function Bateria() {
   const { depois } = useLocalSearchParams<{ depois?: string }>();
   const seguir = () => (depois ? router.replace(depois as never) : router.back());
-  const passos = passosBateria(Device.manufacturer);
-  const inicio = telasInicioAutomatico(Device.manufacturer);
+  const [liberada, setLiberada] = useState<boolean | null>(null);
 
+  // Confere ao abrir e sempre que a pessoa volta dos ajustes do Android.
+  useEffect(() => {
+    const conferir = () => bateriaLiberada().then(setLiberada);
+    conferir();
+    const sub = AppState.addEventListener('change', e => { if (e === 'active') conferir(); });
+    return () => sub.remove();
+  }, []);
+  useEffect(() => { if (liberada && depois) seguir(); }, [liberada]);
+
+  if (liberada === null || (liberada && depois)) return <Carregando />;
   return (
     <Tela>
       {depois ? null : (
@@ -33,33 +43,19 @@ export default function Bateria() {
           plano. Sem isso, depois de reiniciar, os avisos só chegam quando você abre o app.
         </Text>
       </View>
-      <Passo numero={1} titulo="Bateria sem restrição" texto={passos.bateria}
-        botao="Abrir a bateria do Navalha" onPress={() => abrirAjuste(telasBateria(Device.manufacturer))} />
-      {inicio.length && passos.inicio ? (
-        <Passo numero={2} titulo="Início automático" texto={passos.inicio}
-          botao="Abrir o início automático" onPress={() => abrirAjuste(inicio)} />
-      ) : null}
-      <Botao titulo={depois ? 'Já liberei, continuar' : 'Pronto'} variante="secundario" onPress={seguir} />
-      {depois ? (
+      {liberada ? <Aviso tom="ok" texto="Tudo certo: a bateria do Navalha já está sem restrição e os avisos chegam com o app fechado." /> : (
+        <Cartao style={{ gap: space(3) }}>
+          <Text style={type.heading}>Bateria sem restrição</Text>
+          <Text style={type.caption}>{passosBateria(Device.manufacturer)}</Text>
+          <Botao titulo="Abrir a bateria do Navalha" onPress={() => abrirAjuste(telasBateria(Device.manufacturer))}
+            icone={<Ionicons name="open-outline" size={18} color={colors.accentText} />} />
+        </Cartao>
+      )}
+      {liberada ? <Botao titulo="Voltar" variante="secundario" onPress={seguir} /> : depois ? (
         <Pressable onPress={seguir} hitSlop={8} accessibilityRole="button" style={{ alignSelf: 'center' }}>
           <Text style={[type.caption, { color: colors.textMuted }]}>Agora não</Text>
         </Pressable>
       ) : null}
     </Tela>
-  );
-}
-
-function Passo({ numero, titulo, texto, botao, onPress }: { numero: number; titulo: string; texto: string; botao: string; onPress: () => void }) {
-  return (
-    <Cartao style={{ gap: space(3) }}>
-      <View style={{ flexDirection: 'row', gap: space(3), alignItems: 'baseline' }}>
-        <Text style={[type.heading, { color: colors.accent }]}>{numero}</Text>
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text style={type.heading}>{titulo}</Text>
-          <Text style={type.caption}>{texto}</Text>
-        </View>
-      </View>
-      <Botao titulo={botao} onPress={onPress} icone={<Ionicons name="open-outline" size={18} color={colors.accentText} />} />
-    </Cartao>
   );
 }

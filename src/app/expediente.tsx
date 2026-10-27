@@ -15,6 +15,7 @@ import {
 } from '../lib/agenda';
 import { colors, space, type } from '../theme';
 import type { Bloqueio, Expediente } from '../types/models';
+import { DADOS_ATUALIZADOS, SEM_CONEXAO, noServidor } from '../lib/noServidor';
 
 // Segunda primeiro, como o barbeiro pensa a semana.
 const ORDEM = [1, 2, 3, 4, 5, 6, 0];
@@ -94,8 +95,8 @@ function EditorSemana({ inicial, salvar }: { inicial: Expediente; salvar: (e: Ex
     const r = deForm(form, inicial);
     if (typeof r === 'string') return setMsg({ texto: r, tom: 'erro' });
     setSalvando(true);
-    try { await salvar(r); setMsg({ texto: 'Expediente salvo.', tom: 'ok' }); }
-    catch { setMsg({ texto: 'Não foi possível salvar. Tente de novo.', tom: 'erro' }); }
+    try { await noServidor(salvar(r)); setMsg({ texto: DADOS_ATUALIZADOS, tom: 'ok' }); }
+    catch (e) { setMsg({ texto: e instanceof Error && e.message === SEM_CONEXAO ? SEM_CONEXAO : 'Não foi possível salvar. Tente de novo.', tom: 'erro' }); }
     finally { setSalvando(false); }
   }
 

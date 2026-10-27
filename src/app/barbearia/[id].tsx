@@ -8,7 +8,6 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Aviso, Botao, Carregando, Cartao, FalhaAoCarregar, Tela, Titulo } from '../../components/ui';
 import { Etapa } from '../../components/agenda/Etapa';
 import { pegarAvisoReserva } from '../../components/agenda/avisoReserva';
-import { dadosDaCasa } from '../../services/barbearias';
 import { VerNoMapa } from '../../components/VerNoMapa';
 import { ClubeDaCasa } from '../../components/clube/ClubeDaCasa';
 import { db } from '../../services/firebase';
@@ -17,8 +16,7 @@ import { Estrelas } from '../../components/agenda/Avaliar';
 import { useAuth } from '../../auth/AuthProvider';
 import { formatarPreco } from '../../lib/agenda';
 import { colors, radius, space, type, sobreFoto } from '../../theme';
-import type { Barbearia, Barbeiro, Servico } from '../../types/models';
-import { useVersao } from '../../hooks/useAtualizar';
+import { useCasa } from '../../hooks/useCasa';
 
 const virgula = (n: number) => n.toFixed(1).replace('.', ',');
 const quantasAvaliacoes = (n: number) => `${n} ${n === 1 ? 'avaliação' : 'avaliações'}`;
@@ -26,36 +24,24 @@ const quantasAvaliacoes = (n: number) => `${n} ${n === 1 ? 'avaliação' : 'aval
 export default function PaginaBarbearia() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { perfil } = useAuth();
-  const [b, setB] = useState<Barbearia | null | undefined>(undefined);
-  const [equipe, setEquipe] = useState<Barbeiro[]>([]);
-  const [servicos, setServicos] = useState<Servico[]>([]);
+  // Em tempo real: corte novo, preço mudado ou barbeiro que entrou aparecem sozinhos.
+  const { dados, falhou, tentarDeNovo } = useCasa(id);
+  const b = dados?.barbearia;
+  const equipe = dados?.equipe ?? [];
+  const servicos = dados?.servicos ?? [];
   const [reservado, setReservado] = useState<string | null>(null);
-  const [falhou, setFalhou] = useState(false);
-  const [tentativa, setTentativa] = useState(0);
-  const versao = useVersao();
 
   // Uma visita por casa aberta: tentar de novo ou puxar para atualizar não conta outra.
   useEffect(() => {
     if (id && perfil) registrarEvento(db, { tipo: 'viu_barbearia', uid: perfil.uid, barbeariaId: id, em: Date.now() });
   }, [id]);
 
-  useEffect(() => {
-    if (!id) return;
-    setFalhou(false);
-    // Uma leitura guardada por 5 min, reaproveitada pelo agendar (ir e voltar não relê).
-    dadosDaCasa(db, id, { forcar: tentativa > 0 })
-      .then(d => { setB(d.barbearia); setEquipe(d.equipe); setServicos(d.servicos); })
-      .catch(() => { setFalhou(true); setB(null); });
-  }, [id, tentativa, versao]);
-
   // Voltou da confirmação (dismissTo): mostra o aviso da reserva uma vez.
   useFocusEffect(useCallback(() => { const t = pegarAvisoReserva(); if (t) setReservado(t); }, []));
   const fotos = [...(b?.fotos ?? []), ...servicos.flatMap(s => s.fotos)].slice(0, 24);
 
+  if (falhou) return <Tela><Voltar /><FalhaAoCarregar onTentar={tentarDeNovo} /></Tela>;
   if (b === undefined) return <Carregando />;
-  if (b === null && falhou) {
-    return <Tela><Voltar /><FalhaAoCarregar onTentar={() => { setB(undefined); setTentativa(n => n + 1); }} /></Tela>;
-  }
   if (b === null) {
     return <Tela><Voltar /><Titulo>Barbearia não encontrada</Titulo><Aviso texto="Ela pode ter saído do ar." /></Tela>;
   }

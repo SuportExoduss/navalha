@@ -13,10 +13,11 @@ import {
 } from 'firebase/firestore';
 import { chavesOcupacao, paraMillis } from '../src/lib/agenda';
 import {
-  agendamentosDaSemana, cancelar, concluir, criarFolga, definirStatus, horariosLivres, removerFolga, reservar, type NovaReserva,
+  cancelar, concluir, criarFolga, definirStatus, horariosLivres, removerFolga, reservar, type NovaReserva,
+  ouvirAgendamentosDaCasa,
 } from '../src/services/agendamentos';
 import { NOME_REMOVIDO, telefoneNosAgendamentos } from '../src/services/usuarios';
-import { MOTIVO_CASA_ENCERRADA, definirBarbeiroAtivo, excluirBarbearia } from '../src/services/barbearias';
+import { ConviteInvalidoError, MOTIVO_CASA_ENCERRADA, aceitarConvite as aceitarConvitePeloApp, definirBarbeiroAtivo, excluirBarbearia } from '../src/services/barbearias';
 import type { Barbearia, Barbeiro } from '../src/types/models';
 
 let env: RulesTestEnvironment;
@@ -191,6 +192,24 @@ test('barbeiro entra só com convite válido, uma única vez', async () => {
   await assertFails(aceitarConvite('bruno')); // código já usado
   // Sem convite, ninguém se coloca na equipe.
   await assertFails(setDoc(doc(env.authenticatedContext('bruno').firestore(), 'barbearias/b1/barbeiros/bruno'), { uid: 'bruno', ativo: true }));
+});
+
+test('convite pelo app: entra com o WhatsApp para o dono; quem já é da equipe (mesmo desligado) não gasta código', async () => {
+  const dono = env.authenticatedContext('dono').firestore();
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'users/rafa2'), { uid: 'rafa2', barbearias: [] }));
+  for (const c of ['CNV234', 'CNV567']) {
+    await setDoc(doc(dono, 'convites', c), { codigo: c, barbeariaId: 'b1', criadoPor: 'dono', expiraEm: Date.now() + 86_400_000 });
+  }
+  const eu = { uid: 'rafa2', nome: 'Rafa', telefone: '15988880000' };
+  assert.equal(await aceitarConvitePeloApp(dbDe('rafa2'), 'cnv234', eu), 'b1');
+  assert.equal((await getDoc(doc(dbDe('dono'), 'barbearias/b1/equipePrivado/rafa2'))).data()?.telefone, '15988880000');
+  await assert.rejects(aceitarConvitePeloApp(dbDe('rafa2'), 'CNV234', eu), ConviteInvalidoError);
+  await assert.rejects(aceitarConvitePeloApp(dbDe('rafa2'), 'CNV567', eu), /já faz parte/);
+  await definirBarbeiroAtivo(dbDe('dono'), 'b1', 'rafa2', false);
+  await assert.rejects(aceitarConvitePeloApp(dbDe('rafa2'), 'CNV567', eu), /Peça ao dono para te ligar de novo/);
+  // O código segue livre para outra pessoa.
+  assert.equal((await getDoc(doc(dono, 'convites/CNV567'))).data()?.usadoPor, undefined);
+  await assert.rejects(aceitarConvitePeloApp(dbDe('rafa2'), 'NAOTEM', eu), /não encontrado/);
 });
 
 test('plano: equipe cheia barra convite e religar barbeiro; desligar libera a vaga', async () => {
@@ -494,14 +513,19 @@ test('WhatsApp novo no perfil: o cliente leva o número do perfil aos horários 
   await assertFails(updateDoc(ref, { clienteTelefone: '15977776666', atualizadoEm: 2 }));
 });
 
-test('barbeiro conclui sem foto (ninguém anexa foto ao corte); painel do dono lê a semana', async () => {
+// O resumo da casa é uma escuta: a primeira resposta (ou a recusa) vira promessa.
+const lerResumo = (db: Firestore, de: string, ate: string) => new Promise<unknown[]>((ok, falha) => {
+  const parar = ouvirAgendamentosDaCasa(db, 'b1', de, ate, l => { parar(); ok(l); }, falha);
+});
+
+test('barbeiro conclui sem foto (ninguém anexa foto ao corte); o resumo do dono lê o período', async () => {
   const id = await reservar(dbDe('ana'), novaReserva('ana', inicio));
   await assertFails(updateDoc(doc(dbDe('lucas'), 'agendamentos', id), { status: 'concluido', fotos: ['https://fotos/corte/x.webp'] }));
   await assertSucceeds(concluir(dbDe('lucas'), id));
   await assertFails(concluir(dbDe('ana'), id));
-  const l = await assertSucceeds(agendamentosDaSemana(dbDe('dono'), 'b1', '2030-01-12'));
+  const l = await assertSucceeds(lerResumo(dbDe('dono'), '2030-01-06', '2030-01-12'));
   assert.equal(l.length, 1);
-  await assertFails(agendamentosDaSemana(dbDe('beto'), 'b1', '2030-01-12'));
+  await assertFails(lerResumo(dbDe('beto'), '2030-01-06', '2030-01-12'));
 });
 
 // ---------- Correções de segurança (auditoria 18/out/2026) ----------

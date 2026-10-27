@@ -15,23 +15,24 @@ import { avisarAgendamento } from '../../services/avisos';
 import { GradeHorarios } from '../../components/agenda/GradeHorarios';
 import { useAuth } from '../../auth/AuthProvider';
 import { db } from '../../services/firebase';
-import { dadosDaCasa } from '../../services/barbearias';
-import { esquecer } from '../../services/cache';
+import { useCasa } from '../../hooks/useCasa';
 import { HorarioOcupadoError, ouvirHorariosLivres, registrarEvento, reservar } from '../../services/agendamentos';
 import { agendarPeloClube, meuClubeNaCasa } from '../../services/clube';
 import { motivoSemClube } from '../../lib/clube';
 import { dataLocal, formatarHora, formatarPreco, proximosDias, rotuloDia } from '../../lib/agenda';
 import { colors, radius, space, type, sobreFoto } from '../../theme';
-import type { Barbearia, Barbeiro, ISODate, Millis, Servico } from '../../types/models';
+import type { ISODate, Millis } from '../../types/models';
 
 const DIAS_VISIVEIS = 14;
 
 export default function Agendar() {
   const { id, barbeiro: barbeiroId, servico: servicoId } = useLocalSearchParams<{ id: string; barbeiro?: string; servico: string }>();
   const { carregando: carregandoAuth, user, perfil } = useAuth();
-  const [b, setB] = useState<Barbearia | null | undefined>(undefined);
-  const [barbeiro, setBarbeiro] = useState<Barbeiro | null>(null);
-  const [servico, setServico] = useState<Servico | null>(null);
+  // Casa, equipe e cardápio em tempo real (mesma escuta da página da casa): preço mudado já vale aqui.
+  const { dados, falhou, tentarDeNovo } = useCasa(id);
+  const b = dados?.barbearia;
+  const servico = dados?.servicos.find(x => x.id === servicoId) ?? null;
+  const barbeiro = dados?.equipe.find(e => e.uid === servico?.barbeiroId) ?? null;
   const [hoje] = useState(() => dataLocal(Date.now()));
   const [dia, setDia] = useState<ISODate>(hoje);
   const [horarios, setHorarios] = useState<Millis[] | null>(null);
@@ -39,8 +40,6 @@ export default function Agendar() {
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [recarregar, setRecarregar] = useState(0);
-  const [falhou, setFalhou] = useState(false);
-  const [tentativa, setTentativa] = useState(0);
   const abriuEm = useRef(Date.now());
   // Clube da pessoa nesta casa (null = não é membro): oferece "Usar o clube" no popup.
   const [clube, setClube] = useState<Awaited<ReturnType<typeof meuClubeNaCasa>>>(null);
@@ -51,18 +50,8 @@ export default function Agendar() {
   }, [id, perfil?.uid]);
 
   useEffect(() => {
-    if (!id) return;
-    setFalhou(false);
-    (async () => {
-      // Mesmos dados da página da casa, já guardados: abrir o agendar não custa leitura nova.
-      const { barbearia: casa, equipe, servicos: cardapio } = await dadosDaCasa(db, id, { forcar: tentativa > 0 });
-      const s = cardapio.find(x => x.id === servicoId) ?? null;
-      setB(casa);
-      setServico(s);
-      setBarbeiro(equipe.find(e => e.uid === s?.barbeiroId) ?? null);
-      if (perfil && !tentativa) registrarEvento(db, { tipo: 'iniciou_agendamento', uid: perfil.uid, barbeariaId: id, em: Date.now() });
-    })().catch(() => { setFalhou(true); setB(null); });
-  }, [id, servicoId, tentativa]);
+    if (id && perfil) registrarEvento(db, { tipo: 'iniciou_agendamento', uid: perfil.uid, barbeariaId: id, em: Date.now() });
+  }, [id, servicoId]);
 
   useEffect(() => {
     if (!b || !barbeiro || !servico) return;
@@ -88,8 +77,8 @@ export default function Agendar() {
   if (id && barbeiroId && servico && servico.barbeiroId !== barbeiroId) {
     return <Redirect href={{ pathname: '/cortes/[id]', params: { id, barbeiro: barbeiroId } }} />;
   }
+  if (falhou) return <Tela><Voltar /><FalhaAoCarregar onTentar={tentarDeNovo} /></Tela>;
   if (b === undefined || !perfil) return <Carregando />;
-  if (falhou) return <Tela><Voltar /><FalhaAoCarregar onTentar={() => { setB(undefined); setTentativa(n => n + 1); }} /></Tela>;
   if (!b || !servico || !barbeiro) {
     return (
       <Tela>
@@ -135,10 +124,8 @@ export default function Agendar() {
       } else if (peloClube && e instanceof Error) {
         setErro(e.message); // o Worker diz o motivo (limite, vencimento, casa bloqueada)
       } else if ((e as { code?: string })?.code === 'permission-denied') {
-        // Recusado pelas regras: limite de 20 s entre reservas OU o cardápio mudou (preço/duração) depois
-        // da leitura guardada. Relê a casa do servidor e pede para tentar de novo.
-        esquecer(`casa:${b.id}`);
-        setTentativa(n => n + 1);
+        // Recusado pelas regras: limite de 20 s entre reservas OU o cardápio acabou de mudar (a escuta já traz
+        // o preço novo). Pede para tentar de novo.
         setErro('Não deu para reservar agora. Espere alguns segundos e tente de novo.');
       } else {
         setErro('Não foi possível reservar. Verifique a conexão e tente de novo.');

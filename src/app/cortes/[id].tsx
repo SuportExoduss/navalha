@@ -1,33 +1,22 @@
 // Etapa 2 de 3 do agendamento: os cortes do barbeiro escolhido na etapa 1 (página da casa).
-// Sem barbeiro válido volta para a casa. Os dados vêm do cache da casa (sem leitura nova).
-import { useEffect, useState } from 'react';
+// Sem barbeiro válido volta para a casa. Casa, equipe e cardápio em tempo real (useCasa).
 import { Image, Pressable, Text, View } from 'react-native';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Carregando, Cartao, FalhaAoCarregar, Tela, Titulo } from '../../components/ui';
 import { Etapa } from '../../components/agenda/Etapa';
-import { dadosDaCasa } from '../../services/barbearias';
-import { db } from '../../services/firebase';
 import { formatarPreco } from '../../lib/agenda';
 import { colors, radius, space, type } from '../../theme';
-import type { Barbearia, Barbeiro, Servico } from '../../types/models';
-import { useVersao } from '../../hooks/useAtualizar';
+import { useCasa } from '../../hooks/useCasa';
 
 export default function EscolherCorte() {
   const { id, barbeiro: barbeiroId } = useLocalSearchParams<{ id: string; barbeiro?: string }>();
-  const [dados, setDados] = useState<{ barbearia: Barbearia | null; equipe: Barbeiro[]; servicos: Servico[] } | null | undefined>(undefined);
-  const [tentativa, setTentativa] = useState(0);
-  const versao = useVersao();
-
-  useEffect(() => {
-    if (!id) return;
-    dadosDaCasa(db, id, { forcar: tentativa > 0 }).then(setDados).catch(() => setDados(null));
-  }, [id, tentativa, versao]);
+  const { dados, falhou, tentarDeNovo } = useCasa(id);
 
   if (!id) return <Redirect href="/" />;
   if (!barbeiroId) return <Redirect href={{ pathname: '/barbearia/[id]', params: { id } }} />;
+  if (falhou) return <Tela><Voltar /><FalhaAoCarregar onTentar={tentarDeNovo} /></Tela>;
   if (dados === undefined) return <Carregando />;
-  if (dados === null) return <Tela><Voltar /><FalhaAoCarregar onTentar={() => { setDados(undefined); setTentativa(n => n + 1); }} /></Tela>;
 
   const barbeiro = dados.equipe.find(e => e.uid === barbeiroId);
   if (!dados.barbearia || !barbeiro) return <Redirect href={{ pathname: '/barbearia/[id]', params: { id } }} />;

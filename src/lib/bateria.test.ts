@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { PACOTE, marcaDe, passosBateria, telasBateria, telasInicioAutomatico } from './bateria';
+import { PACOTE, marcaDe, passosBateria, telasBateria } from './bateria';
 
 test('bateria: cada marca reconhecida pelo nome que o celular informa', () => {
   assert.equal(marcaDe('Xiaomi'), 'xiaomi');
@@ -26,11 +26,7 @@ test('bateria: a tela da marca vem primeiro e a do Android sempre fecha a lista'
   assert.equal(telasBateria('motorola')[0].acao, 'android.settings.VIEW_ADVANCED_POWER_USAGE_DETAIL');
 });
 
-test('bateria: início automático só nas marcas que bloqueiam à parte, com o texto junto', () => {
-  assert.equal(telasInicioAutomatico('Xiaomi').length, 1);
-  assert.ok(telasInicioAutomatico('vivo').length >= 2);
-  assert.deepEqual(telasInicioAutomatico('samsung'), []);
-  assert.deepEqual(telasInicioAutomatico('motorola'), []);
-  for (const m of ['Xiaomi', 'vivo', 'OPPO', 'HUAWEI', 'asus']) assert.ok(passosBateria(m).inicio, m);
-  assert.equal(passosBateria('motorola').inicio, undefined);
+test('bateria: o texto acompanha a marca', () => {
+  assert.match(passosBateria('Xiaomi'), /Nenhuma restrição/);
+  assert.match(passosBateria('motorola'), /segundo plano/);
 });

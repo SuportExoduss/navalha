@@ -66,7 +66,7 @@ Requisitos da Google Play: `docs/publicar-google-play.md`. Pacote definitivo `co
 - [x] Histórico do cliente (~~com as fotos do corte~~: a foto saiu em 25/out)
 - [x] Push de lembrete: o app registra o token do FCM no login (sem Expo Push desde 18/out); o Worker (cron de hora em hora) manda 24 h e 2 h antes
 - [x] ~~Foto no "Concluído"~~ — retirada em 25/out (decisão do dono); o barbeiro só conclui
-- [x] Painel simples do dono: clientes e previsto de hoje, faturado, faltas e corte mais pedido em 7 dias
+- [x] Resumo da casa (27/out): filtros Hoje, Semana (segunda a domingo) e Mês (dia 1 até hoje), com agendamentos, faturado, a receber, faltas e corte mais pedido, em tempo real (uma escuta)
 - [x] Eventos de uso (viu barbearia, agendou, cancelou, faltou, concluiu). ~~Place ID do Google~~ saiu em 22/out
 - [x] Corrigido: barbeiro não conseguia atualizar o resumo do cardápio da casa (regra de segurança)
 - [x] Testes: 26 de lógica, 22 de regras, 5 do Worker, typecheck e 2 roteiros no navegador (tests/e2e)
@@ -148,7 +148,7 @@ Requisitos da Google Play: `docs/publicar-google-play.md`. Pacote definitivo `co
 - [x] Testes: lógica 40, regras 38, Worker 11; regras, índices, Worker e web publicados
 - [ ] Testar no celular com 3 contas (cliente, barbeiro, dono): push de marcado/cancelado e agenda do barbeiro só com os horários dele
 - [x] Push com o app fechado (25/out): o servidor entrega na hora, mas a Xiaomi (e outras marcas) descarta o push depois de reiniciar sem o app aberto. Ao escolher barbeiro/dono no Android, a tela `/bateria` mostra os passos da marca (`src/lib/bateria.ts`) e abre os ajustes do app; atalho fixo no Perfil. Sem a permissão de ignorar otimização de bateria (política da Play)
-- [x] Botões que levam direto à tela certa (25/out, `expo-intent-launcher`): restrição de bateria do Navalha e, onde é separado, início automático. Mapa por marca em `src/lib/bateria.ts` (Xiaomi, Samsung, Oppo/Realme/OnePlus, Vivo, Huawei/Honor, Asus; demais = tela padrão do Android), com reservas até os detalhes do app. Xiaomi e tela padrão testadas pelo adb no Redmi (HyperOS 2, Android 15)
+- [x] Botões que levam direto à tela certa (25/out, `expo-intent-launcher`): restrição de bateria do Navalha (o início automático saiu em 27/out; o app confere sozinho se a bateria já está liberada, `BateriaPackage.kt`, e aí nem mostra a tela). Mapa por marca em `src/lib/bateria.ts` (Xiaomi, Samsung, Oppo/Realme/OnePlus, Vivo, Huawei/Honor, Asus; demais = tela padrão do Android), com reservas até os detalhes do app. Xiaomi e tela padrão testadas pelo adb no Redmi (HyperOS 2, Android 15)
 - [ ] Conferir no Redmi com o APK novo: liberar, reiniciar, não abrir o app e receber o aviso
 
 ## LGPD — auditoria /codelgpd (22/out/2026)
@@ -298,5 +298,5 @@ Para isso, nesta ordem:
 
 ## Próximo no roadmap: Fase 2 — Piloto fechado (4/jan – 7/fev 2027)
 Teste fechado: 14 testadores conseguidos em 26/out; contar 14 dias seguidos com eles no teste fechado antes de pedir a produção. Onboarding presencial das barbearias,
-correções por nova versão no Play (sem EAS Update; subir `versionCode` a cada AAB — hoje 7 (0.4.3) em `android/app/build.gradle`; no Play: 5 (0.4.1) no teste interno e no fechado). O próximo AAB leva o clube completo, a revisão de 26/out e as correções de 27/out (cadastro da casa sem voltar ao formulário, WhatsApp novo nos horários marcados, puxar para atualizar).
+correções por nova versão no Play (sem EAS Update; subir `versionCode` a cada AAB — hoje 8 (0.4.4) em `android/app/build.gradle`; no Play: 5 (0.4.1) no teste interno e no fechado). O próximo AAB leva o clube completo, a revisão de 26/out e as correções de 27/out (cadastro da casa sem voltar ao formulário, WhatsApp novo nos horários marcados, puxar para atualizar, dados em tempo real na busca, na casa e no resumo, salvar com confirmação do servidor, convite revisado e a bateria conferida pelo app; tem código nativo novo).
 Depois do piloto: publicação aberta no Google Play. As Fases 3 a 5 estão fora do plano por enquanto (decisão do dono, 20/out/2026).

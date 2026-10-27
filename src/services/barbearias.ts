@@ -17,11 +17,27 @@ import type { Agendamento, AssinaturaCasa, Barbearia, Barbeiro, Convite, Expedie
 export interface BarbeariaPerto extends Barbearia { distanciaKm: number }
 
 /**
- * Lista "Perto de você". Cacheada por ~1 km (2 casas decimais): a posição rápida e a precisa,
- * que chegam uma logo depois da outra, caem na mesma chave e custam uma consulta só.
+ * Lista "Perto de você" em tempo real: barbearia nova, que saiu do ar ou mudou aparece sozinha. Escuta o anel de 10 km;
+ * se juntar menos de MINIMO_PERTO casas, troca pelo próximo (cada anel é lido uma vez, como antes). Início e Explorar
+ * fazem a mesma consulta e o Firestore junta as duas escutas numa só.
  */
-export function buscarPerto(db: Firestore, lat: number, lng: number, { forcar = false } = {}): Promise<BarbeariaPerto[]> {
-  return lembrar(`perto:${lat.toFixed(2)},${lng.toFixed(2)}`, () => buscarPertoServidor(db, lat, lng), { forcar });
+export function ouvirPerto(db: Firestore, lat: number, lng: number, cb: (l: BarbeariaPerto[]) => void, erro: () => void): Unsubscribe {
+  let parar: Unsubscribe[] = [];
+  const pararTudo = () => { parar.forEach(f => f()); parar = []; };
+  const ouvirAnel = (i: number) => {
+    const raio = ANEIS_KM[i];
+    const consultas = consultasDoRaio(db, lat, lng, raio);
+    const porConsulta: (Barbearia[] | undefined)[] = consultas.map(() => undefined);
+    parar = consultas.map((q, k) => onSnapshot(q, snap => {
+      porConsulta[k] = snap.docs.map(d => d.data() as Barbearia);
+      if (porConsulta.some(x => !x)) return;
+      const lista = pertoNoRaio(porConsulta.flat() as Barbearia[], lat, lng, raio);
+      if (lista.length < MINIMO_PERTO && i < ANEIS_KM.length - 1) { pararTudo(); ouvirAnel(i + 1); return; }
+      cb(lista);
+    }, erro));
+  };
+  ouvirAnel(0);
+  return pararTudo;
 }
 
 /** Anéis da busca: para no primeiro que junta MINIMO_PERTO casas; null = todas (sem limite de distância). */
@@ -30,31 +46,24 @@ const MINIMO_PERTO = 20;
 // ponytail: o último anel lê até 100 casas sem ordem de distância; com milhares de casas no país, trocar por mais anéis.
 const LIMITE_TODAS = 100;
 
-async function buscarPertoServidor(db: Firestore, lat: number, lng: number): Promise<BarbeariaPerto[]> {
-  let res: BarbeariaPerto[] = [];
-  for (const raio of ANEIS_KM) {
-    res = await buscarNoRaio(db, lat, lng, raio);
-    if (res.length >= MINIMO_PERTO) break;
-  }
-  return res;
-}
-
-async function buscarNoRaio(db: Firestore, lat: number, lng: number, raioKm: number | null): Promise<BarbeariaPerto[]> {
+function consultasDoRaio(db: Firestore, lat: number, lng: number, raioKm: number | null) {
   const base = [
     where('publicada', '==', true),
     where('emDia', '==', true), // teste ou mensalidade em dia; as regras também exigem
   ];
-  const consultas = raioKm === null
+  return raioKm === null
     ? [query(collection(db, 'barbearias'), ...base, limit(LIMITE_TODAS))]
     : geohashQueryBounds([lat, lng], raioKm * 1000).map(([ini, fim]) =>
       query(collection(db, 'barbearias'), ...base, orderBy('geo.geohash'), startAt(ini), endAt(fim)));
-  const snaps = await Promise.all(consultas.map(q => getDocs(q)));
+}
+
+/** Junta as consultas do anel (sem repetir), corta o que passou do raio e ordena da mais perto. */
+export function pertoNoRaio(casas: Barbearia[], lat: number, lng: number, raioKm: number | null): BarbeariaPerto[] {
   const vistos = new Set<string>();
   const res: BarbeariaPerto[] = [];
-  for (const s of snaps) for (const d of s.docs) {
-    if (vistos.has(d.id)) continue;
-    vistos.add(d.id);
-    const b = d.data() as Barbearia;
+  for (const b of casas) {
+    if (vistos.has(b.id)) continue;
+    vistos.add(b.id);
     const km = distanceBetween([b.geo.lat, b.geo.lng], [lat, lng]);
     if (raioKm === null || km <= raioKm) res.push({ ...b, distanciaKm: km });
   }
@@ -119,8 +128,35 @@ export function ouvirServicosDoBarbeiro(
   return onSnapshot(q, s => cb(s.docs.map(d => d.data() as Servico).sort((a, b) => a.nome.localeCompare(b.nome))));
 }
 
-/** Página pública da casa e o agendar usam os mesmos dados: lidos uma vez e guardados 5 min. */
-export function dadosDaCasa(db: Firestore, id: string, { forcar = false } = {}) {
+export interface DadosCasa { barbearia: Barbearia | null; equipe: Barbeiro[]; servicos: Servico[] }
+
+/**
+ * Página da casa, escolha do corte e agendar: casa, equipe e cardápio em tempo real (corte novo, preço mudado ou
+ * barbeiro que entrou aparecem sozinhos). Casa que não existe ou saiu do ar: as regras recusam e vale como null;
+ * erro de conexão segue sendo erro.
+ */
+export function ouvirCasa(db: Firestore, id: string, cb: (d: DadosCasa) => void, erro: () => void): Unsubscribe {
+  let b: Barbearia | null | undefined;
+  let equipe: Barbeiro[] | undefined;
+  let servicos: Servico[] | undefined;
+  const emitir = () => {
+    if (b === null) cb({ barbearia: null, equipe: [], servicos: [] });
+    else if (b && equipe && servicos) cb({ barbearia: b, equipe, servicos });
+  };
+  const negado = (e: { code?: string }) => e?.code === 'permission-denied';
+  const parar = [
+    onSnapshot(doc(db, 'barbearias', id), snap => { b = snap.exists() ? (snap.data() as Barbearia) : null; emitir(); },
+      e => { if (negado(e)) { b = null; emitir(); } else erro(); }),
+    onSnapshot(query(collection(db, 'barbearias', id, 'barbeiros'), where('ativo', '==', true)),
+      snap => { equipe = snap.docs.map(d => d.data() as Barbeiro); emitir(); }, e => { if (!negado(e)) erro(); }),
+    onSnapshot(query(collection(db, 'barbearias', id, 'servicos'), where('ativo', '==', true)),
+      snap => { servicos = snap.docs.map(d => d.data() as Servico); emitir(); }, e => { if (!negado(e)) erro(); }),
+  ];
+  return () => parar.forEach(f => f());
+}
+
+/** Leitura única da casa (horário fixo): guardada 5 min. */
+export function dadosDaCasa(db: Firestore, id: string): Promise<DadosCasa> {
   return lembrar(`casa:${id}`, async () => {
     const [barbearia, equipe, servicos] = await Promise.allSettled([lerBarbearia(db, id), listarBarbeiros(db, id), listarServicos(db, id)]);
     if (barbearia.status === 'rejected') throw barbearia.reason;
@@ -129,7 +165,7 @@ export function dadosDaCasa(db: Firestore, id: string, { forcar = false } = {}) 
     if (equipe.status === 'rejected') throw equipe.reason;
     if (servicos.status === 'rejected') throw servicos.reason;
     return { barbearia: barbearia.value, equipe: equipe.value, servicos: servicos.value };
-  }, { forcar });
+  });
 }
 
 /** Depois de qualquer gravação na casa: a próxima leitura (inclusive a lista perto) vem do servidor. */
@@ -227,14 +263,26 @@ export async function criarConvite(db: Firestore, barbeariaId: string, donoUid: 
 
 export class ConviteInvalidoError extends Error {}
 
-/** Barbeiro aceita o convite: marca o uso, cria seu perfil na casa e liga a casa à conta — tudo junto. */
-export async function aceitarConvite(db: Firestore, codigoDigitado: string, eu: { uid: string; nome: string; fotoUrl?: string }) {
+const SEM_CONEXAO_CONVITE = 'Sem conexão. Confira a internet e tente de novo.';
+
+/**
+ * Barbeiro aceita o convite: marca o uso, cria seu perfil na casa e liga a casa à conta — tudo junto.
+ * Quem já é da equipe não gasta o código: ativo, já está; desligado, quem religa é o dono (Barbearia › Equipe).
+ */
+export async function aceitarConvite(db: Firestore, codigoDigitado: string, eu: { uid: string; nome: string; fotoUrl?: string; telefone?: string }) {
   const codigo = codigoDigitado.trim().toUpperCase();
-  const snap = await getDoc(doc(db, 'convites', codigo)).catch(() => null);
-  if (!snap?.exists()) throw new ConviteInvalidoError('Código não encontrado. Confira com o dono da barbearia.');
+  const snap = await getDoc(doc(db, 'convites', codigo)).catch(() => { throw new ConviteInvalidoError(SEM_CONEXAO_CONVITE); });
+  if (!snap.exists()) throw new ConviteInvalidoError('Código não encontrado. Confira com o dono da barbearia.');
   const c = snap.data() as Convite;
+  if (c.usadoPor === eu.uid) throw new ConviteInvalidoError('Você já usou este código e faz parte da equipe.');
   if (c.usadoPor) throw new ConviteInvalidoError('Este código já foi usado. Peça um novo ao dono.');
   if (c.expiraEm < Date.now()) throw new ConviteInvalidoError('Este código expirou. Peça um novo ao dono.');
+  const ja = await getDoc(doc(db, 'barbearias', c.barbeariaId, 'barbeiros', eu.uid)).catch(() => { throw new ConviteInvalidoError(SEM_CONEXAO_CONVITE); });
+  if (ja.exists()) {
+    throw new ConviteInvalidoError((ja.data() as Barbeiro).ativo
+      ? 'Você já faz parte da equipe desta barbearia.'
+      : 'Você já é da equipe desta barbearia, mas está fora da agenda. Peça ao dono para te ligar de novo em Barbearia › Equipe.');
+  }
 
   const batch = writeBatch(db);
   batch.update(doc(db, 'convites', codigo), { usadoPor: eu.uid });
@@ -251,6 +299,8 @@ export async function aceitarConvite(db: Firestore, codigoDigitado: string, eu: 
     }
     throw e;
   });
+  // O dono vê o WhatsApp do barbeiro na ficha desde o primeiro dia (antes só depois de salvar o Perfil de novo).
+  if (eu.telefone) await telefoneNaEquipe(db, [c.barbeariaId], eu.uid, eu.telefone);
   return c.barbeariaId;
 }
 

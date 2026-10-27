@@ -16,6 +16,7 @@ import { dataLocal, formatarData, formatarPreco } from '../lib/agenda';
 import { novoCiclo, separarMembros } from '../lib/clube';
 import { colors, space, type } from '../theme';
 import type { Barbeiro, PlanoClube, Servico } from '../types/models';
+import { SEM_CONEXAO, noServidor } from '../lib/noServidor';
 
 const LIMITES = [1, 2, 4, 8];
 
@@ -178,9 +179,9 @@ function EditorPlano({ plano, barbeariaId, equipe, aoSair }: { plano: PlanoClube
     if (!p.servicoIds.length) return setErro('Escolha ao menos um serviço que o plano cobre.');
     setSalvando(true);
     try {
-      await salvarPlano(db, barbeariaId, { ...p, nome: p.nome.trim().slice(0, 60), precoCentavos: centavos, cortesPorMes: limite });
+      await noServidor(salvarPlano(db, barbeariaId, { ...p, nome: p.nome.trim().slice(0, 60), precoCentavos: centavos, cortesPorMes: limite }));
       aoSair();
-    } catch { setErro('Não foi possível salvar. Tente de novo.'); setSalvando(false); }
+    } catch (e) { setErro(e instanceof Error && e.message === SEM_CONEXAO ? SEM_CONEXAO : 'Não foi possível salvar. Tente de novo.'); setSalvando(false); }
   }
 
   async function excluir() {

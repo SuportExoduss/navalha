@@ -1,4 +1,5 @@
-// Onde cada marca guarda o bloqueio que segura o push com o app fechado, e qual tela abrir direto.
+// Onde cada marca guarda a restrição de bateria que segura o push com o app fechado, e qual tela abrir direto.
+// O início automático saiu (27/out): o app confere a bateria sozinho (BateriaPackage.kt) e só pede o que falta.
 // Cada marca põe a opção num lugar e muda de versão para versão, então cada lista é uma ordem de tentativas: o app
 // abre a primeira que existir no celular e a última é sempre uma tela padrão do Android que existe em todos.
 // Base: biblioteca AutoStarter e dontkillmyapp.com; as da Xiaomi e a padrão de bateria foram testadas num
@@ -49,38 +50,12 @@ export function telasBateria(fabricante: string | null | undefined): TelaAjuste[
   return [...especificas[marcaDe(fabricante)], BATERIA_DO_APP, DETALHES_DO_APP];
 }
 
-/** Lista de "início automático" (só nas marcas que bloqueiam isso à parte da bateria); vazia = não precisa. */
-export function telasInicioAutomatico(fabricante: string | null | undefined): TelaAjuste[] {
-  switch (marcaDe(fabricante)) {
-    case 'xiaomi': return [tela('com.miui.securitycenter', 'com.miui.permcenter.autostart.AutoStartManagementActivity')];
-    case 'oppo': return [
-      tela('com.coloros.safecenter', 'com.coloros.safecenter.permission.startup.StartupAppListActivity'),
-      tela('com.coloros.safecenter', 'com.coloros.safecenter.startupapp.StartupAppListActivity'),
-      tela('com.oppo.safe', 'com.oppo.safe.permission.startup.StartupAppListActivity'),
-      tela('com.oneplus.security', 'com.oneplus.security.chainlaunch.view.ChainLaunchAppListActivity'),
-    ];
-    case 'vivo': return [
-      tela('com.vivo.permissionmanager', 'com.vivo.permissionmanager.activity.BgStartUpManagerActivity'),
-      tela('com.iqoo.secure', 'com.iqoo.secure.ui.phoneoptimize.BgStartUpManager'),
-      tela('com.iqoo.secure', 'com.iqoo.secure.ui.phoneoptimize.AddWhiteListActivity'),
-    ];
-    case 'huawei': return [
-      tela('com.huawei.systemmanager', 'com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity'),
-      tela('com.huawei.systemmanager', 'com.huawei.systemmanager.optimize.process.ProtectActivity'),
-    ];
-    case 'asus': return [tela('com.asus.mobilemanager', 'com.asus.mobilemanager.autostart.AutoStartActivity')];
-    default: return [];
-  }
-}
-
 /** O que a pessoa faz na tela que abrir (o texto acompanha a marca). */
-export function passosBateria(fabricante: string | null | undefined): { bateria: string; inicio?: string } {
+export function passosBateria(fabricante: string | null | undefined): string {
   switch (marcaDe(fabricante)) {
-    case 'xiaomi': return { bateria: 'Escolha “Nenhuma restrição”.', inicio: 'Ache o Navalha na lista e ligue.' };
-    case 'samsung': return { bateria: 'Escolha “Sem restrições” (ou ligue “Permitir uso em segundo plano”).' };
-    case 'huawei': return { bateria: 'Deixe o Navalha sem restrição de bateria.', inicio: 'Deixe o Navalha gerenciado manualmente, com tudo ligado.' };
-    case 'oppo': case 'vivo': case 'asus':
-      return { bateria: 'Ligue “Permitir uso em segundo plano” (ou escolha “Sem restrições”).', inicio: 'Ache o Navalha na lista e ligue.' };
-    default: return { bateria: 'Ligue “Permitir uso em segundo plano” (ou escolha “Sem restrições”).' };
+    case 'xiaomi': return 'Escolha “Nenhuma restrição”.';
+    case 'samsung': return 'Escolha “Sem restrições” (ou ligue “Permitir uso em segundo plano”).';
+    case 'huawei': return 'Deixe o Navalha sem restrição de bateria.';
+    default: return 'Ligue “Permitir uso em segundo plano” (ou escolha “Sem restrições”).';
   }
 }

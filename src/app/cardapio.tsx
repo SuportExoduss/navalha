@@ -14,6 +14,7 @@ import { db } from '../services/firebase';
 import { formatarPreco } from '../lib/agenda';
 import { colors, radius, space, type, sobreFoto } from '../theme';
 import type { Servico } from '../types/models';
+import { noServidor } from '../lib/noServidor';
 
 const CATEGORIAS: { id: Servico['categoria']; nome: string }[] = [
   { id: 'cabelo', nome: 'Cabelo' }, { id: 'barba', nome: 'Barba' }, { id: 'combo', nome: 'Combo' }, { id: 'outro', nome: 'Outro' },
@@ -111,8 +112,10 @@ function Editor({ servico, aoSair }: { servico: Servico; aoSair: () => void }) {
     if (!Number.isInteger(duracao) || duracao < 5 || duracao > 300) return setErro('Tempo médio entre 5 e 300 minutos.');
     setSalvando(true);
     try {
-      await salvarServico(db, { ...s, nome: s.nome.trim(), precoCentavos: centavos, duracaoMin: duracao });
-      await atualizarResumoCardapio(db, s.barbeariaId);
+      await noServidor((async () => {
+        await salvarServico(db, { ...s, nome: s.nome.trim(), precoCentavos: centavos, duracaoMin: duracao });
+        await atualizarResumoCardapio(db, s.barbeariaId);
+      })());
       aoSair();
     } catch (e) { setErro(e instanceof Error ? e.message : 'Não foi possível salvar.'); setSalvando(false); }
   }

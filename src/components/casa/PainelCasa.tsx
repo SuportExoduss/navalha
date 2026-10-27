@@ -29,13 +29,17 @@ export function PainelCasa({ b, equipe, ehDono, uid }: { b: Barbearia; equipe: B
   const limite = b.assinatura.limiteBarbeiros ?? LIMITE_TESTE; // casa antiga, antes da migração
   const cheia = !cabeMaisUm(ativos, limite);
 
+  const enviarConvite = (c: string) => Share.share({
+    message: `Entre na equipe da ${b.nome} no Navalha. Baixe o app, escolha "Trabalho numa barbearia" e use o código ${c} (vale 7 dias).`,
+  }).catch(() => undefined);
+
   async function convidar() {
     if (cheia) { setErro(`Seu plano permite ${limite} ${limite === 1 ? 'barbeiro' : 'barbeiros'} ativos. Mude de plano para chamar mais gente.`); return; }
     setGerando(true);
     try {
       const c = await criarConvite(db, b.id, uid);
       setConvite(c);
-      await Share.share({ message: `Entre na equipe da ${b.nome} no Navalha. Baixe o app, escolha "Trabalho numa barbearia" e use o código ${c} (vale 7 dias).` }).catch(() => undefined);
+      await enviarConvite(c);
     } catch (e) { setErro(e instanceof Error ? e.message : 'Não foi possível gerar o convite.'); }
     finally { setGerando(false); }
   }
@@ -94,6 +98,8 @@ export function PainelCasa({ b, equipe, ehDono, uid }: { b: Barbearia; equipe: B
           <Cartao style={{ gap: space(2), borderColor: colors.accent }}>
             <Text style={type.caption}>Código de convite (vale 7 dias, uso único)</Text>
             <Text selectable style={{ color: colors.accent, fontSize: 28, fontWeight: '700', letterSpacing: 8 }}>{convite}</Text>
+            <Text style={type.caption}>O barbeiro escolhe "Trabalho numa barbearia" (ou Perfil › "Tenho um código de convite") e digita o código.</Text>
+            <Botao titulo="Enviar de novo" variante="secundario" onPress={() => enviarConvite(convite)} />
           </Cartao>
         ) : null}
         {equipe.map(m => (
