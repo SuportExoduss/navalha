@@ -1,17 +1,24 @@
 // Cadastro da barbearia pelo dono. A localização vem do GPS do próprio
 // celular, de dentro da barbearia — sem mapa nem API paga.
 import { useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Modal, Text, View } from 'react-native';
 import * as Location from 'expo-location';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { Aviso, Botao, Campo, Cartao, Titulo } from '../ui';
-import { criarBarbearia, jaUsouTeste } from '../../services/barbearias';
+import { conferirBarbeariaCriada, criarBarbearia, jaUsouTeste } from '../../services/barbearias';
+import { SEM_CONEXAO, noServidor } from '../../lib/noServidor';
 import { db } from '../../services/firebase';
-import { colors, space, type } from '../../theme';
+import { DIAS_AVISO, DIAS_REGULARIZAR, DIAS_TESTE, LIMITE_TESTE, PLANOS } from '../../lib/planos';
+import { dataLocal, formatarData, formatarPreco, somarDias } from '../../lib/agenda';
+import { colors, radius, sobreFoto, space, type } from '../../theme';
 import type { UserProfile } from '../../types/models';
 
-export function CriarBarbearia({ perfil }: { perfil: UserProfile }) {
+/**
+ * `aoCriar(ativo)`: a aba Barbearia segura este formulário na tela enquanto a criação é conferida no servidor
+ * (senão a casa aparece pelo cache do aparelho antes da confirmação) e depois mostra o aviso de criada.
+ */
+export function CriarBarbearia({ perfil, aoCriar }: { perfil: UserProfile; aoCriar: (fase: 'conferindo' | 'criada' | 'falhou') => void }) {
   const [nome, setNome] = useState('');
   const [endereco, setEndereco] = useState('');
   const [cidade, setCidade] = useState('');
@@ -52,15 +59,32 @@ export function CriarBarbearia({ perfil }: { perfil: UserProfile }) {
     !coords && 'localização',
   ].filter(Boolean) as string[];
 
-  async function salvar() {
+  // Antes de criar, o popup explica em poucas linhas o teste grátis e o que acontece depois.
+  const [explicar, setExplicar] = useState(false);
+  function pedirConfirmacao() {
     if (faltando.length || !coords) { setErro(`Falta preencher: ${faltando.join(', ')}.`); return; }
+    setErro(null);
+    setExplicar(true);
+  }
+
+  async function salvar() {
+    if (!coords) return;
+    setExplicar(false);
     setSalvando(true);
     setErro(null);
+    aoCriar('conferindo');
     try {
-      await criarBarbearia(db, { uid: perfil.uid, nome: perfil.nome, fotoUrl: perfil.fotoUrl },
-        { nome, endereco, cidade, lat: coords.lat, lng: coords.lng, telefone, instagram });
+      await noServidor((async () => {
+        const id = await criarBarbearia(db, { uid: perfil.uid, nome: perfil.nome, fotoUrl: perfil.fotoUrl },
+          { nome, endereco, cidade, lat: coords.lat, lng: coords.lng, telefone, instagram });
+        if (!(await conferirBarbeariaCriada(db, id, perfil.uid))) throw new Error('A barbearia não apareceu no servidor. Tente de novo.');
+      })(), 30_000);
+      aoCriar('criada');
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Não foi possível salvar.');
+      aoCriar('falhou');
+      setErro(e instanceof Error && e.message === SEM_CONEXAO
+        ? 'Sem conexão. Se a barbearia aparecer depois, ela foi criada; não crie de novo.'
+        : e instanceof Error ? e.message : 'Não foi possível criar. Tente de novo.');
       setSalvando(false);
     }
   }
@@ -89,7 +113,7 @@ export function CriarBarbearia({ perfil }: { perfil: UserProfile }) {
       </Cartao>
 
       {erro ? <Aviso texto={erro} tom="erro" /> : null}
-      <Botao titulo="Criar barbearia" onPress={salvar} carregando={salvando} />
+      <Botao titulo="Criar barbearia" onPress={pedirConfirmacao} carregando={salvando} />
       {/* Aceite das regras para barbearias, principalmente o uso dos dados dos clientes. */}
       <Text style={[type.caption, { textAlign: 'center' }]}>
         Ao criar, você aceita os{' '}
@@ -98,9 +122,50 @@ export function CriarBarbearia({ perfil }: { perfil: UserProfile }) {
         </Text>, incluindo as regras para barbearias sobre os dados dos clientes.
       </Text>
       {testeUsado === null ? null : <Aviso texto={testeUsado
-        ? 'Sua conta já usou os 60 dias grátis: a barbearia entra na busca depois de escolher um plano em Configurações.'
-        : 'Os primeiros 60 dias são grátis, com até 10 barbeiros. Depois, escolha um plano em Configurações.'} />}
+        ? 'Sua conta já usou os 60 dias grátis: a barbearia entra na busca depois de escolher um plano em Barbearia › Plano.'
+        : `Os primeiros ${DIAS_TESTE} dias são grátis, contados a partir de hoje.`} />}
       <Aviso texto="Você entra como o primeiro barbeiro da casa. Horário inicial: terça a sexta 9h–19h (almoço 12h–13h) e sábado 9h–17h." />
+      <ComoFuncionaOTeste visivel={explicar} testeUsado={!!testeUsado} aoVoltar={() => setExplicar(false)} aoCriar={salvar} />
     </>
+  );
+}
+
+/** Popup antes de criar: o teste grátis (até quando, o que inclui) e o que acontece depois, em linguagem simples. */
+function ComoFuncionaOTeste({ visivel, testeUsado, aoVoltar, aoCriar }: {
+  visivel: boolean; testeUsado: boolean; aoVoltar: () => void; aoCriar: () => void;
+}) {
+  const hoje = dataLocal(Date.now());
+  const ate = formatarData(somarDias(hoje, DIAS_TESTE), hoje);
+  const maisBarato = formatarPreco(Math.min(...PLANOS.map(p => p.precoCentavos)));
+  const itens: [keyof typeof Ionicons.glyphMap, string][] = testeUsado ? [
+    ['information-circle-outline', `Esta conta já usou os ${DIAS_TESTE} dias grátis. A barbearia nasce como rascunho: você monta tudo, mas os clientes só a encontram depois de escolher um plano.`],
+    ['card-outline', `Planos a partir de ${maisBarato} por mês, em Barbearia › Plano.`],
+  ] : [
+    ['gift-outline', `Grátis por ${DIAS_TESTE} dias, de hoje até ${ate}. Sem cartão e sem cobrança.`],
+    ['people-outline', `Tudo liberado durante o teste: agenda, clube, avisos e até ${LIMITE_TESTE} barbeiros.`],
+    ['search-outline', 'Clientes encontram a sua casa quando você publicar (foto de capa e 1 corte no cardápio).'],
+    ['notifications-outline', `${DIAS_AVISO} dias antes do fim, o app avisa.`],
+    ['card-outline', `Depois, escolha um plano em Barbearia › Plano, a partir de ${maisBarato} por mês. Nada é cobrado sozinho.`],
+    ['time-outline', `Se não escolher, você ainda tem ${DIAS_REGULARIZAR} dias; depois a casa sai da busca até assinar. Nada se perde.`],
+  ];
+  return (
+    <Modal visible={visivel} transparent animationType="fade" onRequestClose={aoVoltar}>
+      <View style={{ flex: 1, backgroundColor: sobreFoto.veu, justifyContent: 'center', padding: space(5) }}>
+        <View accessibilityViewIsModal style={{ backgroundColor: colors.surface, borderRadius: radius.card, padding: space(5), gap: space(4),
+          borderWidth: 1, borderColor: colors.border, width: '100%', maxWidth: 420, alignSelf: 'center' }}>
+          <Titulo>{testeUsado ? 'Antes de criar' : `${DIAS_TESTE} dias grátis`}</Titulo>
+          {itens.map(([icone, texto]) => (
+            <View key={texto} style={{ flexDirection: 'row', gap: space(3), alignItems: 'flex-start' }}>
+              <Ionicons name={icone} size={20} color={colors.accent} />
+              <Text style={[type.body, { flex: 1 }]}>{texto}</Text>
+            </View>
+          ))}
+          <View style={{ flexDirection: 'row', gap: space(2) }}>
+            <Botao titulo="Voltar" variante="secundario" style={{ flex: 1 }} onPress={aoVoltar} />
+            <Botao titulo={testeUsado ? 'Criar' : 'Começar grátis'} style={{ flex: 1 }} onPress={aoCriar} />
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }

@@ -3,7 +3,7 @@
 // que cobrem o raio e filtra pela distância real. O raio cresce até juntar barbearias suficientes.
 import {
   limit,
-  arrayRemove, arrayUnion, collection, increment, serverTimestamp, deleteDoc, doc, endAt, getDoc, getDocs, onSnapshot, orderBy, query,
+  arrayRemove, arrayUnion, collection, increment, serverTimestamp, deleteDoc, doc, endAt, getDoc, getDocFromServer, getDocs, onSnapshot, orderBy, query,
   setDoc, startAt, updateDoc, where, writeBatch, type Firestore, type Unsubscribe,
 } from 'firebase/firestore';
 import { distanceBetween, geohashForLocation, geohashQueryBounds } from 'geofire-common';
@@ -234,6 +234,20 @@ export async function criarBarbearia(
   if (comTeste) batch.set(doc(db, 'testes', dono.uid), { em: serverTimestamp() });
   await batch.commit();
   return ref.id;
+}
+
+/**
+ * Depois de criar: relê do servidor (não do cache do aparelho) a casa, o dono como barbeiro e o perfil ligado à casa.
+ * Só com os três lá a tela diz que deu certo.
+ */
+export async function conferirBarbeariaCriada(db: Firestore, id: string, uid: string): Promise<boolean> {
+  const [casa, barbeiro, perfil] = await Promise.all([
+    getDocFromServer(doc(db, 'barbearias', id)),
+    getDocFromServer(doc(db, 'barbearias', id, 'barbeiros', uid)),
+    getDocFromServer(doc(db, 'users', uid)),
+  ]);
+  return casa.exists() && casa.data().donoUid === uid && barbeiro.exists()
+    && ((perfil.data()?.barbearias ?? []) as string[]).includes(id);
 }
 
 export async function atualizarBarbearia(db: Firestore, id: string, dados: Partial<Pick<Barbearia,
