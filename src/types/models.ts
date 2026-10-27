@@ -28,7 +28,6 @@ export interface UserProfile {
   /** Barbearias onde a pessoa é dono ou barbeiro. */
   barbearias: string[];
   favoritos: { barbearias: string[]; barbeiros: string[] };
-  privacidade: { fotosNoPortfolio: boolean };
   /** Token do FCM (Firebase Cloud Messaging) para lembretes. */
   pushToken?: string;
   /** A avaliação que o cliente deu a cada barbearia (só o Worker grava): o app mostra "Editar" e não pede de novo. */
@@ -102,7 +101,6 @@ export interface Barbearia {
     proximoHorario?: { barbeiroId: string; inicio: Millis };
     fotosDestaque: string[];
   };
-  pagamento: { pagarNoApp: boolean; sinalPercent: number; subcontaAsaasId?: string };
   assinatura: AssinaturaCasa;
   /** Teste ou mensalidade em dia: só assim a casa aparece na busca. Gravado só pelo servidor. */
   emDia: boolean;
@@ -195,7 +193,6 @@ export interface Agendamento {
   /** Reservado pelo horário fixo do clube (o Worker cancela os futuros quando o horário fixo muda ou sai). */
   fixo?: boolean;
   lembretes: { h24?: Millis; h2?: Millis };
-  pagamentoId?: string;
   /** Quem cancelou e por quê: a barbearia vê o motivo do cliente e o cliente vê o da barbearia. */
   cancelamento?: { por: 'cliente' | 'casa'; motivo: string; em: Millis };
   /** WhatsApp do cliente no momento da reserva (do perfil dele): o barbeiro do horário pode mandar um lembrete. */
@@ -274,21 +271,6 @@ export interface PagamentoClube {
   porUid: string;
   valorCentavos: number;
   venceEmNovo: Millis;
-}
-
-/** pagamentos/{pagamentoId} — Fase 3 (Asaas) */
-export interface Pagamento {
-  id: string;
-  agendamentoId?: string;
-  barbeariaId: string;
-  clienteUid?: string;
-  tipo: 'corte' | 'sinal' | 'assinatura_barbearia';
-  metodo: 'pix' | 'cartao' | 'boleto' | 'balcao';
-  valorCentavos: number;
-  status: 'pendente' | 'pago' | 'estornado' | 'falhou';
-  asaasId?: string;
-  split?: { recebedor: string; valorCentavos: number }[];
-  criadoEm: Millis;
 }
 
 /** eventos/{eventoId} — métricas do piloto desde o dia 1 */

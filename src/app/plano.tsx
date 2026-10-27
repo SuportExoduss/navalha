@@ -15,6 +15,7 @@ import { usarCupom } from '../services/cupom';
 import { dataLocal, formatarData, formatarPreco } from '../lib/agenda';
 import { colors, radius, space, sobreFoto, type } from '../theme';
 import { definirBarbeiroAtivo } from '../services/barbearias';
+import { avisarAgendamento } from '../services/avisos';
 import { db } from '../services/firebase';
 import type { Barbearia, Barbeiro } from '../types/models';
 
@@ -133,7 +134,8 @@ function QuemSai({ equipe, barbeariaId }: { equipe: Barbeiro[]; barbeariaId: str
     if (!sai) return;
     setErro(null);
     setRemovendo(true);
-    try { await definirBarbeiroAtivo(db, barbeariaId, sai.uid, false); setSai(null); }
+    // Os horários futuros dele são cancelados; cada cliente recebe o aviso.
+    try { (await definirBarbeiroAtivo(db, barbeariaId, sai.uid, false)).forEach(avisarAgendamento); setSai(null); }
     catch { setErro('Não foi possível remover. Tente de novo.'); }
     finally { setRemovendo(false); }
   }
@@ -160,7 +162,8 @@ function QuemSai({ equipe, barbeariaId }: { equipe: Barbeiro[]; barbeariaId: str
             borderWidth: 1, borderColor: colors.border, width: '100%', maxWidth: 420, alignSelf: 'center' }}>
             <Titulo>Remover {sai ? nome(sai) : ''}?</Titulo>
             <Text style={type.body}>
-              Ele sai da equipe e perde o acesso à agenda e aos clientes na hora. O cadastro e o cardápio dele ficam
+              Ele sai da equipe e perde o acesso à agenda e aos clientes na hora. Os horários futuros marcados com ele são
+              cancelados e cada cliente recebe o aviso. O cadastro e o cardápio dele ficam
               guardados: se voltar a um plano maior, é só religar na aba Barbearia.
             </Text>
             {erro ? <Aviso texto={erro} tom="erro" /> : null}

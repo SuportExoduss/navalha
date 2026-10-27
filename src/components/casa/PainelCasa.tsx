@@ -1,14 +1,15 @@
 // Aba Barbearia, na ordem do dia a dia: quem é a casa → números de hoje (dono) → cardápio → equipe.
-// Nome, fotos, publicação, horário da casa e Google ficam em Configurações (engrenagem, só o dono).
+// Nome, fotos, publicação, horário da casa e link do WhatsApp ficam em Configurações (engrenagem, só o dono).
 import { useState } from 'react';
 import { Image, Linking, Pressable, Share, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Aviso, Cartao, Interruptor, Linha, Secao } from '../ui';
+import { Aviso, Botao, Cartao, Interruptor, Linha, Secao } from '../ui';
 import { criarConvite, definirBarbeiroAtivo, linksDeRota } from '../../services/barbearias';
 import { LIMITE_TESTE, cabeMaisUm } from '../../lib/planos';
 import { PainelDono } from './PainelDono';
 import { db } from '../../services/firebase';
+import { avisarAgendamento } from '../../services/avisos';
 import { colors, minTouch, radius, space, type, sobreFoto } from '../../theme';
 import type { Barbearia, Barbeiro } from '../../types/models';
 import { seloAssinatura, situacaoAssinatura, tituloDoPlano } from '../../lib/planos';
@@ -19,6 +20,10 @@ export function PainelCasa({ b, equipe, ehDono, uid }: { b: Barbearia; equipe: B
   const [convite, setConvite] = useState<string | null>(null);
   const [gerando, setGerando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  // Desligar cancela os horários futuros do barbeiro: pede confirmação antes.
+  const [desligar, setDesligar] = useState<Barbeiro | null>(null);
+  const [desligando, setDesligando] = useState(false);
+  const [feito, setFeito] = useState<string | null>(null);
 
   const ativos = b.barbeirosAtivos ?? equipe.filter(e => e.ativo).length;
   const limite = b.assinatura.limiteBarbeiros ?? LIMITE_TESTE; // casa antiga, antes da migração
@@ -102,18 +107,37 @@ export function PainelCasa({ b, equipe, ehDono, uid }: { b: Barbearia; equipe: B
                 : <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surfaceRaised }} />}
               <View style={{ flex: 1 }}>
                 <Text style={type.body}>{m.apelido || m.nome}{m.uid === b.donoUid ? ' · dono' : ''}</Text>
-                <Text style={type.caption}>{ehDono || m.uid === uid ? 'Ver ficha e avaliações' : m.ativo ? 'Na agenda' : 'Fora da agenda'}</Text>
+                <Text style={type.caption}>{ehDono || m.uid === uid ? 'Ver ficha' : m.ativo ? 'Na agenda' : 'Fora da agenda'}</Text>
               </View>
             </Pressable>
             {ehDono && m.uid !== b.donoUid ? (
               <Interruptor value={m.ativo} rotulo={`Barbeiro ${m.nome} ativo`} onValueChange={v => {
                 if (v && cheia) { setErro('A equipe está completa no seu plano. Desligue alguém ou mude de plano.'); return; }
-                setErro(null);
-                definirBarbeiroAtivo(db, b.id, m.uid, v).catch(() => setErro('Não foi possível salvar. Tente de novo.'));
+                setErro(null); setFeito(null);
+                if (!v) { setDesligar(m); return; }
+                definirBarbeiroAtivo(db, b.id, m.uid, true).catch(() => setErro('Não foi possível salvar. Tente de novo.'));
               }} />
             ) : null}
           </View>
         ))}
+        {desligar ? (
+          <Cartao style={{ gap: space(3), borderColor: colors.danger }}>
+            <Aviso texto={`Tirar ${desligar.apelido || desligar.nome} da agenda? Os horários futuros marcados com ele são cancelados e cada cliente recebe o aviso.`} />
+            <View style={{ flexDirection: 'row', gap: space(2) }}>
+              <Botao titulo="Voltar" variante="secundario" style={{ flex: 1 }} disabled={desligando} onPress={() => setDesligar(null)} />
+              <Botao titulo="Tirar da agenda" style={{ flex: 1 }} carregando={desligando} onPress={async () => {
+                setDesligando(true);
+                try {
+                  const ids = await definirBarbeiroAtivo(db, b.id, desligar.uid, false);
+                  ids.forEach(avisarAgendamento);
+                  setFeito(!ids.length ? null : ids.length === 1 ? '1 horário cancelado; o cliente foi avisado.' : `${ids.length} horários cancelados; os clientes foram avisados.`);
+                  setDesligar(null);
+                } catch { setErro('Não foi possível salvar. Tente de novo.'); } finally { setDesligando(false); }
+              }} />
+            </View>
+          </Cartao>
+        ) : null}
+        {feito ? <Aviso texto={feito} tom="ok" /> : null}
       </Secao>
     </>
   );

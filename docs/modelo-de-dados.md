@@ -6,7 +6,7 @@ Tipos completos em `src/types/models.ts`; permissões em `firestore.rules`.
 | Coleção | Quem grava | Fase | Para quê |
 | --- | --- | --- | --- |
 | `users/{uid}` | o próprio usuário | 1 | Nome, apelido, foto, papéis (cliente/barbeiro/dono), modo ativo, favoritos, token de push, `maiorDeIdadeEm` (quando se declarou maior de 18 na tela `/idade`; a data de nascimento não é guardada; sem ele as regras barram a reserva) |
-| `barbearias/{id}` | dono | 1 | Perfil, endereço + geohash, expediente, política, **resumo** (nota do app, preço, próximo horário), pagamento, assinatura |
+| `barbearias/{id}` | dono | 1 | Perfil, endereço + geohash, expediente, política, **resumo** (nota do app, preço, próximo horário), assinatura |
 | `barbearias/{id}/barbeiros/{uid}` | dono ou o barbeiro (via convite) | 1 | Barbeiros da casa, expediente próprio, nota |
 | `convites/{código}` | dono | 1 | Código de 6 letras (sem 0/O/1/I), válido 7 dias, uso único; aponta para a barbearia. Apagado pelo cron ao vencer e na exclusão da casa |
 | `barbearias/{id}/servicos/{id}` | barbeiro (o próprio) ou dono | 1 | Cardápio: nome, preço em centavos, duração, até 6 fotos |
@@ -21,7 +21,6 @@ Tipos completos em `src/types/models.ts`; permissões em `firestore.rules`.
 | `barbearias/{id}/clubePlanos/{id}` | dono | clube | Planos do clube de assinatura (`docs/clube.md`): nome, preço informativo, serviços cobertos, cortes por mês (sem o campo = ilimitado), pausado/ativo. Leitura aberta |
 | `clubeMembros/{barbeariaId_uid}` | cliente (pede, sai, horário fixo), equipe ativa (aceita, recusa, pagamento, encerra), Worker (vencido, lembretes, `reservadoAte`) | clube | Um por cliente por casa; ciclo de 28 a 31 dias (`src/lib/clube.ts`). Lê o próprio cliente e a equipe ativa |
 | `clubeMembros/{id}/pagamentos/{id}` | equipe ativa | clube | "Recebi o pagamento" (data, quem, valor, novo vencimento). Ninguém altera nem apaga |
-| `pagamentos/{id}` | Worker (webhook Asaas) | 3 | Pix, cartão, split, assinatura |
 | `avaliacoes/{hash}` | Worker (`POST /avaliacoes`) | 1 | Só a avaliação da barbearia, **uma por cliente por casa** e **só as estrelas** (`barbeariaId`, `estrelas`, datas; sem nome, uid, comentário ou dia): o id é SHA-256(`barbeariaId:clienteUid`) (24 hex), então avaliar de novo edita a mesma. Ninguém lê pelo app (regras fecham); a página mostra `resumo.notaApp` e `resumo.totalAvaliacoesApp`. O cron limpa uma vez por dia o legado de antes de 25/out (nota do cliente, avaliações entre cliente e barbeiro, nome/comentário) |
 | `users/{uid}.avaliouBarbearias` | Worker | — | `{barbeariaId: {estrelas, em}}`: o app mostra "Editar" e não pede de novo; o aviso "Como foi o corte?" só vai a quem ainda não avaliou a casa |
 | `barbearias/{id}/equipePrivado/{uid}` | barbeiro | 1 | Telefone do barbeiro, fora do cartão público; só o dono e o próprio barbeiro leem |

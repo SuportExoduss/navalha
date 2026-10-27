@@ -10,6 +10,7 @@ import { distanceBetween, geohashForLocation, geohashQueryBounds } from 'geofire
 import type { User } from 'firebase/auth';
 import { cancelar } from './agendamentos';
 import { esquecer, lembrar } from './cache';
+import { dataLocal } from '../lib/agenda';
 import { DIAS_TESTE, LIMITE_TESTE } from '../lib/planos';
 import type { Agendamento, AssinaturaCasa, Barbearia, Barbeiro, Convite, Expediente, Servico } from '../types/models';
 
@@ -177,7 +178,6 @@ export async function criarBarbearia(
     antecedenciaMin: 30,
     janelaDias: 30,
     resumo: { notaApp: 0, totalAvaliacoesApp: 0, fotosDestaque: [] },
-    pagamento: { pagarNoApp: false, sinalPercent: 0 },
     assinatura,
     emDia: comTeste,
     barbeirosAtivos: 1,
@@ -276,13 +276,27 @@ export async function salvarExpedienteBarbeiro(db: Firestore, barbeariaId: strin
   casaMudou(barbeariaId);
 }
 
-/** Liga/desliga o barbeiro e ajusta o contador de ativos no mesmo lote (as regras barram passar do plano). */
+/**
+ * Liga/desliga o barbeiro e ajusta o contador de ativos no mesmo lote (as regras barram passar do plano).
+ * Desligar cancela antes os horários futuros dele (libera os blocos) e avisa cada cliente: desligado, ele não vê
+ * mais a agenda, e o cliente chegaria para ninguém. Devolve os ids cancelados (a tela avisa cada cliente).
+ */
 export async function definirBarbeiroAtivo(db: Firestore, barbeariaId: string, uid: string, ativo: boolean) {
+  let cancelados: string[] = [];
+  if (!ativo) {
+    const agora = Date.now();
+    const futuros = (await getDocs(query(collection(db, 'agendamentos'), where('barbeariaId', '==', barbeariaId),
+      where('barbeiroId', '==', uid), where('data', '>=', dataLocal(agora)), orderBy('data'), orderBy('inicio'))))
+      .docs.map(d => d.data() as Agendamento).filter(a => ['reservado', 'confirmado', 'pago'].includes(a.status) && a.inicio > agora);
+    for (const a of futuros) await cancelar(db, a, { por: 'casa', motivo: 'O barbeiro não atende mais nesta barbearia.' });
+    cancelados = futuros.map(a => a.id);
+  }
   const lote = writeBatch(db);
   lote.update(doc(db, 'barbearias', barbeariaId, 'barbeiros', uid), { ativo });
   lote.update(doc(db, 'barbearias', barbeariaId), { barbeirosAtivos: increment(ativo ? 1 : -1), mudouBarbeiro: uid });
   await lote.commit();
   casaMudou(barbeariaId);
+  return cancelados;
 }
 
 // ---------- Cardápio ----------

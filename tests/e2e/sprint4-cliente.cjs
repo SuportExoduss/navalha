@@ -4,7 +4,6 @@ const { initializeTestEnvironment } = require('@firebase/rules-unit-testing');
 const { doc, setDoc } = require('firebase/firestore');
 const { geohashForLocation } = require('geofire-common');
 const assert = require('node:assert/strict');
-const { execSync } = require('node:child_process');
 
 async function uidDe(sub, nome) {
   const r = await fetch('http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=demo-key', {
@@ -18,7 +17,8 @@ const shot = (p, n) => p.screenshot({ path: `shots4/${n}.png`, fullPage: true })
 const AQUI = { latitude: -23.5015, longitude: -47.4526 };
 
 (async () => {
-  execSync('mkdir -p shots4 && rm -f shots4/*');
+  // Funciona no Windows também (o cmd não tem mkdir -p).
+  require('node:fs').rmSync('shots4', { recursive: true, force: true }); require('node:fs').mkdirSync('shots4');
   await fetch('http://127.0.0.1:8080/emulator/v1/projects/demo-navalha/databases/(default)/documents', { method: 'DELETE' });
   const ana = await uidDe('ana', 'Ana Souza'), lucas = await uidDe('lucas', 'Lucas Navalha');
   const env = await initializeTestEnvironment({ projectId: 'demo-navalha', firestore: { host: '127.0.0.1', port: 8080 } });
@@ -30,14 +30,14 @@ const AQUI = { latitude: -23.5015, longitude: -47.4526 };
     const db = c.firestore();
     const user = (uid, nome, papeis, papelAtivo, barbearias = []) => setDoc(doc(db, 'users', uid), {
       uid, nome, email: '', papeis, papelAtivo, barbearias, favoritos: { barbearias: [], barbeiros: [] },
-      privacidade: { fotosNoPortfolio: true }, provedores: ['google'], maiorDeIdadeEm: agora, criadoEm: agora });
+      provedores: ['google'], maiorDeIdadeEm: agora, criadoEm: agora });
     await user(ana, 'Ana Souza', ['cliente'], 'cliente');
     await user(lucas, 'Lucas Navalha', ['dono'], 'dono', ['b1']);
     const casa = (id, nome, lat, lng, extra) => setDoc(doc(db, 'barbearias', id), {
       id, donoUid: lucas, nome, fotos: [], endereco: 'Rua A, 10', cidade: 'Sorocaba',
       geo: { lat, lng, geohash: geohashForLocation([lat, lng]) }, expediente: sempre, comodidades: [],
       politica: { cancelamentoGratisHoras: 2, toleranciaMin: 10 }, passoMin: 15, antecedenciaMin: 30, janelaDias: 30,
-      resumo: { notaApp: 0, totalAvaliacoesApp: 0, fotosDestaque: [], ...extra }, pagamento: { pagarNoApp: false, sinalPercent: 0 },
+      resumo: { notaApp: 0, totalAvaliacoesApp: 0, fotosDestaque: [], ...extra },
       assinatura: { status: 'teste', venceEm: agora + 60 * 86400e3, limiteBarbeiros: 10 }, emDia: true, barbeirosAtivos: 1, publicada: true, criadoEm: agora });
     await casa('b1', 'Navalha de Ouro', -23.5020, -47.4530, { precoMin: 4500, precoMax: 4500, categorias: ['cabelo'] });
     await casa('b2', 'Barba Negra', -23.5300, -47.4600, { precoMin: 8000, precoMax: 9000, categorias: ['combo'] });
@@ -67,7 +67,7 @@ const AQUI = { latitude: -23.5015, longitude: -47.4526 };
 
   // 2) Explorar: raio de 1 km e preço
   await A.p.goto('http://127.0.0.1:8099/explorar'); await A.p.waitForTimeout(4000);
-  await A.p.getByText('1 km', { exact: true }).click(); await A.p.waitForTimeout(400);
+  await A.p.getByText('Até 1 km', { exact: true }).click(); await A.p.waitForTimeout(400);
   t = await texto(A.p);
   assert.match(t, /1 barbearia/); assert.match(t, /Navalha de Ouro/);
   await A.p.getByText('R$ 70 ou mais', { exact: true }).click(); await A.p.waitForTimeout(400);
@@ -76,24 +76,24 @@ const AQUI = { latitude: -23.5015, longitude: -47.4526 };
   assert.match(await texto(A.p), /2 barbearias/);
   await shot(A.p, '2-explorar');
 
-  // 3) Gate: 3 toques a partir da página da barbearia (corte → horário → confirmar)
+  // 3) Gate: 4 toques a partir da página da barbearia (barbeiro → corte → horário → confirmar no popup)
   await A.p.goto('http://127.0.0.1:8099/barbearia/b1'); await A.p.waitForTimeout(3000);
   let toques = 0;
+  await A.p.getByText('Lucas Navalha').first().click(); toques++; await A.p.waitForTimeout(2500);
   await A.p.getByText('Degradê').first().click(); toques++; await A.p.waitForTimeout(3000);
-  await A.p.locator('text=/^\\d\\d:\\d\\d$/').first().click(); toques++; await A.p.waitForTimeout(300);
-  await A.p.getByText(/^Confirmar ·/).click(); toques++; await A.p.waitForTimeout(3000);
-  assert.match(await texto(A.p), /Horário reservado/);
-  console.log('Toques da barbearia até reservar:', toques);
-  await shot(A.p, '3-reservado-em-3-toques');
+  await A.p.getByText('Amanhã', { exact: true }).click(); await A.p.waitForTimeout(2000); // dia: hoje pode não ter mais horário
+  await A.p.locator('text=/^\\d\\d:\\d\\d$/').first().click(); toques++; await A.p.waitForTimeout(500);
+  await A.p.getByRole('button', { name: 'Confirmar', exact: true }).click(); toques++; await A.p.waitForTimeout(4000);
+  assert.match(A.p.url(), /\/barbearia\/b1/); // reservou e voltou para a casa
+  console.log('Toques da barbearia até reservar (fora a troca de dia):', toques);
+  await shot(A.p, '3-reservado');
 
-  // 4) Dono: "Concluído" sem foto e painel da casa
+  // 4) Dono: o corte de agora (já começou) é concluído direto na agenda; depois o painel da casa
   const L = await entrar(b, 'lucas', 'Lucas Navalha');
   await L.p.goto('http://127.0.0.1:8099/agenda'); await L.p.waitForTimeout(3500);
-  await L.p.getByText('Concluído', { exact: true }).first().click(); await L.p.waitForTimeout(500);
-  assert.match(await texto(L.p), /Fotografe o corte/);
-  await shot(L.p, '4-concluido-com-foto');
-  await L.p.getByText('Sem foto', { exact: true }).click(); await L.p.waitForTimeout(2500);
+  await L.p.getByText('Concluído', { exact: true }).first().click(); await L.p.waitForTimeout(2500);
   assert.match(await texto(L.p), /Concluído/);
+  await shot(L.p, '4-concluido');
   await L.p.goto('http://127.0.0.1:8099/casa'); await L.p.waitForTimeout(4000);
   t = await texto(L.p);
   assert.match(t, /Resumo da casa/); assert.match(t, /Faturado em 7 dias/); assert.match(t, /R\$ 45,00/);

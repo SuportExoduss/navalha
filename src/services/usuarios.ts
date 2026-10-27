@@ -20,7 +20,6 @@ export async function criarPerfil(db: Firestore, user: User): Promise<UserProfil
     barbearias: [],
     favoritos: { barbearias: [], barbeiros: [] },
     // Consentimento não vem marcado (LGPD art. 8º): a pessoa liga se quiser.
-    privacidade: { fotosNoPortfolio: false },
     provedores: ['google'],
     criadoEm: Date.now(),
   };
@@ -47,7 +46,7 @@ export async function escolherPapel(db: Firestore, perfil: UserProfile, papel: R
 }
 
 export async function atualizarPerfil(
-  db: Firestore, uid: string, dados: Partial<Pick<UserProfile, 'nome' | 'apelido' | 'fotoUrl' | 'bannerUrl' | 'telefone' | 'privacidade' | 'pushToken' | 'maiorDeIdadeEm'>>,
+  db: Firestore, uid: string, dados: Partial<Pick<UserProfile, 'nome' | 'apelido' | 'fotoUrl' | 'bannerUrl' | 'telefone' | 'pushToken' | 'maiorDeIdadeEm'>>,
 ) {
   await updateDoc(doc(db, 'users', uid), dados);
 }

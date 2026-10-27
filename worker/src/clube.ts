@@ -13,9 +13,11 @@ import { enviarPush } from './avisos';
 import { APAGAR, type Firestore } from './firestore';
 
 const DIA = 86_400_000;
-// ponytail: até 20 membros por execução (limite de 50 chamadas do Worker grátis: consultas, gravação e um push por
-// aviso). O que sobrar vai na hora seguinte; acima de ~400 avisos por dia, Workers pago ou fila.
-const POR_EXECUCAO = 20;
+// ponytail: até 10 membros e 25 pushes por execução (limite de 50 chamadas do Worker grátis: 2 consultas, 1 por casa com
+// pedido, gravação, perfis e um push por aviso; um pedido avisa o dono e cada barbeiro). O que sobrar de membros vai na
+// hora seguinte; push além do teto fica só no sino. Acima de ~240 avisos por dia, Workers pago ou fila.
+const POR_EXECUCAO = 10;
+const MAX_PUSH = 25;
 
 type Membro = MembroClube & { lembretes?: Partial<Record<AvisoClube, number>> };
 
@@ -68,7 +70,7 @@ export async function rotinaClube(db: Firestore, tokenSA: string, projectId: str
     ...marcas,
   ]);
   const perfis = await db.varios([...new Set(notifs.map(n => `users/${n.paraUid}`))]);
-  for (const n of notifs) {
+  for (const n of notifs.slice(0, MAX_PUSH)) {
     const token = perfis.get(`users/${n.paraUid}`)?.pushToken as string | undefined;
     if (token) await enviarPush(projectId, tokenSA, { token, title: n.titulo, body: n.corpo, agendamentoId: n.id, link: n.link });
   }
@@ -200,9 +202,9 @@ export async function horarioFixoAgora(db: Firestore, uid: string, barbeariaId: 
   return { status: 200, corpo: { ok: true, ...(await sincronizarHorarioFixo(db, `${barbeariaId}_${clienteUid}`, agora)) } };
 }
 
-// ponytail: 2 membros por execução (cada um gasta ~10 das 50 chamadas do Worker grátis, junto com os avisos).
-// Dá 48 por dia; acima disso, Workers pago ou fila.
-const FIXOS_POR_EXECUCAO = 2;
+// ponytail: 3 membros por execução (cron próprio; cada um gasta até ~14 das 50 chamadas do Worker grátis: leituras,
+// cancelamento, uma gravação por data e o aviso). Dá 72 por dia; acima disso, Workers pago ou fila.
+const FIXOS_POR_EXECUCAO = 3;
 
 /** Cron: horário fixo novo ou ciclo renovado → reserva as datas; o que não coube vira aviso ao cliente. */
 export async function preencherHorariosFixos(db: Firestore, tokenSA: string, projectId: string, agora = Date.now()) {

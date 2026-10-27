@@ -422,11 +422,8 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/agendamentos/$(resource.data.agendamentoId)).data.status == 'cancelado';
     }
 
-    // ---------- Fases 3 a 5: escritos pelo servidor ----------
-    match /pagamentos/{id} {
-      allow read: if logado() && (resource.data.clienteUid == eu() || ehDono(resource.data.barbeariaId));
-      allow write: if false;
-    }
+    // ---------- Escritos só pelo servidor ----------
+    // (A coleção `pagamentos` do pagamento do corte pelo app saiu com a Fase 3: sem regra, ninguém lê nem grava.)
     // Avaliação da barbearia: privada. O app mostra só a média e a quantidade da casa (resumo); ninguém vê quem avaliou.
     // Só o Worker lê e grava (POST /avaliacoes): confere que quem avalia teve corte concluído na casa.
     // Cupons do Navalha (cortesia): só o Worker lê e grava (POST /cupom/resgatar). Ninguém lista nem adivinha códigos pelo app.

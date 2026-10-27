@@ -1,6 +1,6 @@
 # Navalha — Roadmap de execução
 
-Oct 17, 2026 · @Andre R.
+Oct 17, 2026 · @Andre R. · alinhado com as decisões do dono em 26/out/2026
 
 ## Visão geral
 
@@ -11,11 +11,11 @@ Em 12 meses o Navalha vai do protótipo a 3 cidades, e até o piloto com barbear
 | 0 · Fundação | 19/out – 1/nov 2026 | Validar com barbeiros e clientes, fechar nome, protótipo clicável | Requisitos validados e telas aprovadas |
 | 1 · MVP | 2/nov – 27/dez 2026 | App funcionando: login, barbearia, cardápio, agenda, busca | Versão Android + web pronta para teste |
 | 2 · Piloto fechado | 4/jan – 7/fev 2027 | 10 barbearias reais usando de graça | Métricas, depoimentos, lista de bugs |
-| 3 · Lançamento | ~~fev – abr 2027~~ | **Fora do plano por enquanto** (só as mensalidades pelo Google Play foram feitas) | — |
-| 4 · Crescimento | ~~mai – jul 2027~~ | **Fora do plano por enquanto** | — |
+| 3 · Lançamento | ~~fev – abr 2027~~ | **Fora do plano por enquanto** (ficaram, feitos: mensalidades pelo Google Play, cupom de cortesia e avaliação da barbearia só com estrelas + ranking) | — |
+| 4 · Crescimento | ~~mai – jul 2027~~ | **Fora do plano por enquanto**, menos o clube de assinatura do cliente (feito em 26/out, sem cobrança pelo app) | — |
 | 5 · Escala | ~~ago – out 2027~~ | **Fora do plano por enquanto** | — |
 
-**Regra de ouro:** cada fase só começa quando o portão da anterior foi atingido. Tudo que é construído numa fase já deixa o terreno pronto para a seguinte — por exemplo, o banco do MVP já nasce com as coleções de pagamento e avaliação modeladas, para a Fase 3 não exigir migração.
+**Regra de ouro:** cada fase só começa quando o portão da anterior foi atingido. O que foi decidido tirar do plano (pagamento do corte pelo app, nota do Google, foto do corte, avaliar cliente ou barbeiro) também sai do código e do banco: nada fica modelado "para depois".
 
 Premissa das datas: 1 a 2 desenvolvedores com dedicação quase integral. Com dedicação parcial, multiplique as fases 1 a 3 por 1,5 a 2.
 
@@ -38,12 +38,11 @@ Firebase no plano gratuito Spark (sem cartão) cuida de login, banco e push; o C
 | Banco de dados | [Cloud Firestore](https://cloud.google.com/firestore/quotas) | 1 GiB armazenado, 50 mil leituras/dia, 20 mil gravações/dia, 10 GiB de transferência/mês | Plano Blaze, pago por uso acima disso |
 | Notificações push | Firebase Cloud Messaging (direto, sem Expo Push) | Gratuito | — |
 | Fotos | [Cloudflare R2](https://filebase.com/blog/cloudflare-r2-pricing-costs-savings-and-alternatives-in-2026/) | 10 GB/mês armazenados, download sem custo | US$ 0,015 por GB/mês acima disso |
-| Servidor (upload de fotos, lembretes, webhooks de pagamento) | [Cloudflare Workers](https://developers.cloudflare.com/workers/platform/limits) | 100 mil requisições/dia, 5 tarefas agendadas (cron), 10 ms de CPU por requisição | Workers Paid, US$ 5/mês |
+| Servidor (fotos, lembretes, avisos, assinaturas, cupons, avaliações, clube) | [Cloudflare Workers](https://developers.cloudflare.com/workers/platform/limits) | 100 mil requisições/dia, 5 crons por conta (3 neste Worker), 50 chamadas externas e 10 ms de CPU por execução | Workers Paid, US$ 5/mês |
 | Busca por perto | Geohash no Firestore (biblioteca geofire-common) | Incluído | — |
-| Nota e avaliações Google | [Places API (New)](https://openplacesapi.com/blog/google-places-api-pricing) | Grátis por mês: 10 mil chamadas Essentials, 5 mil Pro, 1 mil Enterprise por SKU | Por mil chamadas acima da franquia |
-| Monitoramento de erros | Erros do app gravados no Firestore (coleção `erros`, só gravação, tamanho limitado) | Dentro da cota do Spark | Crashlytics se precisar de falhas nativas |
+| Monitoramento de erros | Erros do app gravados no Firestore (coleção `erros`, só gravação, tamanho limitado); falhas nativas pelo Android vitals (sem Crashlytics, decisão de 25/out) | Dentro da cota do Spark | — |
 | Versão web (iPhone, painel do dono, landing) | Firebase Hosting em **navalha.web.app** | 10 GB de armazenamento e 360 MB/dia de transferência | Plano Blaze, por uso |
-| Pagamentos (fase 3) | [Asaas](https://www.asaas.com/precos-e-taxas) | Sem mensalidade nem adesão | Taxa por Pix/cartão recebido |
+| Mensalidade da barbearia | Google Play Billing (assinaturas Solo, Equipe, Time, Casa cheia) | Sem custo fixo | Taxa do Google sobre cada assinatura |
 | Design e código | Figma (grátis), GitHub + GitHub Projects | Gratuito | — |
 
 **Por que Workers e não Cloud Functions:** as Cloud Functions do Firebase exigem o plano Blaze (com cartão). O Workers faz o mesmo trabalho de servidor no plano grátis e fica na mesma conta do R2.
@@ -54,8 +53,8 @@ Firebase no plano gratuito Spark (sem cartão) cuida de login, banco e push; o C
 2. O app lê e grava direto no Firestore, protegido por regras de segurança (cliente só vê os próprios agendamentos; barbeiro só edita o próprio cardápio).
 3. **Agendamento sem horário duplo:** cada horário ocupado vira um documento com ID fixo (`barbeiro_data_hora`), criado dentro de uma transação. Se o documento já existe, a gravação falha e o segundo cliente vê "horário acabou de ser ocupado".
 4. **Foto:** o app comprime para \~150 KB, pede ao Worker um link de envio assinado (o Worker confere o token do Firebase), envia direto ao R2 e grava o endereço da foto no Firestore.
-5. **Tarefas agendadas no Worker:** a cada hora, envia lembretes push de 24 h e 2 h pelo FCM HTTP v1 (gratuito; o Worker assina com a conta de serviço; iOS/APNs fica para a Fase 3); uma vez por dia, a partir da Fase 3, atualiza a nota Google de cada barbearia.
-6. **Fase 3:** o Worker recebe os avisos de pagamento do Asaas e marca o agendamento como pago no Firestore.
+5. **Tarefas agendadas no Worker:** cada rotina num minuto próprio, em 3 crons (a cota de 50 chamadas é por execução): lembretes push de 24 h e 2 h pelo FCM HTTP v1; vencimento das mensalidades e limpezas por prazo (LGPD); avisos do clube; horários fixos do clube; métricas 2 vezes por dia.
+6. ~~Fase 3: avisos de pagamento do Asaas~~ — fora do plano: o corte é pago no balcão.
 
 **Truques para ficar no grátis**
 
@@ -63,7 +62,6 @@ Firebase no plano gratuito Spark (sem cartão) cuida de login, banco e push; o C
 - Ativar o cache offline do Firestore no app: telas já vistas não geram nova leitura.
 - Guardar um resumo por barbearia (nota, próximo horário livre, faixa de preço) num só documento, para a lista "Perto de você" custar 1 leitura por card.
 - No Worker, guardar o token de acesso do Google em cache para não estourar os 10 ms de CPU assinando a cada chamada.
-- Nota do Google 1 vez por dia: 30 barbearias × 30 dias = 900 chamadas, dentro da franquia de 1 mil; guardar de forma permanente só o Place ID, conforme as regras de cache do Google.
 - Lembretes por **push** (grátis) em vez da API do WhatsApp, que passou a cobrar até mensagens de serviço desde 1/out/2026; para contato, link *wa.me* com mensagem pronta.
 
 **Ponto a confirmar:** a Cloudflare pode pedir um cartão para ativar o R2 mesmo no gratuito. Se pedir e você preferir evitar, o plano B é o Storage do Firebase no Blaze, que também tem franquia gratuita (5 GB e 100 GB de download por mês).
@@ -99,24 +97,24 @@ Duas semanas para provar que barbeiros e clientes querem o app antes de escrever
 
 ## Fase 1 — MVP (2/nov – 27/dez 2026)
 
-Oito semanas em quatro sprints de duas semanas entregam o ciclo completo — cliente acha a barbearia, escolhe corte pela foto, agenda, e o barbeiro atende e fotografa. Pagamento fica no balcão nesta fase. Custo: R$ 0.
+Oito semanas em quatro sprints de duas semanas entregam o ciclo completo — cliente acha a barbearia, escolhe barbeiro e corte, agenda, e o barbeiro atende. Pagamento fica no balcão. Custo: R$ 0.
 
 | Sprint | Datas | Entrega | Pronto quando |
 | --- | --- | --- | --- |
 | 1 · Base | 2 – 15/nov | Projeto Expo, Firebase, Worker de upload para o R2, login Google, escolha de papel, tema grafite + âmbar, navegação, emulador local do Firebase para testar sem gastar cota | Pessoa entra com Google e cai no modo certo |
 | 2 · Barbearia | 16 – 29/nov | Perfil da barbearia com localização pelo GPS do celular do dono (sem mapa pago) e botão de rota que abre Google Maps/Waze, convite de barbeiros, cardápio com preço, tempo e fotos | Dono monta a casa sozinho em menos de 10 min |
 | 3 · Agenda | 30/nov – 13/dez | Expediente, folgas, geração de horários, bloqueio anti-duplo, agendar, cancelar, agenda do barbeiro, encaixe manual | Dois celulares tentando o mesmo horário: só um consegue |
-| 4 · Cliente | 14 – 27/dez | Busca por perto (geohash), filtros, perfil do cliente com exclusão de conta, histórico, push de lembrete (cron no Worker + FCM), foto no "Concluído", painel simples do dono | Fluxo inteiro em 3 toques num celular real |
+| 4 · Cliente | 14 – 27/dez | Busca por perto (geohash), filtros, perfil do cliente com exclusão de conta, histórico, push de lembrete (cron no Worker + FCM), ~~foto no "Concluído"~~ (saiu em 25/out), painel simples do dono | Fluxo inteiro em 3 etapas (barbeiro, corte, horário) num celular real |
 
-**Fica de fora de propósito (entra depois):** pagamento no app, assinatura da barbearia, avaliações, nota do Google, iOS na App Store, WhatsApp.
+**Fica de fora de propósito:** pagamento do corte no app, nota do Google, iOS na App Store e WhatsApp oficial (API). Entraram depois, por decisão do dono: assinatura da barbearia (Google Play), avaliação da barbearia (só estrelas), link + texto pronto para o WhatsApp Business e o clube de assinatura do cliente.
 
 **Já deixar pronto para as próximas fases**
 
-- Coleções de pagamentos, avaliações e assinaturas já modeladas e cobertas pelas regras de segurança, mesmo vazias.
-- Campo *Place ID do Google* no cadastro da barbearia (preenchido agora, usado na Fase 3). Login estruturado para receber "Entrar com Apple" na Fase 3 sem refazer contas.
+- ~~Coleção de pagamentos do corte~~ e ~~Place ID do Google~~: saíram do código e das regras (decisões de 20 a 26/out). Avaliações e assinaturas estão em uso.
+- Login estruturado para receber "Entrar com Apple" sem refazer contas, se o iOS voltar ao plano.
 - Status de agendamento com todos os estados futuros: *reservado, confirmado, pago, concluído, faltou, cancelado*.
 - Eventos de uso registrados desde o dia 1 (agendou, cancelou, faltou, tempo até agendar) para medir o piloto.
-- Painel do dono como página web (mesmo código Expo), onde a assinatura será vendida na Fase 3.
+- Painel do dono também na web (mesmo código Expo); a assinatura é vendida pelo app Android (Google Play).
 
 **Distribuição para teste:** APK Android por link e versão web instalável (PWA) para iPhone. Sem lojas ainda. No iPhone, o lembrete por push só chega com a versão web adicionada à tela de início.
 
@@ -128,8 +126,8 @@ Cinco semanas com 10 barbearias reais usando o app de graça, em troca de feedba
 
 **O que fazer**
 
-- [ ] Pagar a conta Google Play, concluir a verificação de identidade do desenvolvedor e publicar no canal de teste fechado (conta pessoal nova precisa de pelo menos 12 testadores antes de liberar a produção — as 10 barbearias e seus clientes servem)
-- [ ] Preencher na Play Console a política de privacidade e o formulário de Segurança de Dados (localização, fotos, dados de conta)
+- [ ] Pagar a conta Google Play, concluir a verificação de identidade do desenvolvedor e publicar no canal de teste fechado (conta pessoal nova precisa de pelo menos 12 testadores antes de liberar a produção — as 10 barbearias e seus clientes servem). **Em andamento:** conta paga, versão 0.4.1 (código 5) no teste interno e no fechado em 26/out; faltam os 12 testadores por 14 dias
+- [ ] Preencher na Play Console a política de privacidade (navalha.web.app/privacidade, versão 3) e o formulário de Segurança de Dados (localização, fotos, dados de conta, clube)
 - [ ] Onboarding presencial em cada barbearia: cadastrar a casa, os barbeiros e as fotos junto com o dono
 - [ ] Cartaz com QR Code no balcão: "Agende seu próximo corte pelo app"
 - [ ] Ensinar clientes de iPhone a adicionar a versão web à tela de início (sem isso não chega lembrete)
@@ -137,7 +135,7 @@ Cinco semanas com 10 barbearias reais usando o app de graça, em troca de feedba
 - [ ] Visita ou ligação semanal: o que travou, o que faltou
 - [ ] Corrigir bugs em ciclos de 2–3 dias publicando nova versão no teste fechado do Google Play (sem atualização pelo ar: o app não usa conta Expo)
 - [ ] ~~**Preparar a Fase 3 em paralelo:**~~ (fora do plano: Fase 3 em espera) abrir o CNPJ, criar a conta Asaas e testar Pix e cartão no ambiente de testes; criar a conta de faturamento do Google Cloud com alerta de orçamento (a Places API exige cartão mesmo dentro da franquia gratuita); se a Apple for em nome da empresa, pedir o número D-U-N-S
-- [ ] Na última semana, perguntar a cada dono se pagaria o plano do tamanho da casa (R$ 25 / 70 / 100 / 150, decididos em 20/out/2026)
+- [ ] Na última semana, perguntar a cada dono se pagaria o plano do tamanho da casa (Solo R$ 25, Equipe R$ 70, Time R$ 100, Casa cheia R$ 150; decididos em 20 e 25/out/2026)
 
 **Métricas que decidem o lançamento**
 
@@ -157,7 +155,7 @@ Cinco semanas com 10 barbearias reais usando o app de graça, em troca de feedba
 ## Fase 3 — Lançamento público (fev – abr 2027)
 
 **Fora do plano por enquanto** (decisão do dono, 20/out/2026): não faz parte da ideia atual do app. Fica registrado só como referência; nada desta fase é construído sem nova decisão.
-Exceções já feitas: mensalidades pelo Google Play e avaliações + nota Google + ranking (marcados abaixo).
+Exceções já feitas: mensalidades pelo Google Play (com cupom de cortesia) e avaliação da barbearia + ranking (marcados abaixo). A nota do Google saiu em 22/out.
 
 O app passa a cobrar a mensalidade, aceita Pix e cartão, entra na App Store e liga as avaliações — a fase que transforma o piloto em negócio. Custo novo: conta Apple (US$ 99/ano) e taxas do Asaas só sobre o que entrar.
 
@@ -167,14 +165,15 @@ O app passa a cobrar a mensalidade, aceita Pix e cartão, entra na App Store e l
 - [ ] Configuração do dono: "pagar no app" ligado/desligado, sinal opcional via Pix
 - [x] Assinatura da barbearia: **adiantada em 20/out/2026** pelo Google Play Billing (4 planos por nº de barbeiros, 60 dias grátis na primeira casa), no lugar da venda pelo painel web
 - [ ] Assinatura pelo site para iPhone/web (Asaas), se a Apple exigir fora do app
-- [ ] Regras de inadimplência: aviso em 3 dias, some da busca em 10 (hoje some no vencimento, pelo cron do Worker)
+- [x] Regras de inadimplência (25/out): aviso 7 dias antes do vencimento, 5 dias para regularizar depois dele (com aviso no sino e push) e então a casa é bloqueada e sai da busca
+- [x] Cupom de cortesia do Navalha (25/out): libera o plano sem Google Play (ex.: 1 ano de Casa cheia para parceiros)
 
 **Confiança e descoberta (mar)**
 
-- [x] Avaliação do cliente, só para atendimento concluído (**trazida de volta e feita em 20/out/2026**; a do barbeiro sobre o cliente, mútua/dupla-cega, ficou de fora)
-- [x] Nota do Google no card e no ranking (Places API, no máximo 1 consulta por dia por barbearia; guardar de forma permanente só o Place ID, conforme as regras do Google) — 20/out/2026
-- [x] Ranking "Mais bem avaliadas" com média bayesiana Google + app — 20/out/2026 (o botão "Ver mapa" ficou de fora)
-- [ ] Fotos do dia com aprovação do cliente e feed da barbearia
+- [x] Avaliação da barbearia pelo cliente, só depois de um corte concluído (20/out; desde 25/out guarda só as estrelas, uma por cliente e editável; ninguém vê quem avaliou). Avaliar barbeiro ou cliente saiu em 22/out
+- [ ] ~~Nota do Google no card e no ranking (Places API)~~ — feita em 20/out e **retirada em 22/out** (decisão do dono)
+- [x] Ranking "Mais bem avaliadas" com média bayesiana só das estrelas do app (sem Google desde 22/out)
+- [ ] ~~Fotos do dia com aprovação do cliente e feed da barbearia~~ — fora: a foto do corte saiu do app em 25/out
 
 **Lojas e lançamento (abr)**
 
@@ -195,8 +194,9 @@ Com a base pagando, o foco vira fazer o cliente voltar e a barbearia faturar mai
 
 **Recursos**
 
-- [ ] **Clube de assinatura do cliente:** **trazido de volta pelo dono em 26/out/2026, sem cobrança pelo app** (paga na casa;
-  o app organiza planos, vencimento, limite de cortes e horário fixo). Desenho em `docs/clube.md`
+- [x] **Clube de assinatura do cliente:** trazido de volta pelo dono e **feito em 26/out/2026**, sem cobrança pelo app (paga na
+  casa; o app organiza planos, pedido e aceite, vencimento com lembretes, limite de cortes, "Usar o clube" ao agendar e
+  horário fixo). Desenho em `docs/clube.md`; andamento em `docs/status.md`
 - [ ] **Lista de espera:** dia cheio → cliente entra na fila e recebe push se alguém cancelar
 - [ ] **Fidelidade:** a cada 10 cortes, 1 grátis (regra definida pelo dono)
 - [ ] **"Repetir último corte"** e lembrete inteligente ("faz 3 semanas do seu degradê")
@@ -235,21 +235,19 @@ Até o lançamento, o gasto obrigatório total é de cerca de US$ 124 (as duas l
 | Ferramentas de design, código, banco, push, servidor | 0 a 3 | R$ 0 | Planos gratuitos da seção Stack |
 | Conta Google Play | 2 | [US$ 25, uma vez](https://magora-systems.com/google-play-developer-account-cost/) | Sem renovação |
 | Conta Apple Developer | 3 | [US$ 99 por ano](https://playcode.io/blog/how-much-does-it-cost-to-publish-an-app) | Adiar até o lançamento; no piloto o iPhone usa a versão web |
-| Conta de faturamento Google Cloud (Places API e mapa) | 2 (preparo) e 3 (uso) | R$ 0 dentro da franquia | Exige cartão cadastrado; criar com alerta de orçamento |
 | Cloudflare R2 | 1 | R$ 0 até 10 GB | Pode pedir cartão para ativar; plano B é o Storage do Firebase |
 | Domínio .com.br | 0 (opcional) | Taxa anual do Registro.br | Pode usar subdomínio gratuito até a Fase 3 |
 | Registro da marca | 0 ou 3 | Taxas do INPI | Recomendado antes do lançamento público |
 | CNPJ e contador | 3 | Depende da forma jurídica | Necessário para receber pagamentos com split |
-| Taxas do Asaas | 3 | Por transação, sem mensalidade | Pago pela barbearia no split, não pela plataforma |
 | Firebase Blaze e Workers Paid | 4 | Por uso + US$ 5/mês | Acima de 50 mil leituras/dia no Firestore ou 100 mil requisições/dia nos Workers |
 | Builds extras na nuvem | — | R$ 0 | Não se aplica: o app é compilado no próprio computador |
 | WhatsApp oficial | 5 | Por mensagem | Custo embutido no plano Casa cheia |
 
 **Conta de equilíbrio:** com 30 barbearias numa média de R$ 45/mês (mistura dos planos), a receita é de R$ 1.350/mês — cobre com folga Apple + Firebase e Workers pagos. A margem cresce porque o custo por barbearia nova é quase zero.
 
-## Próximos 7 dias
+## Próximos 7 dias (Fase 0, de 18 a 24/out)
 
-A primeira semana é toda gratuita e serve para destravar a Fase 0.
+A primeira semana é toda gratuita e serve para destravar a Fase 0. As datas passaram; os itens abertos são do dono (código e contas técnicas já feitos).
 
 - [ ] **Dom 18/out** — Confirmar o nome (INPI, Registro.br, lojas) e criar Gmail e Instagram do projeto
 - [ ] **Seg 19/out** — Criar contas GitHub, Firebase (Spark) e Cloudflare; listar 30 barbearias da região
@@ -267,8 +265,7 @@ A primeira semana é toda gratuita e serve para destravar a Fase 0.
 | Poucos clientes baixam o app | Barbearia não vê valor e cancela | QR no balcão, link de agendamento para a bio do Instagram, versão web sem instalar |
 | Firestore passa de 50 mil leituras/dia | Leituras falham até a cota zerar no dia seguinte | Escutar só o dia aberto, cache offline, documento-resumo por barbearia; ativar o Blaze com alerta de orçamento antes do lançamento aberto |
 | Mudança de preço de APIs (Google, Meta, Firebase) | Custo inesperado | Alerta de orçamento no Google Cloud; push em vez de WhatsApp |
-| Rejeição na App Store | Atraso no lançamento iOS | Vender assinatura só no site; "Entrar com Apple" e exclusão de conta no app; iniciar o cadastro Apple em fevereiro |
-| Concorrente baixa preço | Perda de diferencial | Diferencial na experiência (foto, 3 toques, nota Google + app), não só no preço |
+| Concorrente baixa preço | Perda de diferencial | Diferencial na experiência (3 etapas, lembretes, clube com horário fixo, nota do app), não só no preço |
 
 **Perguntas em aberto**
 
@@ -282,7 +279,6 @@ A primeira semana é toda gratuita e serve para destravar a Fase 0.
 - [Firebase: Cloud Storage exige plano Blaze desde 3/fev/2026](https://dev.to/androve2k/spark-vs-blaze-the-firebase-pricing-guide-i-wish-id-read-sooner-onb)
 - [Cloudflare Workers: limites do plano gratuito](https://developers.cloudflare.com/workers/platform/limits) · [Cloudflare R2: plano gratuito](https://filebase.com/blog/cloudflare-r2-pricing-costs-savings-and-alternatives-in-2026/)
 - Expo/React Native: código aberto, compilado localmente (sem EAS)
-- [Google Maps Platform: franquias por SKU](https://mapsplatform.google.com/lp/maps-apis/) · [Places API (New) em 2026](https://openplacesapi.com/blog/google-places-api-pricing)
 - [Asaas: preços e taxas](https://www.asaas.com/precos-e-taxas)
 - [WhatsApp: cobrança de mensagens de serviço a partir de 1/out/2026](https://support.zenvia.com/kb/en/article/600343/preguntas-frecuentes-nuevas-reglas-de-cobro-de-whatsapp-business)
 - [Google Play: taxa de US$ 25 e testadores](https://magora-systems.com/google-play-developer-account-cost/) · [Apple: US$ 99/ano](https://playcode.io/blog/how-much-does-it-cost-to-publish-an-app)

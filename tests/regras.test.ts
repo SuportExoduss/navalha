@@ -211,6 +211,21 @@ test('plano: equipe cheia barra convite e religar barbeiro; desligar libera a va
   await assertSucceeds(definirBarbeiroAtivo(dbDe('dono'), 'b1', 'zeca', true));
 });
 
+test('desligar barbeiro cancela os horários futuros dele e libera os blocos (o cliente não chega para ninguém)', async () => {
+  const inicio = paraMillis('2030-01-10', 10 * 60);
+  await assertSucceeds(reservar(dbDe('ana'), novaReserva('ana', inicio)));
+  await env.withSecurityRulesDisabled(ctx => updateDoc(doc(ctx.firestore(), 'barbearias/b1'), { barbeirosAtivos: 2 }));
+  const ids = await definirBarbeiroAtivo(dbDe('dono'), 'b1', 'lucas', false);
+  assert.equal(ids.length, 1);
+  await env.withSecurityRulesDisabled(async ctx => {
+    const db = ctx.firestore();
+    const ag = (await getDoc(doc(db, 'agendamentos', ids[0]))).data()!;
+    assert.equal(ag.status, 'cancelado');
+    assert.equal(ag.cancelamento.por, 'casa');
+    assert.equal((await getDocs(collection(db, 'ocupacao'))).size, 0);
+  });
+});
+
 test('assinatura e "em dia" só o servidor muda; casa vencida some da busca', async () => {
   const dono = dbDe('dono');
   await env.withSecurityRulesDisabled(ctx => updateDoc(doc(ctx.firestore(), 'barbearias/b1'), { emDia: false }));
@@ -811,6 +826,12 @@ test('clube: "Recebi o pagamento" só a equipe; o ciclo segue do vencimento ou d
   await assertFails(updateDoc(doc(dbDe('ana'), 'clubeMembros/b1_ana'), { reservadoAte: '2031-01-01' }));
   await assertFails(updateDoc(doc(dbDe('ana'), 'clubeMembros/b1_ana'), { lembretes: {} }));
   await assertFails(deleteDoc(doc(dbDe('dono'), 'clubeMembros/b1_ana')));
+});
+
+test('pagamento do corte pelo app saiu do plano: a coleção pagamentos fica fechada para todos', async () => {
+  await env.withSecurityRulesDisabled(async c => { await setDoc(doc(c.firestore(), 'pagamentos/p1'), { clienteUid: 'ana', barbeariaId: 'b1' }); });
+  await assertFails(getDoc(doc(dbDe('ana'), 'pagamentos/p1')));
+  await assertFails(setDoc(doc(dbDe('ana'), 'pagamentos/p2'), { clienteUid: 'ana', barbeariaId: 'b1' }));
 });
 
 test('clube: histórico de pagamentos: a equipe registra; o assinante lê; ninguém altera', async () => {

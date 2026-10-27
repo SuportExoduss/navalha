@@ -78,11 +78,12 @@ Nome `assinaturas/{bid}` já é a mensalidade da barbearia no Google Play; por i
 
 ## Worker
 - `POST /clube/agendar`: reserva avulsa pelo clube (conferências acima + trava).
-- Cron próprio para o clube (3 das 5 tarefas gratuitas), de hora em hora: lembretes de vencimento, vencidos
-  (+1 dia), preencher horários fixos. Gravação com trava pela API REST: `commit` com `currentDocument.exists = false`
+- Duas execuções próprias por hora (cron "20,35 * * * *"): avisos (pedido, lembretes de vencimento, vencidos +1 dia)
+  no minuto 35 e horários fixos no minuto 20, cada uma com a sua cota de 50 chamadas.
+- `POST /clube/horario-fixo`: depois de escolher, trocar ou tirar o horário fixo, sair ou encerrar (cancela e reserva na hora). Gravação com trava pela API REST: `commit` com `currentDocument.exists = false`
   em cada `ocupacao`.
 - Reaproveita `chavesOcupacao` e `expedienteEfetivo` de `src/lib/agenda.ts` (lógica pura; o Worker importa direto).
-- ponytail: ~45 reservas por execução (limite de chamadas do plano grátis); acima disso, o preenchimento continua
+- ponytail: 3 assinantes por execução do cron de horários fixos (72 por dia); acima disso, o preenchimento continua
   na hora seguinte, sem perder nada.
 
 ## LGPD

@@ -1,4 +1,4 @@
-// Configurações da barbearia (só o dono): identidade (foto, capa, nome), publicação, horário da casa e código do Google.
+// Configurações da barbearia (só o dono): identidade (foto, capa, nome), publicação, horário da casa, link para o WhatsApp e excluir a casa.
 // O que o dono mexe pouco fica aqui; a aba Barbearia mostra o dia a dia (resumo, cardápio, equipe).
 // As regras do Firestore já garantem: só o dono altera nome, fotos e expediente da casa.
 import { useEffect, useState } from 'react';
@@ -166,7 +166,6 @@ function WhatsApp({ b }: { b: Barbearia }) {
   );
 }
 
-/** Place ID do Google: o Worker busca a nota do Google 1 vez por dia e ela entra no card e no ranking. */
 /** Último item, de propósito: apaga a casa. Pede o nome digitado para não acontecer por engano. */
 function ExcluirBarbearia({ b }: { b: Barbearia }) {
   const [aberto, setAberto] = useState(false);

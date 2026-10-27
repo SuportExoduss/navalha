@@ -1,17 +1,17 @@
 # Navalha — Status da execução
 
-Atualizado em 23/out/2026 (MVP completo e testado no celular; avaliação única da barbearia, política v2 e termos de uso no ar).
+Atualizado em 26/out/2026 (revisão completa: MVP, mensalidades com cupom, avaliação só com estrelas, clube de assinatura completo e política v3 no ar; versão 0.4.1 no teste interno e fechado do Play).
 
 Código no computador: `C:\Users\andre\AndroidStudioProjects\navalha` (no Android Studio: File › Open › pasta `android`).
 
-## Onde estamos (23/out/2026, validado contra o código)
+## Onde estamos (26/out/2026, validado contra o código)
 | Fase | Calendário | Código | Falta |
 | --- | --- | --- | --- |
 | 0 · Fundação | 19/out – 1/nov | modelo de dados e contas técnicas prontos | dono: entrevistas, INPI/nome (conflito na classe 44), landing, contador; termos e política v2 no ar |
 | 1 · MVP | 2/nov – 27/dez | **100%** (adiantado ~6 semanas) + extras | portão: 3 barbearias amigas por 1 semana; cronometrar um dono montando a casa |
-| 2 · Piloto | jan – fev/2027 | código pronto (AAB assinado, privacidade, exclusão de conta, acesso de revisão) | dono: teste fechado com 12 testadores/14 dias, onboarding das 10 barbearias, cartaz com QR |
-| 3 · Lançamento | — | **fora do plano** (decisão do dono, 20/out) | ficam, já feitos: mensalidades pelo Google Play e avaliação da barbearia + ranking (sem Google) |
-| 4 · Crescimento | — | **fora do plano** | — |
+| 2 · Piloto | jan – fev/2027 | código pronto; 0.4.1 (código 5) no teste interno e no fechado do Play | dono: 12 testadores por 14 dias, Segurança de Dados no Play, onboarding das 10 barbearias, cartaz com QR |
+| 3 · Lançamento | — | **fora do plano** (decisão do dono, 20/out) | ficam, já feitos: mensalidades pelo Google Play com cupom de cortesia e avaliação da barbearia (só estrelas) + ranking, sem Google |
+| 4 · Crescimento | — | **fora do plano**, menos o clube de assinatura (feito em 26/out) | — |
 | 5 · Escala | — | **fora do plano** | — |
 
 Requisitos da Google Play: `docs/publicar-google-play.md`. Pacote definitivo `com.trevotec.navalha`; `android/` versionada (abre direto no Android Studio).
@@ -60,11 +60,11 @@ Requisitos da Google Play: `docs/publicar-google-play.md`. Pacote definitivo `co
 ## Fase 1 · Sprint 4 — Cliente ✅ FINALIZADO (código)
 - [x] Busca por perto com filtros: distância (Todas, 1/3/5/10/50 km; desde 20/out todas as casas aparecem, da mais perto para a mais longe), preço, tipo de corte, aberta agora, atende ainda hoje; atalhos no Início
 - [x] Perfil do cliente: foto, apelido, WhatsApp e exclusão de conta dentro do app (cancela horários futuros, tira o nome do histórico, apaga perfil e login)
-- [x] Histórico do cliente com as fotos do corte
+- [x] Histórico do cliente (~~com as fotos do corte~~: a foto saiu em 25/out)
 - [x] Push de lembrete: o app registra o token do FCM no login (sem Expo Push desde 18/out); o Worker (cron de hora em hora) manda 24 h e 2 h antes
-- [x] Foto no "Concluído": o barbeiro tira a foto (ou conclui sem foto) e ela vai para o histórico do cliente
+- [x] ~~Foto no "Concluído"~~ — retirada em 25/out (decisão do dono); o barbeiro só conclui
 - [x] Painel simples do dono: clientes e previsto de hoje, faturado, faltas e corte mais pedido em 7 dias
-- [x] Já pronto para a Fase 3: campo do código do Google (Place ID) no painel, eventos de uso (viu barbearia, agendou, cancelou, faltou, concluiu)
+- [x] Eventos de uso (viu barbearia, agendou, cancelou, faltou, concluiu). ~~Place ID do Google~~ saiu em 22/out
 - [x] Corrigido: barbeiro não conseguia atualizar o resumo do cardápio da casa (regra de segurança)
 - [x] Testes: 26 de lógica, 22 de regras, 5 do Worker, typecheck e 2 roteiros no navegador (tests/e2e)
 - [x] Portão "fluxo inteiro em 3 toques": na página da barbearia, corte → horário → confirmar = 3 toques (medido no navegador)
@@ -73,14 +73,14 @@ Requisitos da Google Play: `docs/publicar-google-play.md`. Pacote definitivo `co
 - [x] Dogfood na web (21/out, relatório local em `dogfood-output/`, fora do git): 5 achados médios corrigidos e conferidos
   no navegador (3 passos, tela pequena, página de rota inexistente, barbearia não encontrada, foco da busca); os 6 baixos seguem abertos.
   Build de teste contra o emulador: passar também `EXPO_PUBLIC_WORKER_URL=http://127.0.0.1:9` para não chamar o Worker real.
-- [ ] Push real: testar no celular com o APK local (o envio pelo FCM já está publicado no Worker)
+- [x] Push real no celular (19/out e 25/out, Redmi): lembrete com o app fechado entregue (ver "Push com o app fechado" abaixo)
 
 ## Segurança (auditoria /codesec de 18/out/2026)
 - [x] SEC-001 corrigido: chave de ocupação comparada pelo prefixo literal (nada de regex com dado do usuário) e barbeiro precisa ser da casa
 - [x] SEC-003 corrigido: preço, duração e barbeiro da reserva conferidos com o cardápio
 - [x] SEC-004 corrigido: cliente só cancela reserva de pé e futura; reserva cancelada não volta a valer
 - [x] 3 testes novos em tests/regras.test.ts (falhavam antes, passam depois); regras publicadas em produção
-- [x] SEC-005 (clubes só da própria casa; regra e teste removidos em 25/out junto com o clube, fora do plano), SEC-007 (tipo da foto pelos bytes), SEC-010 (allowBackup desligado), SEC-014 (convite com sorteio criptográfico) — 19/out
+- [x] SEC-005 (clubes só da própria casa; removida em 25/out com o clube e refeita em 26/out, quando o clube voltou: regras e testes na seção Clube), SEC-007 (tipo da foto pelos bytes), SEC-010 (allowBackup desligado), SEC-014 (convite com sorteio criptográfico) — 19/out
 - [x] Varredura geral (19/out): expo-font que faltava instalado, SDK 58 alinhado (expo-doctor 20/20), teclado com modo imersivo, deps sem uso removidas, acessibilidade (avisos anunciados, botão desabilitado distinto, fotos descritas)
 - [x] SEC-006 limite de uso (regras: 20 s entre reservas por conta; Worker: 20 fotos/min por conta, 429), SEC-008/009 (fotos da casa e do perfil só de URLs do nosso R2), SEC-016 (CORS do Worker só para navalha.web.app e localhost) — 19/out, com testes (regras 32, Worker 7)
 - [x] Monitoramento de erros: falhas do app vão para a coleção `erros` (só gravação, 10 por sessão, só logado) + tela "Algo deu errado"
@@ -102,12 +102,12 @@ Requisitos da Google Play: `docs/publicar-google-play.md`. Pacote definitivo `co
   código só do Node; não vão no app. O `--force` rebaixaria para Expo 44 e Firebase 9: não usar
 
 ## Adiantado da Fase 3: mensalidades (decisão do dono, 20/out/2026)
-- [x] Planos Solo R$ 25 (1), Equipe R$ 70 (3), R$ 100 (6) e R$ 150 (10) em `src/lib/planos.ts`; 60 dias grátis na primeira casa da conta
+- [x] Planos Solo R$ 25 (1), Equipe R$ 70 (3), Time R$ 100 (6) e Casa cheia R$ 150 (10) em `src/lib/planos.ts`; 60 dias grátis na primeira casa da conta
 - [x] Google Play Billing (expo-iap, sem conta Expo) + conferência no Worker (`/assinatura/verificar`, Android Publisher API)
 - [x] Limite de barbeiros garantido nas regras (contador `barbeirosAtivos` andando junto com a equipe); baixar de plano exige o dono escolher quem fica
 - [x] Casa sem teste/plano em dia sai da busca (`emDia`, só o servidor grava; cron de hora em hora)
 - [x] Testes: lógica 36, regras 36, Worker 10; migração das casas antigas rodada; regras, índices, Worker e web publicados
-- [ ] Play Console (dono): conta, AAB no teste interno, 4 assinaturas, API e acesso do Worker — passo a passo em `docs/play-billing.md`
+- [x] Play Console (25/out): conta, AAB no teste interno, 4 assinaturas, API e acesso do Worker — passo a passo em `docs/play-billing.md`
 - [x] Nomes dos planos (25/out): Solo, Equipe, Time (R$ 100, `navalha_time`) e Casa cheia (R$ 150)
 - [x] SHA-1/256 da chave do Google (Play App Signing) no Firebase (25/out): login Google funciona na cópia da loja
 - [x] Compra de teste ponta a ponta (25/out, versão 0.3.0 da loja): Solo assinado com cartão de teste; o Worker conferiu no Google
@@ -260,6 +260,25 @@ Substitui a seção "Avaliações, nota Google e ranking" acima e o `docs/roadma
   futuros; política de privacidade versão 3 (item Clube, em vigor 26/out), mapa de dados e ROPA (operação 13).
   Publicado em 26/out: Worker 438eb375 e site. No Android, chega com o próximo AAB
 
+## Revisão completa (26/out/2026, pedido do dono)
+Varredura de código, regras, Worker, telas, roadmap e testes, com o que foi achado já corrigido:
+- [x] Worker: cada rotina roda num minuto próprio (lembretes no 5, vencimentos e limpezas no 50, avisos do clube no 35,
+  horários fixos no 20, métricas 9h/21h UTC), em 3 crons: a conta grátis da Cloudflare tem 5 no total, somando os outros
+  Workers dela (a 1ª tentativa com 5 crons foi recusada e corrigida na hora). Publicado: Worker f0d39078. Antes, lembretes e vencimentos dividiam a mesma cota de 50 chamadas externas
+  por execução, e avisos e horários fixos do clube também: num pico, a execução caía no meio. Tetos de push por execução. Regras e site publicados em 26/out
+- [x] Desligar barbeiro (no interruptor da equipe ou ao baixar de plano) agora pede confirmação, cancela os horários
+  futuros dele (libera os blocos) e avisa cada cliente. Antes o cliente chegava para ninguém. Teste de regras novo
+- [x] Saiu o que sobrou de funções retiradas: campos `pagamento` (corte pelo app) da casa e `privacidade` (portfólio de
+  fotos) do perfil, o tipo e a regra da coleção `pagamentos` (fechada para todos, com teste), textos "Ver ficha e
+  avaliações" e comentários sobre o código do Google
+- [x] Meu clube recontava os usos só ao abrir: agora reconta quando o horário fixo é reservado
+- [x] Testes ponta a ponta (`tests/e2e/`) atualizados para as 3 etapas e o popup (estavam parados desde 20/out) e o do
+  clube virou roteiro permanente: agenda (dois celulares, só um reserva; encaixe; folga; cancelar com motivo), cliente
+  (busca, filtros, reservar, concluir, painel, perfil) e clube passando. Rodam no Windows (sem `mkdir -p`)
+- [x] Roadmap alinhado com as decisões: sem Google, sem pagamento do corte pelo app, sem foto do corte; clube, cupom e
+  regras de inadimplência marcados; Play em andamento
+- Testes: lógica 67, regras 62, Worker 26, typecheck (app e Worker), export web e 3 roteiros no navegador
+
 ## Fase 1 — o que falta para o portão da Fase 2
 O código do MVP está completo. O portão é "3 barbearias amigas usando por 1 semana sem erro grave e nenhum horário duplicado".
 Para isso, nesta ordem:
@@ -276,5 +295,5 @@ Para isso, nesta ordem:
 
 ## Próximo no roadmap: Fase 2 — Piloto fechado (4/jan – 7/fev 2027)
 Teste fechado com 12+ testadores por 14 dias (conta Play e fichas já em andamento), onboarding presencial de 10 barbearias,
-correções por nova versão no Play (sem EAS Update; subir `versionCode` a cada AAB — hoje 3 (0.3.0) em `android/app/build.gradle`; no Play: 1 no teste interno, 2 em rascunho no fechado).
+correções por nova versão no Play (sem EAS Update; subir `versionCode` a cada AAB — hoje 6 (0.4.2) em `android/app/build.gradle`; no Play: 5 (0.4.1) no teste interno e no fechado). O próximo AAB leva o clube completo e a revisão de 26/out.
 Depois do piloto: publicação aberta no Google Play. As Fases 3 a 5 estão fora do plano por enquanto (decisão do dono, 20/out/2026).

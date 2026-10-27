@@ -14,9 +14,12 @@
 //  POST /barbearia/excluir     → antes de o dono apagar a casa: avaliações públicas e fotos da casa e do cardápio
 //  GET  /metricas              → página de métricas (Play, Android vitals, Firebase); GET /metricas/dados e POST /metricas/atualizar exigem ADMIN_TOKEN
 //  cron 9h e 21h UTC           → atualiza as métricas (6h e 18h em Brasília)
-//  cron minuto 35 de cada hora → clube: aviso de pedido novo à casa, lembretes de vencimento e vencidos (+1 dia),
-//                                horários fixos do ciclo pago (novos ou renovados)
-//  cron a cada hora            → lembretes de 24 h e 2 h, casas com plano/teste vencido, prazos de guarda, WhatsApp do cliente 24 h após o horário e, no dia 1, resumo do mês
+//  cron minuto 35 de cada hora → clube: aviso de pedido novo à casa, lembretes de vencimento e vencidos (+1 dia)
+//  cron minuto 20 de cada hora → clube: horários fixos do ciclo pago (novos ou renovados)
+//  cron minuto 5 de cada hora  → lembretes de 24 h e 2 h
+//  cron minuto 50 de cada hora → casas com plano/teste vencido, prazos de guarda, WhatsApp do cliente 24 h após o horário e, no dia 1, resumo do mês
+// Cada rotina roda num minuto próprio porque a cota de 50 chamadas externas do plano grátis é por execução
+// (3 crons no wrangler.toml: a conta grátis tem 5 no total, somando os outros Workers dela).
 import { verificarIdToken } from './auth';
 import { conferirVencimentos, migrarAssinaturas, resgatarCupom, verificarCompra } from './assinatura';
 import { avisarAgendamento, resumoDoMes } from './avisos';
@@ -259,19 +262,27 @@ export default {
   async scheduled(ev: ScheduledEvent, env: Env, ctx: ExecutionContext) {
     // Cron próprio para as métricas: cada execução tem sua cota de chamadas, sem dividir com os lembretes.
     if (ev.cron === CRON_METRICAS) { ctx.waitUntil(metricas(env)); return; }
-    if (ev.cron === CRON_CLUBE) { ctx.waitUntil(clube(env)); return; }
+    // Mesmo cron, minutos diferentes = execuções separadas (cada uma com a sua cota): a rotina sai do minuto.
+    const minuto = new Date(ev.scheduledTime).getUTCMinutes();
+    if (minuto === 35) { ctx.waitUntil(clube(env)); return; }
+    if (minuto === 20) { ctx.waitUntil(fixos(env)); return; }
+    if (minuto === 50) { ctx.waitUntil(vencimentos(env)); return; }
     ctx.waitUntil(enviarLembretes(env));
-    ctx.waitUntil(vencimentos(env));
   },
 };
 
 const CRON_METRICAS = '0 9,21 * * *';
-const CRON_CLUBE = '35 * * * *';
+
 
 async function clube(env: Env) {
   if (!env.GOOGLE_SA_EMAIL || !env.GOOGLE_SA_PRIVATE_KEY) return;
   const tokenSA = await tokenGoogle(env.GOOGLE_SA_EMAIL, env.GOOGLE_SA_PRIVATE_KEY);
   await rotinaClube(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA), tokenSA, env.FIREBASE_PROJECT_ID).catch(e => console.error('Clube falhou', e));
+}
+
+async function fixos(env: Env) {
+  if (!env.GOOGLE_SA_EMAIL || !env.GOOGLE_SA_PRIVATE_KEY) return;
+  const tokenSA = await tokenGoogle(env.GOOGLE_SA_EMAIL, env.GOOGLE_SA_PRIVATE_KEY);
   await preencherHorariosFixos(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA), tokenSA, env.FIREBASE_PROJECT_ID).catch(e => console.error('Horário fixo falhou', e));
 }
 
@@ -294,11 +305,16 @@ async function vencimentos(env: Env) {
   if (new Date().getUTCHours() === 6) await limparLegado(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA)).catch(e => console.error('Limpeza do legado falhou', e));
 }
 
+// Teto de pushes por execução: as 2 janelas gastam ~6 chamadas (consulta, perfis, marcação) e o token mais 1; passar das
+// 50 derruba a execução no meio. ponytail: o que passar do teto fica sem lembrete; Workers pago ou fila se chegar perto.
+const MAX_PUSH_LEMBRETES = 40;
+
 /** Lembretes de 24 h e 2 h. Roda a cada hora (cron "5 * * * *"). */
 export async function enviarLembretes(env: Env, agora = Date.now()) {
   if (!env.GOOGLE_SA_EMAIL || !env.GOOGLE_SA_PRIVATE_KEY) return;
   const tokenSA = await tokenGoogle(env.GOOGLE_SA_EMAIL, env.GOOGLE_SA_PRIVATE_KEY);
   const db = new Firestore(env.FIREBASE_PROJECT_ID, tokenSA);
+  let enviados = 0;
   for (const j of janelasLembrete(agora)) {
     const ags = await db.query({
       from: [{ collectionId: 'agendamentos' }],
@@ -317,7 +333,7 @@ export async function enviarLembretes(env: Env, agora = Date.now()) {
     const perfis = await db.varios([...new Set(pendentes.map(({ dados }) => `users/${dados.clienteUid as string}`))]);
     for (const { id, dados } of pendentes) {
       const push = perfis.get(`users/${dados.clienteUid as string}`)?.pushToken as string | undefined;
-      if (push) {
+      if (push && enviados++ < MAX_PUSH_LEMBRETES) {
         const m = mensagemLembrete(dados as { servicoNome: string; inicio: number; barbeariaNome?: string }, j.quando);
         mensagens.push({ token: push, ...m, agendamentoId: id });
       }

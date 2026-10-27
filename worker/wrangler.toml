@@ -21,7 +21,9 @@ bucket_name = "navalha-fotos"
 # Lembretes: minuto 5 de cada hora. Métricas: 9h e 21h UTC (6h e 18h em Brasília). Clube: minuto 35 de cada hora.
 # 3 das 5 gratuitas; cada uma com a própria cota de chamadas.
 [triggers]
-crons = ["5 * * * *", "0 9,21 * * *", "35 * * * *"]
+# A conta grátis tem 5 crons no total (somando os outros Workers dela): 3 aqui. Cada minuto listado é uma execução
+# separada, com a sua cota de 50 chamadas externas; o código escolhe a rotina pelo minuto (src/index.ts › scheduled).
+crons = ["5,50 * * * *", "20,35 * * * *", "0 9,21 * * *"]
 
 # Segredos (não versionar):
 #   npx wrangler secret put GOOGLE_SA_EMAIL
