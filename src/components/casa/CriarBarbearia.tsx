@@ -1,7 +1,7 @@
 // Cadastro da barbearia pelo dono. A localização vem do GPS do próprio
 // celular, de dentro da barbearia — sem mapa nem API paga.
 import { useEffect, useState } from 'react';
-import { Modal, Text, View } from 'react-native';
+import { Modal, ScrollView, Text, View } from 'react-native';
 import * as Location from 'expo-location';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
@@ -123,7 +123,7 @@ export function CriarBarbearia({ perfil, aoCriar }: { perfil: UserProfile; aoCri
       </Text>
       {testeUsado === null ? null : <Aviso texto={testeUsado
         ? 'Sua conta já usou os 60 dias grátis: a barbearia entra na busca depois de escolher um plano em Barbearia › Plano.'
-        : `Os primeiros ${DIAS_TESTE} dias são grátis, contados a partir de hoje.`} />}
+        : `Você ganha ${DIAS_TESTE} dias grátis, contados a partir de hoje.`} />}
       <Aviso texto="Você entra como o primeiro barbeiro da casa. Horário inicial: terça a sexta 9h–19h (almoço 12h–13h) e sábado 9h–17h." />
       <ComoFuncionaOTeste visivel={explicar} testeUsado={!!testeUsado} aoVoltar={() => setExplicar(false)} aoCriar={salvar} />
     </>
@@ -138,22 +138,23 @@ function ComoFuncionaOTeste({ visivel, testeUsado, aoVoltar, aoCriar }: {
   const ate = formatarData(somarDias(hoje, DIAS_TESTE), hoje);
   const maisBarato = formatarPreco(Math.min(...PLANOS.map(p => p.precoCentavos)));
   const itens: [keyof typeof Ionicons.glyphMap, string][] = testeUsado ? [
-    ['information-circle-outline', `Esta conta já usou os ${DIAS_TESTE} dias grátis. A barbearia nasce como rascunho: você monta tudo, mas os clientes só a encontram depois de escolher um plano.`],
-    ['card-outline', `Planos a partir de ${maisBarato} por mês, em Barbearia › Plano.`],
+    ['information-circle-outline', `Esta conta já usou os ${DIAS_TESTE} dias grátis, então a sua barbearia começa como rascunho. Você monta tudo com calma, e os clientes passam a te encontrar assim que você escolher um plano.`],
+    ['card-outline', `Os planos começam em ${maisBarato} por mês e ficam em Barbearia › Plano.`],
   ] : [
-    ['gift-outline', `Grátis por ${DIAS_TESTE} dias, de hoje até ${ate}. Sem cartão e sem cobrança.`],
-    ['people-outline', `Tudo liberado durante o teste: agenda, clube, avisos e até ${LIMITE_TESTE} barbeiros.`],
-    ['search-outline', 'Clientes encontram a sua casa quando você publicar (foto de capa e 1 corte no cardápio).'],
-    ['notifications-outline', `${DIAS_AVISO} dias antes do fim, o app avisa.`],
-    ['card-outline', `Depois, escolha um plano em Barbearia › Plano, a partir de ${maisBarato} por mês. Nada é cobrado sozinho.`],
-    ['time-outline', `Se não escolher, você ainda tem ${DIAS_REGULARIZAR} dias; depois a casa sai da busca até assinar. Nada se perde.`],
+    ['gift-outline', `Você usa o Navalha à vontade até ${ate}, sem cartão e sem pagar nada.`],
+    ['people-outline', `Está tudo liberado: agenda, clube de assinatura, avisos e até ${LIMITE_TESTE} barbeiros na sua equipe.`],
+    ['search-outline', 'Seus clientes te acham na busca assim que você publicar a barbearia. Para isso, só falta uma foto de capa e pelo menos um corte no cardápio.'],
+    ['notifications-outline', `Faltando ${DIAS_AVISO} dias para acabar, a gente te avisa aqui no app.`],
+    ['card-outline', `Gostou? É só escolher um plano em Barbearia › Plano, a partir de ${maisBarato} por mês. Nada é cobrado sem você escolher.`],
+    ['time-outline', `Se precisar de mais um tempinho, você ainda tem ${DIAS_REGULARIZAR} dias depois do fim. Passou disso, a barbearia sai da busca até você assinar, mas nada do que você cadastrou se perde.`],
   ];
   return (
     <Modal visible={visivel} transparent animationType="fade" onRequestClose={aoVoltar}>
-      <View style={{ flex: 1, backgroundColor: sobreFoto.veu, justifyContent: 'center', padding: space(5) }}>
+      {/* Rola em celular pequeno: o texto não pode cortar os botões. */}
+      <ScrollView style={{ backgroundColor: sobreFoto.veu }} contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: space(5) }}>
         <View accessibilityViewIsModal style={{ backgroundColor: colors.surface, borderRadius: radius.card, padding: space(5), gap: space(4),
           borderWidth: 1, borderColor: colors.border, width: '100%', maxWidth: 420, alignSelf: 'center' }}>
-          <Titulo>{testeUsado ? 'Antes de criar' : `${DIAS_TESTE} dias grátis`}</Titulo>
+          <Titulo>{testeUsado ? 'Antes de criar' : `Seus ${DIAS_TESTE} dias grátis começam agora`}</Titulo>
           {itens.map(([icone, texto]) => (
             <View key={texto} style={{ flexDirection: 'row', gap: space(3), alignItems: 'flex-start' }}>
               <Ionicons name={icone} size={20} color={colors.accent} />
@@ -165,7 +166,7 @@ function ComoFuncionaOTeste({ visivel, testeUsado, aoVoltar, aoCriar }: {
             <Botao titulo={testeUsado ? 'Criar' : 'Começar grátis'} style={{ flex: 1 }} onPress={aoCriar} />
           </View>
         </View>
-      </View>
+      </ScrollView>
     </Modal>
   );
 }

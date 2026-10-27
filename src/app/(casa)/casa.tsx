@@ -21,8 +21,8 @@ export default function Casa() {
         : barbearia ? (
           <>
             {criacao === 'criada' ? <Aviso tom="ok" texto={barbearia.assinatura.status === 'teste' && barbearia.assinatura.venceEm
-              ? `Barbearia criada. Dados atualizados. Seus 60 dias grátis vão até ${formatarData(dataLocal(barbearia.assinatura.venceEm), dataLocal(Date.now()))}.`
-              : 'Barbearia criada. Dados atualizados.'} /> : null}
+              ? `Pronto! Sua barbearia foi criada e os dados estão atualizados. Aproveite seus 60 dias grátis até ${formatarData(dataLocal(barbearia.assinatura.venceEm), dataLocal(Date.now()))}.`
+              : 'Pronto! Sua barbearia foi criada e os dados estão atualizados.'} /> : null}
             <PainelCasa b={barbearia} equipe={equipe} ehDono={ehDono} uid={perfil.uid} />
           </>
         )

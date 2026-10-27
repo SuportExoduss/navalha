@@ -23,11 +23,11 @@ const { chromium, entrar, BASE } = require('./lib.cjs');
   if (!(await cidade.inputValue())) await cidade.fill('Sorocaba');
   await p.getByText('Criar barbearia', { exact: true }).click();
   // Popup do teste grátis: explica e só cria no "Começar grátis".
-  await p.getByText('60 dias grátis', { exact: true }).waitFor({ timeout: 5000 });
-  assert.match(await p.innerText('body'), /Sem cartão e sem cobrança/);
+  await p.getByText('Seus 60 dias grátis começam agora', { exact: true }).waitFor({ timeout: 5000 });
+  assert.match(await p.innerText('body'), /sem cartão e sem pagar nada/);
   await p.waitForTimeout(600); await p.screenshot({ path: 'shots4/7-teste-gratis.png' });
   await p.getByText('Começar grátis', { exact: true }).click();
-  await p.getByText(/Barbearia criada\. Dados atualizados\. Seus 60 dias grátis vão até/).waitFor({ timeout: 30_000 });
+  await p.getByText(/Pronto! Sua barbearia foi criada e os dados estão atualizados\. Aproveite seus 60 dias grátis até/).waitFor({ timeout: 30_000 });
   const t = await p.innerText('body');
   assert.match(t, /Casa Conferida/);
   assert.doesNotMatch(t, /Cadastre sua/);
