@@ -4,7 +4,7 @@
     "slug": "navalha",
     "scheme": "navalha",
     "version": "0.4.2",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "backgroundColor": "#0E0F11",

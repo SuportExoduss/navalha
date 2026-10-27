@@ -174,7 +174,8 @@ export function Interruptor({ value, onValueChange, rotulo }: { value: boolean; 
 // Getters em vez de StyleSheet.create: as cores saem da paleta ativa na hora de desenhar (tema claro/escuro).
 const s = {
   get tela() { return { flex: 1, backgroundColor: colors.bg }; },
-  conteudo: { padding: space(5), gap: space(5), paddingBottom: space(10) },
+  // Coluna central em tela larga (tablet, celular deitado, computador): o app não fica esticado de borda a borda.
+  conteudo: { padding: space(5), gap: space(5), paddingBottom: space(10), width: '100%' as const, maxWidth: 720, alignSelf: 'center' as const },
   get rodape() { return { paddingHorizontal: space(5), paddingVertical: space(3), gap: space(2), borderTopWidth: 1, borderColor: colors.border, backgroundColor: colors.bg }; },
   botao: {
     minHeight: minTouch + 8, borderRadius: radius.card, paddingHorizontal: space(5),
