@@ -256,7 +256,10 @@ test('excluir conta: anonimiza histórico e tira o autor da avaliação, apaga a
     [publica, { clienteNome: 'Ana' }], // pública: sem uid, achada pelo id (casa + cliente)
   ]);
   const consultas: Record<string, { id: string; dados: Record<string, unknown> }[]> = {
-    agendamentos: [{ id: 'a1', dados: { barbeariaId: 'b1', barbeiroId: 'lucas', fotos: [foto, 'https://evil/x.webp'] } }],
+    agendamentos: [{ id: 'a1', dados: { barbeariaId: 'b1', barbeiroId: 'lucas', fotos: [foto, 'https://evil/x.webp'] } },
+      // Horário fixo do clube ainda por vir: cancela e libera o bloco.
+      { id: 'a2', dados: { barbeariaId: 'b1', barbeiroId: 'lucas', fixo: true, status: 'reservado', inicio: agora + 1, slots: ['lucas_k1'] } }],
+    clubeMembros: [{ id: 'b1_ana', dados: { clienteNome: 'Ana' } }],
     // Antigas (de antes de 23/out), achadas pelo uid: a do barbeiro sai; a da casa fica, sem autor.
     avaliacoes: [{ id: 'a1_barbeiro', dados: { direcao: 'cliente_para_barbeiro' } }, { id: 'a0', dados: { direcao: 'cliente_para_barbearia' } }],
     notificacoes: [{ id: 'n-da-ana', dados: {} }],
@@ -282,6 +285,10 @@ test('excluir conta: anonimiza histórico e tira o autor da avaliação, apaga a
   assert.deepEqual((await excluirConta(db, bucket, 'ana', agora)).status, 200);
   const g = (c: string) => gravados.find(w => w.caminho === c)?.campos;
   assert.deepEqual(g('agendamentos/a1'), { clienteNome: 'Cliente removido', clienteTelefone: APAGAR, fotos: [], atualizadoEm: agora });
+  assert.equal(g('agendamentos/a2')!.status, 'cancelado');
+  assert.ok(apagados.includes('ocupacao/lucas_k1'));
+  assert.deepEqual(g('clubeMembros/b1_ana'), { clienteNome: 'Cliente removido', status: 'saiu', horarioFixo: APAGAR, lembretes: APAGAR,
+    reservadoAte: APAGAR, reservadoPara: APAGAR, atualizadoEm: agora });
   const semAutor = Object.fromEntries(['clienteNome', 'clienteUid', 'autorUid', 'clienteFotoUrl', 'clienteBannerUrl', 'comentario', 'inicio'].map(c => [c, APAGAR]));
   assert.deepEqual(g(publica), semAutor);
   assert.deepEqual(g('avaliacoes/a0'), semAutor);
@@ -394,7 +401,8 @@ test('baixar meus dados: tudo da própria pessoa, nada consultado por outro uid'
     ['barbearias/b2/barbeiros/ana', { nome: 'Ana' }], ['barbearias/b2/equipePrivado/ana', { telefone: '15999990000' }],
   ]);
   const db = {
-    query: async (q: { from: { collectionId: string }[]; where: { fieldFilter: { value: { stringValue: string } } } }) => {
+    query: async (q: { from: { collectionId: string }[]; where: { fieldFilter: { value: { stringValue: string } } } }, pai?: string) => {
+      if (pai) { assert.equal(pai, 'clubeMembros/clubeMembros-1'); return [{ id: 'p1', dados: { valorCentavos: 8000 } }]; } // pagamentos do próprio clube
       assert.equal(q.where.fieldFilter.value.stringValue, 'ana');
       return [{ id: `${q.from[0].collectionId}-1`, dados: { x: 1 } }];
     },
@@ -406,6 +414,7 @@ test('baixar meus dados: tudo da própria pessoa, nada consultado por outro uid'
   assert.deepEqual([corpo.notificacoes.length, corpo.usoDoApp.length, corpo.errosTecnicos.length], [1, 1, 1]);
   assert.deepEqual(corpo.avaliacoesDeBarbearias, [{ estrelas: 5 }]);
   assert.deepEqual(corpo.testeGratis, { em: 1 });
+  assert.deepEqual(corpo.clubes, [{ id: 'clubeMembros-1', x: 1, pagamentos: [{ id: 'p1', valorCentavos: 8000 }] }]);
   assert.deepEqual(corpo.equipes, [{ barbeariaId: 'b2', cartao: { nome: 'Ana' }, privado: { telefone: '15999990000' } }]);
 });
 
@@ -601,4 +610,66 @@ test('clube/agendar: confere membro, plano, limite e horário; grava agendamento
   assert.match(String((await agendarPeloClube(db, 'ana', 'b1', 's1', inicio + 2 * DIA, agora)).corpo.erro), /já usou os 2/);
   docs.set('barbearias/b1', { ...docs.get('barbearias/b1'), emDia: false });
   assert.equal((await agendarPeloClube(db, 'ana', 'b1', 's1', inicio + 3 * DIA, agora)).status, 409);
+});
+
+test('clube: horário fixo reserva o ciclo pago com a trava, pula folga e ocupado, e ao trocar cancela as futuras', async () => {
+  const { sincronizarHorarioFixo, horarioFixoAgora } = await import('./clube');
+  const { APAGAR } = await import('./firestore');
+  const { paraMillis } = await import('../../src/lib/agenda');
+  const agora = paraMillis('2026-10-27', 8 * 60); // terça 8h
+  const DIA = { abre: '08:00', fecha: '20:00' }, exp = { 0: DIA, 1: DIA, 2: DIA, 3: DIA, 4: DIA, 5: DIA, 6: DIA };
+  const hf = { barbeiroId: 'lu', servicoId: 's1', diaSemana: 2, minutos: 600, frequencia: 'semanal', ancora: '2026-10-27' };
+  const docs = new Map<string, Record<string, unknown>>([
+    ['users/ana', { nome: 'Ana', maiorDeIdadeEm: 1 }],
+    ['barbearias/b1', { nome: 'Casa', donoUid: 'dono', emDia: true, passoMin: 30, expediente: exp }],
+    ['barbearias/b1/servicos/s1', { barbeiroId: 'lu', nome: 'Corte', duracaoMin: 30, ativo: true }],
+    ['barbearias/b1/barbeiros/lu', { nome: 'Lu', ativo: true, expediente: exp }],
+    ['barbearias/b1/clubePlanos/p1', { servicoIds: ['s1'] }],
+    ['clubeMembros/b1_ana', { barbeariaId: 'b1', clienteUid: 'ana', planoId: 'p1', status: 'ativo', cortesPorMes: 3,
+      cicloInicio: agora - 86_400_000, venceEm: paraMillis('2026-11-20', 600), horarioFixo: hf }],
+    ['ocupacao/lu_2026-11-10_1000', { agendamentoId: 'outro' }], // outro cliente já pegou
+  ]);
+  const folga = { inicio: paraMillis('2026-11-03', 0), fim: paraMillis('2026-11-04', 0) };
+  const db = {
+    varios: async (cs: string[]) => new Map(cs.filter(c => docs.has(c)).map(c => [c, docs.get(c)!])),
+    query: async (_q: unknown, pai?: string) => pai ? [{ id: 'f1', dados: { barbeiroId: 'lu', ...folga } }]
+      : [...docs].filter(([c, d]) => c.startsWith('agendamentos/') && d.clubeMembroId === 'b1_ana').map(([c, d]) => ({ id: c, dados: d })),
+    criarTodos: async (l: { caminho: string; campos: Record<string, unknown> }[]) => {
+      if (l.some(w => docs.has(w.caminho))) return false;
+      for (const w of l) docs.set(w.caminho, w.campos);
+      return true;
+    },
+    escrever: async (l: { caminho: string; campos: Record<string, unknown> }[], apagar: string[] = []) => {
+      for (const w of l) {
+        const d = { ...(docs.get(w.caminho) ?? {}) };
+        for (const [k, v] of Object.entries(w.campos)) if (v === APAGAR) delete d[k]; else d[k] = v;
+        docs.set(w.caminho, d);
+      }
+      for (const c of apagar) docs.delete(c);
+    },
+  } as never;
+  const fixos = () => [...docs.values()].filter(d => d.fixo && d.status === 'reservado');
+
+  // 27/10 entra; 03/11 é folga; 10/11 ocupado; 17/11 entra. Ciclo vai até 21/11.
+  assert.deepEqual(await sincronizarHorarioFixo(db, 'b1_ana', agora), { reservados: ['2026-10-27', '2026-11-17'], naoCouberam: ['2026-11-03', '2026-11-10'], cancelados: 0 });
+  assert.equal(fixos().length, 2);
+  assert.ok(fixos().every(a => a.origem === 'clube' && a.precoCentavos === 0 && a.clubeMembroId === 'b1_ana'));
+  assert.equal(docs.get('clubeMembros/b1_ana')!.reservadoAte, '2026-11-21');
+  // De novo, nada muda (não duplica, não reserva o que não coube).
+  assert.deepEqual(await sincronizarHorarioFixo(db, 'b1_ana', agora), { reservados: [], naoCouberam: [], cancelados: 0 });
+
+  // Troca para quarta 15h: as 2 futuras saem (blocos liberados) e as novas entram, até o limite de 3 do ciclo.
+  docs.set('clubeMembros/b1_ana', { ...docs.get('clubeMembros/b1_ana'), horarioFixo: { ...hf, diaSemana: 3, minutos: 900, ancora: '2026-10-28' } });
+  const r = await sincronizarHorarioFixo(db, 'b1_ana', agora);
+  assert.equal(r.cancelados, 2);
+  assert.deepEqual(r.reservados, ['2026-10-28', '2026-11-04', '2026-11-11']);
+  assert.deepEqual(r.naoCouberam, ['2026-11-18']); // limite de 3 cortes
+  assert.equal(docs.has('ocupacao/lu_2026-10-27_1000'), false);
+
+  // Outra pessoa não mexe; o cliente sai → a casa (dono) manda limpar e as futuras são canceladas.
+  assert.equal((await horarioFixoAgora(db, 'beto', 'b1', 'ana', agora)).status, 403);
+  docs.set('clubeMembros/b1_ana', { ...docs.get('clubeMembros/b1_ana'), status: 'saiu', horarioFixo: undefined });
+  assert.equal(((await horarioFixoAgora(db, 'dono', 'b1', 'ana', agora)).corpo as { cancelados: number }).cancelados, 3);
+  assert.equal(fixos().length, 0);
+  assert.equal('reservadoPara' in docs.get('clubeMembros/b1_ana')!, false);
 });

@@ -6,6 +6,7 @@
 //  POST /cupom/resgatar      → cupom do Navalha: libera o plano do cupom (cortesia, sem Google Play), só o dono
 //  POST /admin/migrar-assinaturas → migração única das casas antigas (exige ADMIN_TOKEN)
 //  POST /clube/agendar        → o cliente marca pelo clube (sem preço), com o limite do ciclo; só o Worker cria origem "clube"
+//  POST /clube/horario-fixo   → depois de escolher/trocar/tirar o horário fixo ou de sair/encerrar: cancela e reserva
 //  POST /avaliacoes            → o cliente avalia a barbearia (uma por casa; de novo, edita). A nota só muda por aqui
 //  POST /avisos/agendamento    → avisa cliente, barbeiro e dono (push + painel) quando alguém marca ou cancela
 //  POST /conta/excluir         → apaga ou anonimiza os dados da pessoa (LGPD); o app apaga o login em seguida
@@ -13,7 +14,8 @@
 //  POST /barbearia/excluir     → antes de o dono apagar a casa: avaliações públicas e fotos da casa e do cardápio
 //  GET  /metricas              → página de métricas (Play, Android vitals, Firebase); GET /metricas/dados e POST /metricas/atualizar exigem ADMIN_TOKEN
 //  cron 9h e 21h UTC           → atualiza as métricas (6h e 18h em Brasília)
-//  cron minuto 35 de cada hora → clube: aviso de pedido novo à casa, lembretes de vencimento e vencidos (+1 dia)
+//  cron minuto 35 de cada hora → clube: aviso de pedido novo à casa, lembretes de vencimento e vencidos (+1 dia),
+//                                horários fixos do ciclo pago (novos ou renovados)
 //  cron a cada hora            → lembretes de 24 h e 2 h, casas com plano/teste vencido, prazos de guarda, WhatsApp do cliente 24 h após o horário e, no dia 1, resumo do mês
 import { verificarIdToken } from './auth';
 import { conferirVencimentos, migrarAssinaturas, resgatarCupom, verificarCompra } from './assinatura';
@@ -22,7 +24,7 @@ import { avaliar } from './avaliacoes';
 import { excluirConta, excluirDadosBarbearia, exportarDados, limparAntigos, limparLegado, tirarTelefonesVencidos } from './conta';
 import { Firestore, tokenGoogle } from './firestore';
 import { atualizarMetricas, lerMetricas, PAGINA } from './metricas';
-import { agendarPeloClube, rotinaClube } from './clube';
+import { agendarPeloClube, horarioFixoAgora, preencherHorariosFixos, rotinaClube } from './clube';
 import { chaveFoto, janelasLembrete, mensagemFcm, mensagemLembrete, tipoDaImagem, TIPOS } from './util';
 
 export interface Env {
@@ -161,6 +163,21 @@ export default {
       return json(r.corpo, r.status, h);
     }
 
+    if (url.pathname === '/clube/horario-fixo' && req.method === 'POST') {
+      const token = req.headers.get('Authorization')?.replace(/^Bearer /, '') ?? '';
+      const uid = token ? await verificarIdToken(token, env.FIREBASE_PROJECT_ID) : null;
+      if (!uid) return json({ erro: 'Entre na sua conta.' }, 401, h);
+      if (env.LIMITE_FOTOS && !(await env.LIMITE_FOTOS.limit({ key: `clube:${uid}` })).success) return json({ erro: 'Muitas tentativas. Espere um minuto.' }, 429, h);
+      const corpo = (await req.json().catch(() => null)) as { barbeariaId?: unknown; clienteUid?: unknown } | null;
+      const id = (x: unknown) => (typeof x === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(x) ? x : '');
+      const barbeariaId = id(corpo?.barbeariaId), clienteUid = corpo?.clienteUid === undefined ? uid : id(corpo.clienteUid);
+      if (!barbeariaId || !clienteUid) return json({ erro: 'Dados inválidos.' }, 400, h);
+      if (!env.GOOGLE_SA_EMAIL || !env.GOOGLE_SA_PRIVATE_KEY) return json({ erro: 'Servidor sem credenciais.' }, 503, h);
+      const tokenSA = await tokenGoogle(env.GOOGLE_SA_EMAIL, env.GOOGLE_SA_PRIVATE_KEY);
+      const r = await horarioFixoAgora(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA), uid, barbeariaId, clienteUid);
+      return json(r.corpo, r.status, h);
+    }
+
     if (url.pathname === '/avaliacoes' && req.method === 'POST') {
       const token = req.headers.get('Authorization')?.replace(/^Bearer /, '') ?? '';
       const uid = token ? await verificarIdToken(token, env.FIREBASE_PROJECT_ID) : null;
@@ -255,6 +272,7 @@ async function clube(env: Env) {
   if (!env.GOOGLE_SA_EMAIL || !env.GOOGLE_SA_PRIVATE_KEY) return;
   const tokenSA = await tokenGoogle(env.GOOGLE_SA_EMAIL, env.GOOGLE_SA_PRIVATE_KEY);
   await rotinaClube(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA), tokenSA, env.FIREBASE_PROJECT_ID).catch(e => console.error('Clube falhou', e));
+  await preencherHorariosFixos(new Firestore(env.FIREBASE_PROJECT_ID, tokenSA), tokenSA, env.FIREBASE_PROJECT_ID).catch(e => console.error('Horário fixo falhou', e));
 }
 
 async function metricas(env: Env) {

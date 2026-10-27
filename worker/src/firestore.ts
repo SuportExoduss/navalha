@@ -97,10 +97,10 @@ export class Firestore {
 
   /**
    * Grava campos (chaves com ponto = campo dentro de mapa) em vários documentos, numa chamada só.
-   * `criar`: o documento pode não existir ainda; sem ele, exige que exista.
+   * `criar`: o documento pode não existir ainda; sem ele, exige que exista. `apagar`: documentos removidos no mesmo commit.
    */
-  async escrever(lista: { caminho: string; campos: Record<string, unknown>; criar?: boolean }[]) {
-    if (!lista.length) return;
+  async escrever(lista: { caminho: string; campos: Record<string, unknown>; criar?: boolean }[], apagar: string[] = []) {
+    if (!lista.length && !apagar.length) return;
     const raiz = `projects/${this.projectId}/databases/(default)/documents/`;
     const writes = lista.map(({ caminho, campos, criar }) => {
       const fields: Record<string, Valor> = {};
@@ -111,7 +111,8 @@ export class Firestore {
         ...(criar ? {} : { currentDocument: { exists: true } }),
       };
     });
-    const r = await fetch(`${this.base}:commit`, { method: 'POST', headers: this.headers(), body: JSON.stringify({ writes }) });
+    const r = await fetch(`${this.base}:commit`, { method: 'POST', headers: this.headers(),
+      body: JSON.stringify({ writes: [...writes, ...apagar.map(c => ({ delete: raiz + c }))] }) });
     if (!r.ok) throw new Error(`commit ${r.status}: ${await r.text()}`);
   }
 

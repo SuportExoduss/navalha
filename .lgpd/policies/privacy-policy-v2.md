@@ -4,6 +4,11 @@ O texto em vigor é a página do app: `src/app/privacidade.tsx` (https://navalha
 Termos de uso, com as regras para barbearias: `src/app/termos.tsx` (https://navalha.web.app/termos).
 Conferidos contra o código em 23/out/2026 (telas, `src/types/models.ts`, `firestore.rules`, `worker/src/`).
 
+## Versão 3 (26/out/2026)
+Entrou o item **Clube de assinatura** (dados, finalidade, base: execução do contrato) e a equipe da casa passou a ver o
+plano, o vencimento, o horário fixo e os pagamentos de quem assina o clube dela. Exportar e excluir conta cobrem o clube
+(`worker/src/conta.ts`). Mapa de dados e ROPA (operação 13) atualizados.
+
 ## Decisões tomadas (dono, 23/out/2026)
 - **Controlador**: o dono, pessoa física, sob a marca TrevoTec (sem CNPJ). Quando houver CNPJ, trocar em `src/lib/legal.ts`.
 - **Encarregado**: o próprio dono, pelo e-mail de contato (`CONTATO` em `src/lib/legal.ts`). Como agente de pequeno

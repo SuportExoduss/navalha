@@ -83,3 +83,32 @@ test('usar o clube: conta usos do ciclo (falta conta, cancelado não) e barra fo
   assert.match(motivoSemClube({ ...m, status: 'vencido' }, plano, 's1', inicio, 0)!, /não tem clube ativo/);
   assert.match(motivoSemClube(m, null, 's1', inicio, 0)!, /não existe mais/);
 });
+
+test('horário fixo: datas pela frequência, âncora no dia da semana e o que cancelar ao trocar', async () => {
+  const { ancoraDoDia, datasDoHorarioFixo, planoHorarioFixo, horarioFixoPendente, chaveHorarioFixo } = await import('./clube');
+  assert.equal(ancoraDoDia('2026-10-26', 2), '2026-10-27'); // segunda → terça
+  assert.equal(ancoraDoDia('2026-10-27', 2), '2026-10-27'); // hoje mesmo
+  assert.equal(ancoraDoDia('2026-10-28', 1), '2026-11-02');
+  const h = { barbeiroId: 'lu', servicoId: 's1', diaSemana: 2, minutos: 600, frequencia: 'semanal' as const, ancora: '2026-10-27' };
+  assert.deepEqual(datasDoHorarioFixo(h, '2026-10-27', '2026-11-17'), ['2026-10-27', '2026-11-03', '2026-11-10', '2026-11-17']);
+  assert.deepEqual(datasDoHorarioFixo({ ...h, frequencia: 'quinzenal' }, '2026-11-01', '2026-12-01'), ['2026-11-10', '2026-11-24']);
+  assert.deepEqual(datasDoHorarioFixo({ ...h, frequencia: 'mensal' }, '2026-10-27', '2026-12-31'), ['2026-10-27', '2026-11-24', '2026-12-22']);
+
+  const agora = paraMillis('2026-10-27', 9 * 60); // terça 9h: o das 10h de hoje ainda entra
+  const m = { status: 'ativo' as const, horarioFixo: h, venceEm: paraMillis('2026-11-20', 600) };
+  // Novo: reserva do zero até o fim do ciclo (vencimento + 1 dia) e cancela o que havia.
+  assert.deepEqual(planoHorarioFixo(m, ['velho'], agora), { cancelar: ['velho'], datas: ['2026-10-27', '2026-11-03', '2026-11-10', '2026-11-17'], ate: '2026-11-21' });
+  assert.deepEqual(planoHorarioFixo(m, [], paraMillis('2026-10-27', 11 * 60)).datas[0], '2026-11-03'); // já passou das 10h
+  // Mesmo horário, já reservado até o fim: nada a fazer (o que o cliente cancelou não volta).
+  const feito = { ...m, reservadoPara: chaveHorarioFixo(h), reservadoAte: '2026-11-21' };
+  assert.deepEqual(planoHorarioFixo(feito, ['a1'], agora), { cancelar: [], datas: [], ate: '2026-11-21' });
+  assert.equal(horarioFixoPendente(feito), false);
+  // Pagou o mês seguinte: só as datas novas.
+  const renovado = { ...feito, venceEm: paraMillis('2026-12-20', 600) };
+  assert.equal(horarioFixoPendente(renovado), true);
+  assert.deepEqual(planoHorarioFixo(renovado, ['a1'], agora).datas, ['2026-11-24', '2026-12-01', '2026-12-08', '2026-12-15']);
+  // Saiu (ou tirou o horário fixo): cancela as futuras e o Worker limpa a marca.
+  assert.deepEqual(planoHorarioFixo({ ...feito, status: 'saiu', horarioFixo: undefined }, ['a1', 'a2'], agora), { cancelar: ['a1', 'a2'], datas: [], ate: null });
+  assert.equal(horarioFixoPendente({ ...feito, status: 'saiu', horarioFixo: undefined }), true);
+  assert.equal(horarioFixoPendente({ status: 'saiu' }), false);
+});

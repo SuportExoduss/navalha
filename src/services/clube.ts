@@ -7,7 +7,7 @@ import {
 import { novoCiclo, usosNoCiclo } from '../lib/clube';
 import { auth } from './firebase';
 import { HorarioOcupadoError } from './agendamentos';
-import type { Agendamento, MembroClube, PlanoClube } from '../types/models';
+import type { Agendamento, HorarioFixo, MembroClube, PlanoClube } from '../types/models';
 
 /** Membro com o id do documento (barbeariaId_uid), que as listas e as gravações usam. */
 export type Membro = MembroClube & { id: string };
@@ -52,6 +52,7 @@ export async function registrarPagamento(db: Firestore, m: Membro, porUid: strin
   });
   lote.set(doc(collection(db, 'clubeMembros', m.id, 'pagamentos')), { em: agora, porUid, valorCentavos, venceEmNovo: ciclo.venceEm });
   await lote.commit();
+  if (m.horarioFixo) sincronizarHorarioFixo(m.barbeariaId, m.clienteUid).catch(() => undefined); // o cron faria em até 1 h
   return ciclo.venceEm;
 }
 
@@ -62,6 +63,7 @@ export async function recusar(db: Firestore, m: Membro) {
 /** Encerrar pela casa. ponytail: as reservas futuras do horário fixo o Worker cancela (etapa 6 do docs/clube.md). */
 export async function encerrar(db: Firestore, m: Membro) {
   await updateDoc(doc(db, 'clubeMembros', m.id), { status: 'saiu', horarioFixo: deleteField(), atualizadoEm: Date.now() });
+  sincronizarHorarioFixo(m.barbeariaId, m.clienteUid).catch(() => undefined); // libera os horários fixos futuros
 }
 
 // ---------- Lado do cliente ----------
@@ -101,6 +103,28 @@ export async function solicitar(
 /** O cliente sai do clube (ou desiste do pedido). O horário fixo sai junto. */
 export async function sair(db: Firestore, m: Membro) {
   await updateDoc(doc(db, 'clubeMembros', m.id), { status: 'saiu', horarioFixo: deleteField(), atualizadoEm: Date.now() });
+  sincronizarHorarioFixo(m.barbeariaId, m.clienteUid).catch(() => undefined); // libera os horários fixos futuros
+}
+
+/**
+ * Escolhe, troca ou tira (null) o horário fixo. As regras conferem o formato; o Worker cancela as reservas do
+ * horário antigo e reserva as datas do ciclo pago, devolvendo o que entrou e o que não coube.
+ */
+export async function salvarHorarioFixo(db: Firestore, m: Membro, h: HorarioFixo | null) {
+  await updateDoc(doc(db, 'clubeMembros', m.id), { horarioFixo: h ?? deleteField(), atualizadoEm: Date.now() });
+  return sincronizarHorarioFixo(m.barbeariaId, m.clienteUid);
+}
+
+async function sincronizarHorarioFixo(barbeariaId: string, clienteUid: string): Promise<{ reservados: string[]; naoCouberam: string[] }> {
+  const idToken = await auth.currentUser?.getIdToken();
+  if (!idToken) throw new Error('Entre na sua conta.');
+  const r = await fetch(`${process.env.EXPO_PUBLIC_WORKER_URL}/clube/horario-fixo`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ barbeariaId, clienteUid }),
+  });
+  const j = (await r.json().catch(() => ({}))) as { erro?: string; reservados?: string[]; naoCouberam?: string[] };
+  if (!r.ok) throw new Error(j.erro ?? 'Não foi possível reservar o horário fixo agora.');
+  return { reservados: j.reservados ?? [], naoCouberam: j.naoCouberam ?? [] };
 }
 
 /**

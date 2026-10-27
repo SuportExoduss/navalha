@@ -6,7 +6,7 @@ export const RESPONSAVEL = 'Andre Luiz R.P de Barros';
 export const CONTATO = 'trevotecsuport@gmail.com';
 export const SITE = 'https://navalha.web.app';
 /** Data em que a versão atual da política passou a valer. */
-export const VIGENCIA = '25 de outubro de 2026';
+export const VIGENCIA = '26 de outubro de 2026';
 /** Idade mínima para ter conta: a tela /idade pede a data de nascimento e não libera o login de menores. */
 export const IDADE_MINIMA = 18;
 /** Prazo para responder pedidos de titulares (LGPD, art. 19). */

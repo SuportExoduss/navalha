@@ -36,10 +36,11 @@ export function chaveDaFoto(url: string): string | null {
  * horários dos clientes ficariam sem responsável.
  */
 export async function excluirConta(db: Firestore, fotos: Fotos, uid: string, agora = Date.now()) {
-  const [ags, avs, avisos] = await Promise.all([
+  const [ags, avs, avisos, clubes] = await Promise.all([
     db.query(iguais('agendamentos', 'clienteUid', uid)),
     db.query(iguais('avaliacoes', 'clienteUid', uid)),
     db.query(iguais('notificacoes', 'paraUid', uid)),
+    db.query(iguais('clubeMembros', 'clienteUid', uid)),
   ]);
   const perfil = (await db.varios([`users/${uid}`])).get(`users/${uid}`);
   const ondeAtende = (perfil?.barbearias as string[] | undefined) ?? [];
@@ -56,7 +57,11 @@ export async function excluirConta(db: Firestore, fotos: Fotos, uid: string, ago
   const cortes: string[] = [];
 
   for (const { id, dados } of ags) {
-    gravar.push({ caminho: `agendamentos/${id}`, campos: { clienteNome: NOME_REMOVIDO, clienteTelefone: APAGAR, fotos: [], atualizadoEm: agora } });
+    // Horário fixo do clube ainda por vir: cancela e libera os blocos (ninguém mais vem nesses horários).
+    const fixoFuturo = dados.fixo === true && (dados.status === 'reservado' || dados.status === 'confirmado') && Number(dados.inicio) > agora;
+    gravar.push({ caminho: `agendamentos/${id}`, campos: { clienteNome: NOME_REMOVIDO, clienteTelefone: APAGAR, fotos: [], atualizadoEm: agora,
+      ...(fixoFuturo ? { status: 'cancelado' } : {}) } });
+    if (fixoFuturo) apagar.push(...((dados.slots as string[] | undefined) ?? []).map(k => `ocupacao/${k}`));
     cortes.push(...((dados.fotos as string[] | undefined) ?? []).map(chaveDaFoto).filter((c): c is string => !!c));
     // Os avisos que a casa recebeu levam o nome do cliente no texto: o id é fixo, então nem precisa ler.
     const dono = docs.get(`barbearias/${dados.barbeariaId as string}`)?.donoUid as string | undefined;
@@ -69,6 +74,12 @@ export async function excluirConta(db: Firestore, fotos: Fotos, uid: string, ago
   const daCasa = new Set([...avs.filter(a => a.dados.direcao === 'cliente_para_barbearia').map(a => `avaliacoes/${a.id}`),
     ...publicas.filter(c => docs.has(c))]);
   for (const caminho of daCasa) gravar.push({ caminho, campos: SEM_AUTOR });
+  // Clube: a assinatura sai (sem nome nem horário fixo); os pagamentos ficam com a casa, sem nada que leve à pessoa.
+  // ponytail: os avisos de pedido/vencido que a casa recebeu levam o nome no texto e saem no prazo de 90 dias dos avisos.
+  for (const c of clubes) {
+    gravar.push({ caminho: `clubeMembros/${c.id}`, campos: { clienteNome: NOME_REMOVIDO, status: 'saiu', horarioFixo: APAGAR,
+      lembretes: APAGAR, reservadoAte: APAGAR, reservadoPara: APAGAR, atualizadoEm: agora } });
+  }
   apagar.push(...avs.filter(a => a.dados.direcao !== 'cliente_para_barbearia').map(a => `avaliacoes/${a.id}`));
   // Barbeiro (não dono) de alguma casa: o cartão público perde nome e fotos e sai da equipe ativa; o telefone some.
   for (const b of ondeAtende) {
@@ -184,9 +195,11 @@ export async function excluirDadosBarbearia(db: Firestore, fotos: Fotos, uid: st
  */
 export async function exportarDados(db: Firestore, uid: string, agora = Date.now()) {
   const doUsuario = (colecao: string, campo: string) => db.query({ ...iguais(colecao, campo, uid), limit: 500 });
-  const [agendamentos, notificacoes, eventos, erros] = await Promise.all([
+  const [agendamentos, notificacoes, eventos, erros, clubes] = await Promise.all([
     doUsuario('agendamentos', 'clienteUid'), doUsuario('notificacoes', 'paraUid'), doUsuario('eventos', 'uid'), doUsuario('erros', 'uid'),
+    doUsuario('clubeMembros', 'clienteUid'),
   ]);
+  const pagamentos = await Promise.all(clubes.map(c => db.query({ from: [{ collectionId: 'pagamentos' }], limit: 500 }, `clubeMembros/${c.id}`)));
   const perfil = (await db.varios([`users/${uid}`])).get(`users/${uid}`);
   const ondeAtende = (perfil?.barbearias as string[] | undefined) ?? [];
   const casasAvaliadas = Object.keys((perfil?.avaliouBarbearias as Record<string, unknown> | undefined) ?? {});
@@ -200,6 +213,7 @@ export async function exportarDados(db: Firestore, uid: string, agora = Date.now
       sobre: 'Dados que o Navalha guarda sobre você (LGPD, art. 18). Datas em milissegundos desde 1970 (UTC).',
       perfil: perfil ?? null,
       agendamentos: lista(agendamentos),
+      clubes: clubes.map((c, i) => ({ id: c.id, ...c.dados, pagamentos: lista(pagamentos[i]) })),
       avaliacoesDeBarbearias: ids.filter(c => outros.has(c)).map(c => outros.get(c)),
       notificacoes: lista(notificacoes),
       usoDoApp: lista(eventos),

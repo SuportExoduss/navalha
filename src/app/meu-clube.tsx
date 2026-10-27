@@ -9,7 +9,7 @@ import { usosDoPlano } from '../components/clube/ClubeDaCasa';
 import { useAuth } from '../auth/AuthProvider';
 import { ouvirMeusClubes, planoEUsos, sair, type Membro } from '../services/clube';
 import { db } from '../services/firebase';
-import { dataLocal, formatarData } from '../lib/agenda';
+import { dataLocal, formatarData, minParaHHMM, NOMES_DIAS } from '../lib/agenda';
 import { situacao } from '../lib/clube';
 import { colors, space, type } from '../theme';
 
@@ -50,7 +50,7 @@ function Assinatura({ m }: { m: Membro }) {
   const [usos, setUsos] = useState<number | null>(null);
   useEffect(() => {
     if (m.status === 'ativo' && m.cortesPorMes) planoEUsos(db, m).then(r => setUsos(r.usos)).catch(() => undefined);
-  }, [m.id, m.status, m.cicloInicio]);
+  }, [m.id, m.status, m.cicloInicio, m.reservadoAte, m.atualizadoEm]);
   const s = situacao(m, Date.now());
   const vence = m.venceEm !== undefined ? formatarData(dataLocal(m.venceEm), dataLocal(Date.now())) : '';
   const texto = m.status === 'recusado' ? 'A barbearia não aceitou o pedido. Fale com eles ou peça de novo na página da casa.'
@@ -71,6 +71,12 @@ function Assinatura({ m }: { m: Membro }) {
         <Text style={type.caption}>{m.planoNome} · {usos !== null && m.cortesPorMes ? `${usos} de ${m.cortesPorMes} usados neste ciclo` : usosDoPlano(m.cortesPorMes)}</Text>
       </View>
       <Text style={type.body}>{texto}</Text>
+      {m.status === 'ativo' && m.horarioFixo ? (
+        <Text style={type.caption}>
+          Horário fixo: {NOMES_DIAS[m.horarioFixo.diaSemana].toLowerCase()} às {minParaHHMM(m.horarioFixo.minutos)}
+          {m.horarioFixo.frequencia === 'semanal' ? ', toda semana' : m.horarioFixo.frequencia === 'quinzenal' ? ', a cada 2 semanas' : ', a cada 4 semanas'}
+        </Text>
+      ) : null}
       {confirmar ? (
         <View style={{ gap: space(2) }}>
           <Aviso texto={s === 'pedido' ? 'Desistir do pedido?' : 'Sair do clube? O horário fixo deixa de ser reservado. O que você já pagou é combinado com a barbearia.'} />
@@ -82,6 +88,7 @@ function Assinatura({ m }: { m: Membro }) {
       ) : (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space(2) }}>
           <Chip rotulo="Ver barbearia" onPress={() => router.push({ pathname: '/barbearia/[id]', params: { id: m.barbeariaId } })} />
+          {m.status === 'ativo' ? <Chip rotulo={m.horarioFixo ? 'Trocar horário fixo' : 'Escolher horário fixo'} onPress={() => router.push({ pathname: '/horario-fixo', params: { casa: m.barbeariaId } })} /> : null}
           {m.status !== 'recusado' ? <Chip rotulo={s === 'pedido' ? 'Desistir do pedido' : 'Sair do clube'} onPress={() => setConfirmar(true)} /> : null}
         </View>
       )}

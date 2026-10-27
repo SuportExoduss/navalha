@@ -4,11 +4,13 @@
 //  - 1 dia depois do vencimento sem pagamento → status "vencido" e aviso ao cliente e ao dono.
 // O que avisar e os textos ficam em src/lib/clube.ts (testados). Cada aviso grava a marca em `lembretes` junto
 // com a notificação, então rodar de novo não repete.
-import { avisoDevido, motivoSemClube, textoAvisoClube, usosNoCiclo, type AvisoClube } from '../../src/lib/clube';
-import { chavesOcupacao, dataLocal } from '../../src/lib/agenda';
-import type { Agendamento, MembroClube, PlanoClube } from '../../src/types/models';
+import {
+  avisoDevido, chaveHorarioFixo, horarioFixoPendente, motivoSemClube, planoHorarioFixo, textoAvisoClube, usosNoCiclo, type AvisoClube,
+} from '../../src/lib/clube';
+import { chavesOcupacao, dataLocal, expedienteEfetivo, formatarData, gerarHorarios, paraMillis } from '../../src/lib/agenda';
+import type { Agendamento, Expediente, MembroClube, PlanoClube } from '../../src/types/models';
 import { enviarPush } from './avisos';
-import type { Firestore } from './firestore';
+import { APAGAR, type Firestore } from './firestore';
 
 const DIA = 86_400_000;
 // ponytail: até 20 membros por execução (limite de 50 chamadas do Worker grátis: consultas, gravação e um push por
@@ -106,19 +108,117 @@ export async function agendarPeloClube(
   const motivo = motivoSemClube(m, plano, servicoId, inicio, m ? usosNoCiclo(ags.map(a => a.dados as unknown as Agendamento), m) : 0);
   if (motivo) return erro(403, motivo);
 
+  const id = await gravarReserva(db, { barbeariaId, casa, s, servicoId, barbeiro, barbeiroId, perfil, uid, membroId, inicio }, agora);
+  return id ? { status: 200, corpo: { ok: true, agendamentoId: id } } : { status: 409, corpo: { erro: 'Esse horário acabou de ser ocupado. Escolha outro.', ocupado: true } };
+}
+
+type Doc = Record<string, unknown>;
+
+/** Agendamento do clube (preço 0) + blocos de ocupação num commit só. Bloco já pego: nada gravado, devolve null. */
+async function gravarReserva(db: Firestore, r: {
+  barbeariaId: string; casa: Doc; s: Doc; servicoId: string; barbeiro: Doc; barbeiroId: string; perfil: Doc; uid: string;
+  membroId: string; inicio: number; fixo?: boolean;
+}, agora: number): Promise<string | null> {
+  const { barbeariaId, barbeiroId, inicio } = r;
+  const duracaoMin = Number(r.s.duracaoMin);
   const id = crypto.randomUUID().replace(/-/g, '').slice(0, 20);
-  const slots = chavesOcupacao(barbeiroId, inicio, duracaoMin, passoMin);
-  const telefone = typeof perfil.telefone === 'string' ? perfil.telefone : '';
+  const slots = chavesOcupacao(barbeiroId, inicio, duracaoMin, Number(r.casa.passoMin));
+  const telefone = typeof r.perfil.telefone === 'string' ? r.perfil.telefone : '';
   const ag = {
-    id, barbeariaId, barbeiroId, barbeariaNome: casa.nome, barbeiroNome: barbeiro.apelido || barbeiro.nome,
-    clienteUid: uid, clienteNome: perfil.apelido || perfil.nome || 'Cliente', ...(telefone ? { clienteTelefone: telefone } : {}),
-    servicoId, servicoNome: s.nome, precoCentavos: 0, duracaoMin,
+    id, barbeariaId, barbeiroId, barbeariaNome: r.casa.nome, barbeiroNome: r.barbeiro.apelido || r.barbeiro.nome,
+    clienteUid: r.uid, clienteNome: r.perfil.apelido || r.perfil.nome || 'Cliente', ...(telefone ? { clienteTelefone: telefone } : {}),
+    servicoId: r.servicoId, servicoNome: r.s.nome, precoCentavos: 0, duracaoMin,
     data: dataLocal(inicio), inicio, fim: inicio + duracaoMin * 60_000, slots,
-    status: 'reservado', origem: 'clube', clubeMembroId: membroId, lembretes: {}, criadoEm: agora, atualizadoEm: agora,
+    status: 'reservado', origem: 'clube', clubeMembroId: r.membroId, ...(r.fixo ? { fixo: true } : {}),
+    lembretes: {}, criadoEm: agora, atualizadoEm: agora,
   };
   const ok = await db.criarTodos([
     { caminho: `agendamentos/${id}`, campos: ag },
     ...slots.map(k => ({ caminho: `ocupacao/${k}`, campos: { barbeariaId, barbeiroId, agendamentoId: id, inicio } })),
   ]);
-  return ok ? { status: 200, corpo: { ok: true, agendamentoId: id } } : { status: 409, corpo: { erro: 'Esse horário acabou de ser ocupado. Escolha outro.', ocupado: true } };
+  return ok ? id : null;
+}
+
+/**
+ * Põe o horário fixo em dia (src/lib/clube.ts › planoHorarioFixo): cancela as reservas futuras que não valem mais
+ * (liberando os blocos no mesmo commit) e reserva as datas do ciclo pago, cada uma com a trava. Data em folga, fora
+ * do expediente, já ocupada ou além do limite de cortes não é reservada e volta em `naoCouberam`.
+ */
+export async function sincronizarHorarioFixo(db: Firestore, membroId: string, agora = Date.now()) {
+  const m = (await db.varios([`clubeMembros/${membroId}`])).get(`clubeMembros/${membroId}`) as unknown as MembroClube | undefined;
+  const res = { reservados: [] as string[], naoCouberam: [] as string[], cancelados: 0 };
+  if (!m) return res;
+  const ags = (await db.query({ from: [{ collectionId: 'agendamentos' }],
+    where: { fieldFilter: { field: { fieldPath: 'clubeMembroId' }, op: 'EQUAL', value: { stringValue: membroId } } } }))
+    .map(a => a.dados as unknown as Agendamento);
+  const futuras = ags.filter(a => a.fixo && (a.status === 'reservado' || a.status === 'confirmado') && a.inicio > agora);
+  const plano = planoHorarioFixo(m, futuras.map(a => a.id), agora);
+  const cancelar = futuras.filter(a => plano.cancelar.includes(a.id));
+  // Primeiro libera: o horário novo pode cair em cima do antigo.
+  await db.escrever(cancelar.map(a => ({ caminho: `agendamentos/${a.id}`, campos: { status: 'cancelado', atualizadoEm: agora } })),
+    cancelar.flatMap(a => a.slots.map(k => `ocupacao/${k}`)));
+  res.cancelados = cancelar.length;
+
+  const h = m.horarioFixo;
+  if (h && plano.datas.length) {
+    const bid = m.barbeariaId;
+    const [docs, folgas] = await Promise.all([
+      db.varios([`users/${m.clienteUid}`, `barbearias/${bid}`, `barbearias/${bid}/servicos/${h.servicoId}`,
+        `barbearias/${bid}/barbeiros/${h.barbeiroId}`, `barbearias/${bid}/clubePlanos/${m.planoId}`]),
+      db.query({ from: [{ collectionId: 'bloqueios' }],
+        where: { fieldFilter: { field: { fieldPath: 'barbeiroId' }, op: 'EQUAL', value: { stringValue: h.barbeiroId } } } }, `barbearias/${bid}`),
+    ]);
+    const perfil = docs.get(`users/${m.clienteUid}`), casa = docs.get(`barbearias/${bid}`);
+    const s = docs.get(`barbearias/${bid}/servicos/${h.servicoId}`), barbeiro = docs.get(`barbearias/${bid}/barbeiros/${h.barbeiroId}`);
+    const pc = docs.get(`barbearias/${bid}/clubePlanos/${m.planoId}`) as unknown as PlanoClube | undefined;
+    const pode = !!perfil && casa?.emDia === true && !!s && s.ativo !== false && s.barbeiroId === h.barbeiroId && !!barbeiro && barbeiro.ativo !== false;
+    const ocupados = folgas.map(f => ({ inicio: Number(f.dados.inicio), fim: Number(f.dados.fim) })).filter(f => f.fim > agora);
+    let usos = usosNoCiclo(ags.filter(a => !plano.cancelar.includes(a.id)), m);
+    for (const data of plano.datas) {
+      const inicio = paraMillis(data, h.minutos);
+      const cabe = pode && !motivoSemClube(m, pc, h.servicoId, inicio, usos) && gerarHorarios({
+        data, expediente: expedienteEfetivo(casa!.expediente as Expediente, barbeiro!.expediente as Expediente),
+        duracaoMin: Number(s!.duracaoMin), passoMin: Number(casa!.passoMin), ocupados, agora, antecedenciaMin: 0,
+      }).includes(inicio);
+      const id = cabe ? await gravarReserva(db, { barbeariaId: bid, casa: casa!, s: s!, servicoId: h.servicoId, barbeiro: barbeiro!,
+        barbeiroId: h.barbeiroId, perfil: perfil!, uid: m.clienteUid, membroId, inicio, fixo: true }, agora) : null;
+      if (id) { res.reservados.push(data); usos++; } else res.naoCouberam.push(data);
+    }
+  }
+  await db.escrever([{ caminho: `clubeMembros/${membroId}`, campos: plano.ate && h
+    ? { reservadoAte: plano.ate, reservadoPara: chaveHorarioFixo(h) } : { reservadoAte: APAGAR, reservadoPara: APAGAR } }]);
+  return res;
+}
+
+/** POST /clube/horario-fixo — depois de escolher, trocar ou tirar o horário fixo (cliente) ou de encerrar (casa). */
+export async function horarioFixoAgora(db: Firestore, uid: string, barbeariaId: string, clienteUid: string, agora = Date.now()) {
+  if (uid !== clienteUid) {
+    const docs = await db.varios([`barbearias/${barbeariaId}`, `barbearias/${barbeariaId}/barbeiros/${uid}`]);
+    const b = docs.get(`barbearias/${barbeariaId}/barbeiros/${uid}`);
+    if (docs.get(`barbearias/${barbeariaId}`)?.donoUid !== uid && (!b || b.ativo === false)) return { status: 403, corpo: { erro: 'Sem permissão.' } };
+  }
+  return { status: 200, corpo: { ok: true, ...(await sincronizarHorarioFixo(db, `${barbeariaId}_${clienteUid}`, agora)) } };
+}
+
+// ponytail: 2 membros por execução (cada um gasta ~10 das 50 chamadas do Worker grátis, junto com os avisos).
+// Dá 48 por dia; acima disso, Workers pago ou fila.
+const FIXOS_POR_EXECUCAO = 2;
+
+/** Cron: horário fixo novo ou ciclo renovado → reserva as datas; o que não coube vira aviso ao cliente. */
+export async function preencherHorariosFixos(db: Firestore, tokenSA: string, projectId: string, agora = Date.now()) {
+  const ativos = await db.query({ from: [{ collectionId: 'clubeMembros' }], limit: 300,
+    where: { fieldFilter: { field: { fieldPath: 'status' }, op: 'EQUAL', value: { stringValue: 'ativo' } } } });
+  const fila = ativos.filter(a => horarioFixoPendente(a.dados as unknown as MembroClube)).slice(0, FIXOS_POR_EXECUCAO);
+  for (const { id, dados } of fila) {
+    const m = dados as unknown as MembroClube;
+    const r = await sincronizarHorarioFixo(db, id, agora);
+    if (!r.naoCouberam.length) continue;
+    const hoje = dataLocal(agora);
+    const n = { id: `clube_${id}_fixo_${r.naoCouberam[0]}`, paraUid: m.clienteUid, barbeariaId: m.barbeariaId, titulo: 'Horário fixo',
+      corpo: `Seu horário fixo na ${m.barbeariaNome} não coube em ${r.naoCouberam.map(d => formatarData(d, hoje)).join(', ')}. Marque outro dia pelo app.` };
+    await db.escrever([{ caminho: `notificacoes/${n.id}`, criar: true, campos: { ...n, tipo: 'clube', em: agora, lida: false } }]);
+    const token = (await db.varios([`users/${m.clienteUid}`])).get(`users/${m.clienteUid}`)?.pushToken as string | undefined;
+    if (token) await enviarPush(projectId, tokenSA, { token, title: n.titulo, body: n.corpo, agendamentoId: n.id, link: 'https://navalha.web.app/meu-clube' });
+  }
+  return { membros: fila.length };
 }

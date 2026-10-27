@@ -248,8 +248,17 @@ Substitui a seção "Avaliações, nota Google e ranking" acima e o `docs/roadma
   e cria agendamento (origem "clube", preço 0) + blocos de ocupação num commit só (bloco pego = nada gravado).
   Agenda, Meus horários e atendimento mostram "Clube" no lugar do preço; Meu clube mostra os usos. Testado no Worker
   e no navegador com o emulador (código real do Worker gravando no emulador). Publicado em 26/out: Worker 342966c0 e site
-- [ ] 6. Horário fixo (app + Worker + selo na agenda)
-- [ ] 7. Ponta a ponta, LGPD e status
+- [x] 6. Horário fixo: em Meu clube › "Escolher horário fixo" (`/horario-fixo`) o assinante escolhe barbeiro, corte do
+  plano, dia da semana, hora e frequência (toda semana, a cada 2 ou 4 semanas). O Worker (`POST /clube/horario-fixo` e o
+  cron do minuto 35) reserva as datas do ciclo pago com a trava, pula folga, fora do expediente, ocupado e o limite do
+  plano, e diz o que não coube (na tela e, pelo cron, no sino/push). Trocar, tirar, sair ou encerrar cancela as reservas
+  futuras do horário fixo e libera os blocos; "Recebi o pagamento" reserva o mês seguinte na hora. Na agenda da casa o
+  horário vem como "clube, horário fixo" e o valor como "Clube". Lógica em `src/lib/clube.ts` (testada) e Worker testado
+- [x] 7. Ponta a ponta no navegador com o emulador (código real do Worker gravando no emulador): "Usar o clube",
+  horário fixo (1 data reservada, as outras barradas pelo limite de 2) e sair do clube (reserva futura cancelada).
+  LGPD: "Baixar meus dados" traz os clubes e os pagamentos; excluir conta anonimiza o membro e cancela os horários fixos
+  futuros; política de privacidade versão 3 (item Clube, em vigor 26/out), mapa de dados e ROPA (operação 13).
+  Publicado em 26/out: Worker 438eb375 e site. No Android, chega com o próximo AAB
 
 ## Fase 1 — o que falta para o portão da Fase 2
 O código do MVP está completo. O portão é "3 barbearias amigas usando por 1 semana sem erro grave e nenhum horário duplicado".

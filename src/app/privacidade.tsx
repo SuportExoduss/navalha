@@ -6,7 +6,7 @@ import { CONTATO, IDADE_MINIMA, MARCA, PRAZO_RESPOSTA_DIAS, RESPONSAVEL, VIGENCI
 export default function Privacidade() {
   const email = <Link href={`mailto:${CONTATO}`}>{CONTATO}</Link>;
   return (
-    <Documento titulo="Política de privacidade" resumo={`Como o Navalha usa os seus dados. Versão 2, em vigor desde ${VIGENCIA}.`}>
+    <Documento titulo="Política de privacidade" resumo={`Como o Navalha usa os seus dados. Versão 3, em vigor desde ${VIGENCIA}.`}>
       <Topico titulo="Resumo">
         <Item>Usamos os seus dados só para você marcar horário e para a barbearia organizar a agenda.</Item>
         <Item>Não vendemos dados, não mostramos anúncios e não usamos rastreamento de publicidade.</Item>
@@ -40,6 +40,10 @@ export default function Privacidade() {
           comentário ou dia do corte. É uma por barbearia; avaliar de novo substitui a anterior. A página da barbearia mostra só
           a média das estrelas e quantas avaliações ela tem; ninguém (nem a barbearia) vê quem avaliou. Base: consentimento,
           porque avaliar é opcional; você pode pedir para retirar a avaliação pelo e-mail.</Item>
+        <Item forte="Clube de assinatura:">se você assinar o clube de uma barbearia: o plano, a situação (pedido, em dia,
+          vencido), o vencimento, o horário fixo que você escolher e o registro dos pagamentos que a barbearia marcou (data e
+          valor). O pagamento é feito direto na barbearia; o app não cobra nem guarda dados de pagamento. Servem para reservar
+          os horários do clube, contar os cortes do mês e avisar do vencimento. Base: execução do contrato.</Item>
         <Item forte="Barbearia, para donos e barbeiros:">nome, endereço, localização, WhatsApp, Instagram, horários, equipe,
           cardápio e fotos, públicos para quem procura barbearia. O telefone pessoal do barbeiro fica fora do cartão público:
           só o dono e o próprio barbeiro veem. Base: execução do contrato.</Item>
@@ -60,7 +64,8 @@ export default function Privacidade() {
       <Topico titulo="Quem vê os seus dados">
         <Item forte="A barbearia em que você marca:">o seu nome ou apelido, o horário e o serviço e, só nos horários que você
           marcou e até 24 horas depois deles, o WhatsApp (se você preencheu). O barbeiro vê só os horários dele, e quem sai da
-          equipe perde o acesso na hora. A barbearia só pode usar esses dados para atender você (regra dos Termos de uso).</Item>
+          equipe perde o acesso na hora. A barbearia só pode usar esses dados para atender você (regra dos Termos de uso).
+          Se você assina o clube dela, a equipe também vê o plano, o vencimento, o horário fixo e os pagamentos marcados.</Item>
         <Item forte="Qualquer pessoa:">só os dados públicos das barbearias, com a média de estrelas delas. Nenhum dado
           seu é público.</Item>
         <Item forte="Serviços que operam o app para nós:">Google Firebase (login, banco de dados, notificações e site),

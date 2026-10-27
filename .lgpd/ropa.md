@@ -25,6 +25,7 @@ Detalhe de cada dado em `data-map.md`.
 | 9 | Notificações | lembretes e avisos de horário | consentimento (permissão do aparelho) | todos | token do aparelho, texto do aviso | Google (FCM) | sim | avisos 90 dias |
 | 10 | Uso e erros | corrigir falhas, medir o piloto, evitar abuso | legítimo interesse (art. 7º, IX e art. 10) | todos | uid, ação, mensagem de erro, sistema, versão | — | não | 12 meses |
 | 11 | Pedidos de titulares | atender direitos do art. 18 | obrigação legal | todos | e-mail e o pedido | — | não (Gmail do contato) | 5 anos (prova de atendimento) |
+| 13 | Clube de assinatura (26/out) | assinar o clube de uma casa, reservar o horário fixo, contar os cortes do mês e avisar do vencimento (o app não cobra) | execução de contrato (art. 7º, V) | clientes | plano, situação, vencimento, horário fixo, pagamentos marcados (data e valor) | a barbearia do clube | não (Firestore SP) | enquanto a conta existir; na exclusão, anonimizado (pagamentos ficam com a casa, sem nome) |
 | 12 | Idade mínima | não deixar menores usarem o app | legítimo interesse (art. 7º, IX): cumprir a idade mínima dos Termos | todos | data de nascimento (só conferida, não guardada); quando se declarou maior | — | não | enquanto a conta existir |
 
 ## Legítimo interesse (operação 10) — teste de balanceamento resumido

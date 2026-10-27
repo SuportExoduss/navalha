@@ -160,7 +160,7 @@ function ItemAgenda({ a, barbeiro, uid, lista }: { a: Agendamento; barbeiro?: st
           <Text style={[type.caption, type.number]}>{formatarHora(a.fim)}</Text>
         </View>
         <View style={{ flex: 1, gap: 2 }}>
-          <Text style={type.body}>{a.clienteNome}{a.origem === 'balcao' ? ' · balcão' : ''}</Text>
+          <Text style={type.body}>{a.clienteNome}{a.origem === 'balcao' ? ' · balcão' : a.fixo ? ' · clube, horário fixo' : ''}</Text>
           <Text style={type.caption}>{a.servicoNome} · {a.origem === 'clube' ? 'Clube' : formatarPreco(a.precoCentavos)}{barbeiro ? ` · ${barbeiro}` : ''}</Text>
         </View>
         <EtiquetaStatus status={a.status} />

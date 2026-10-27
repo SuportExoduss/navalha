@@ -1,7 +1,7 @@
 // Clube de assinatura: datas do ciclo. Lógica pura (testada em clube.test.ts); as regras do Firestore
 // aceitam vencimento de 28 a 31 dias depois do início do ciclo, que é o que estas funções produzem.
-import { dataLocal, formatarData, paraMillis } from './agenda';
-import type { Agendamento, MembroClube, Millis, PlanoClube } from '../types/models';
+import { dataLocal, diaDaSemana, formatarData, paraMillis, somarDias } from './agenda';
+import type { Agendamento, HorarioFixo, ISODate, MembroClube, Millis, PlanoClube } from '../types/models';
 
 const DIA = 86_400_000;
 
@@ -109,4 +109,43 @@ export function motivoSemClube(
   if (inicio >= fimDoCiclo(m)) return 'Este dia passa do vencimento do clube. Pague na barbearia para usar no mês seguinte.';
   if (m.cortesPorMes && usos >= m.cortesPorMes) return `Você já usou os ${m.cortesPorMes} do clube neste mês.`;
   return null;
+}
+
+// ---------- Horário fixo (o Worker reserva dentro do ciclo pago) ----------
+
+const PASSO_DIAS = { semanal: 7, quinzenal: 14, mensal: 28 } as const;
+
+/** Primeira data a partir de hoje que cai no dia da semana escolhido. */
+export const ancoraDoDia = (hoje: ISODate, diaSemana: number) => somarDias(hoje, (diaSemana - diaDaSemana(hoje) + 7) % 7);
+
+/** Datas do horário fixo entre `de` e `ate` (inclusive), contadas a partir da âncora. */
+export function datasDoHorarioFixo(h: Pick<HorarioFixo, 'ancora' | 'frequencia'>, de: ISODate, ate: ISODate): ISODate[] {
+  const r: ISODate[] = [];
+  for (let d = h.ancora; d <= ate; d = somarDias(d, PASSO_DIAS[h.frequencia])) if (d >= de) r.push(d);
+  return r;
+}
+
+/** Identidade do horário fixo: mudou qualquer parte, as reservas antigas não valem mais. */
+export const chaveHorarioFixo = (h: HorarioFixo) => [h.barbeiroId, h.servicoId, h.diaSemana, h.minutos, h.frequencia, h.ancora].join('|');
+
+/**
+ * O que fazer agora com o horário fixo: quais reservas futuras dele cancelar e quais datas tentar reservar.
+ * Mesmo horário de antes: só as datas depois de `reservadoAte` (o que o cliente cancelou não volta).
+ * Trocou, tirou, saiu ou venceu: cancela todas as futuras e, se ainda houver horário fixo, reserva do zero.
+ */
+export function planoHorarioFixo(
+  m: Pick<MembroClube, 'status' | 'horarioFixo' | 'venceEm' | 'reservadoAte' | 'reservadoPara'>, futuras: string[], agora: Millis,
+): { cancelar: string[]; datas: ISODate[]; ate: ISODate | null } {
+  const h = m.status === 'ativo' && m.venceEm !== undefined ? m.horarioFixo : undefined;
+  if (!h) return { cancelar: futuras, datas: [], ate: null };
+  const mesmo = m.reservadoPara === chaveHorarioFixo(h);
+  const hoje = dataLocal(agora), ate = dataLocal(fimDoCiclo(m) - 1);
+  const de = mesmo && m.reservadoAte && m.reservadoAte >= hoje ? somarDias(m.reservadoAte, 1) : hoje;
+  return { cancelar: mesmo ? [] : futuras, datas: datasDoHorarioFixo(h, de, ate).filter(d => paraMillis(d, h.minutos) > agora), ate };
+}
+
+/** Precisa o Worker passar neste membro? (horário fixo novo/trocado ou ciclo renovado com datas por reservar) */
+export function horarioFixoPendente(m: Pick<MembroClube, 'status' | 'horarioFixo' | 'venceEm' | 'reservadoAte' | 'reservadoPara'>): boolean {
+  if (m.status !== 'ativo' || !m.horarioFixo || m.venceEm === undefined) return !!m.reservadoPara;
+  return m.reservadoPara !== chaveHorarioFixo(m.horarioFixo) || (m.reservadoAte ?? '') < dataLocal(fimDoCiclo(m) - 1);
 }

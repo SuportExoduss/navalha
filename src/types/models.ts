@@ -192,6 +192,8 @@ export interface Agendamento {
   origem: 'app' | 'balcao' | 'clube';
   /** Assinatura do clube que pagou este horário (só com origem 'clube'). */
   clubeMembroId?: string;
+  /** Reservado pelo horário fixo do clube (o Worker cancela os futuros quando o horário fixo muda ou sai). */
+  fixo?: boolean;
   lembretes: { h24?: Millis; h2?: Millis };
   pagamentoId?: string;
   /** Quem cancelou e por quê: a barbearia vê o motivo do cliente e o cliente vê o da barbearia. */
@@ -258,6 +260,8 @@ export interface MembroClube {
   horarioFixo?: HorarioFixo;
   /** Até onde o Worker já reservou o horário fixo (só o Worker grava). */
   reservadoAte?: ISODate;
+  /** De qual horário fixo são as reservas até `reservadoAte` (mudou = cancela as futuras e reserva de novo; só o Worker). */
+  reservadoPara?: string;
   /** Lembretes de vencimento já enviados neste ciclo (só o Worker grava). */
   lembretes?: { d3?: Millis; d0?: Millis };
   criadoEm: Millis;
