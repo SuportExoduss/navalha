@@ -1,11 +1,12 @@
 import { useState, type ReactNode } from 'react';
 import {
-  ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Switch, Text, TextInput, View,
+  ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, Switch, Text, TextInput, View,
   type PressableProps, type StyleProp, type TextInputProps, type ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, minTouch, radius, space, type } from '../theme';
+import { atualizarTudo } from '../hooks/useAtualizar';
 
 /**
  * `rodape` fica fixo embaixo, fora da rolagem: a ação principal não some abaixo de uma lista longa.
@@ -14,10 +15,14 @@ import { colors, minTouch, radius, space, type } from '../theme';
  */
 /** `transparente`: sem o fundo do tema, para uma foto de fundo atrás (tela de entrar). */
 export function Tela({ children, rolar = true, rodape, transparente }: { children: ReactNode; rolar?: boolean; rodape?: ReactNode; transparente?: boolean }) {
+  // Puxar para baixo relê o que a tela mostra (useAtualizar). O giro é só um sinal: a leitura segue sozinha.
+  const [puxando, setPuxando] = useState(false);
+  const puxar = () => { setPuxando(true); atualizarTudo(); setTimeout(() => setPuxando(false), 800); };
   return (
     <SafeAreaView style={[s.tela, transparente && { backgroundColor: 'transparent' }]} edges={rodape ? ['top', 'bottom'] : ['top']}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'web' ? undefined : 'padding'}>
-        {rolar ? <ScrollView contentContainerStyle={s.conteudo} keyboardShouldPersistTaps="handled">{children}</ScrollView>
+        {rolar ? <ScrollView contentContainerStyle={s.conteudo} keyboardShouldPersistTaps="handled"
+          refreshControl={<RefreshControl refreshing={puxando} onRefresh={puxar} colors={[colors.accent]} tintColor={colors.accent} progressBackgroundColor={colors.surface} />}>{children}</ScrollView>
           : <View style={[s.conteudo, { flex: 1 }]}>{children}</View>}
         {rodape ? <View style={s.rodape}>{rodape}</View> : null}
       </KeyboardAvoidingView>

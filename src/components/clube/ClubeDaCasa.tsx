@@ -11,6 +11,7 @@ import { dataLocal, formatarData, formatarPreco } from '../../lib/agenda';
 import { situacao } from '../../lib/clube';
 import { colors, space, type } from '../../theme';
 import type { PlanoClube, Servico } from '../../types/models';
+import { useVersao } from '../../hooks/useAtualizar';
 
 export const usosDoPlano = (n?: number) => (n ? `${n} ${n === 1 ? 'uso' : 'usos'} por mês` : 'Uso ilimitado');
 
@@ -23,7 +24,8 @@ export function ClubeDaCasa({ casa, servicos }: { casa: { id: string; nome: stri
   const [erro, setErro] = useState<string | null>(null);
 
   // Sem plano aberto, a seção não aparece: falha ao ler os planos também só esconde.
-  useEffect(() => { planosAbertos(db, casa.id).then(setPlanos, () => setPlanos([])); }, [casa.id]);
+  const versao = useVersao();
+  useEffect(() => { planosAbertos(db, casa.id).then(setPlanos, () => setPlanos([])); }, [casa.id, versao]);
   useEffect(() => {
     if (!perfil) return;
     return ouvirMeusClubes(db, perfil.uid, l => setMeu(l.find(m => m.barbeariaId === casa.id) ?? null));

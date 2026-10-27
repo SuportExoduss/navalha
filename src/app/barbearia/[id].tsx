@@ -18,6 +18,7 @@ import { useAuth } from '../../auth/AuthProvider';
 import { formatarPreco } from '../../lib/agenda';
 import { colors, radius, space, type, sobreFoto } from '../../theme';
 import type { Barbearia, Barbeiro, Servico } from '../../types/models';
+import { useVersao } from '../../hooks/useAtualizar';
 
 const virgula = (n: number) => n.toFixed(1).replace('.', ',');
 const quantasAvaliacoes = (n: number) => `${n} ${n === 1 ? 'avaliação' : 'avaliações'}`;
@@ -31,16 +32,21 @@ export default function PaginaBarbearia() {
   const [reservado, setReservado] = useState<string | null>(null);
   const [falhou, setFalhou] = useState(false);
   const [tentativa, setTentativa] = useState(0);
+  const versao = useVersao();
+
+  // Uma visita por casa aberta: tentar de novo ou puxar para atualizar não conta outra.
+  useEffect(() => {
+    if (id && perfil) registrarEvento(db, { tipo: 'viu_barbearia', uid: perfil.uid, barbeariaId: id, em: Date.now() });
+  }, [id]);
 
   useEffect(() => {
     if (!id) return;
-    if (perfil && !tentativa) registrarEvento(db, { tipo: 'viu_barbearia', uid: perfil.uid, barbeariaId: id, em: Date.now() });
     setFalhou(false);
     // Uma leitura guardada por 5 min, reaproveitada pelo agendar (ir e voltar não relê).
     dadosDaCasa(db, id, { forcar: tentativa > 0 })
       .then(d => { setB(d.barbearia); setEquipe(d.equipe); setServicos(d.servicos); })
       .catch(() => { setFalhou(true); setB(null); });
-  }, [id, tentativa]);
+  }, [id, tentativa, versao]);
 
   // Voltou da confirmação (dismissTo): mostra o aviso da reserva uma vez.
   useFocusEffect(useCallback(() => { const t = pegarAvisoReserva(); if (t) setReservado(t); }, []));

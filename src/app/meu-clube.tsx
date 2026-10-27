@@ -12,6 +12,7 @@ import { db } from '../services/firebase';
 import { dataLocal, formatarData, minParaHHMM, NOMES_DIAS } from '../lib/agenda';
 import { situacao } from '../lib/clube';
 import { colors, space, type } from '../theme';
+import { useVersao } from '../hooks/useAtualizar';
 
 export default function MeuClube() {
   const { perfil } = useAuth();
@@ -48,9 +49,10 @@ function Assinatura({ m }: { m: Membro }) {
   const [erro, setErro] = useState<string | null>(null);
   // Plano com limite: quantos já foram usados no ciclo (horários pelo clube não cancelados).
   const [usos, setUsos] = useState<number | null>(null);
+  const versao = useVersao();
   useEffect(() => {
     if (m.status === 'ativo' && m.cortesPorMes) planoEUsos(db, m).then(r => setUsos(r.usos)).catch(() => undefined);
-  }, [m.id, m.status, m.cicloInicio, m.reservadoAte, m.atualizadoEm]);
+  }, [m.id, m.status, m.cicloInicio, m.reservadoAte, m.atualizadoEm, versao]);
   const s = situacao(m, Date.now());
   const vence = m.venceEm !== undefined ? formatarData(dataLocal(m.venceEm), dataLocal(Date.now())) : '';
   const texto = m.status === 'recusado' ? 'A barbearia não aceitou o pedido. Fale com eles ou peça de novo na página da casa.'

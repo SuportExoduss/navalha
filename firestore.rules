@@ -89,7 +89,9 @@ service cloud.firestore {
           && depois.resumo.get('notaRanking', null) == antes.resumo.get('notaRanking', null);
       }
       // Na busca só aparece casa publicada E em dia (teste ou mensalidade); a equipe sempre vê a sua.
-      allow read: if (resource.data.publicada == true && resource.data.get('emDia', false) == true) || ehDaCasa(bid);
+      // Casa que ainda não existe pode ser lida (não mostra nada): a escuta do dono começa antes de a criação
+      // chegar ao servidor e, recusada, morria e devolvia a tela de cadastro (casa criada duas vezes).
+      allow read: if resource == null || (resource.data.publicada == true && resource.data.get('emDia', false) == true) || ehDaCasa(bid);
       allow create: if logado()
         && request.resource.data.donoUid == eu() && fotosDaCasaOk(request.resource.data) && notasZeradas(request.resource.data)
         && request.resource.data.barbeirosAtivos == 1 && request.resource.data.mudouBarbeiro == eu()
@@ -403,6 +405,11 @@ service cloud.firestore {
           || (ag().clienteUid == eu() && request.resource.data.clienteNome == 'Cliente removido'
              && !('clienteTelefone' in request.resource.data)
              && request.resource.data.diff(ag()).affectedKeys().hasOnly(['clienteNome', 'clienteTelefone', 'atualizadoEm']))
+          // O cliente trocou o WhatsApp no Perfil: os horários ainda de pé levam o número do perfil (nunca outro),
+          // para o barbeiro não avisar no número antigo.
+          || (ag().clienteUid == eu() && ag().status in ['reservado', 'confirmado'] && ag().inicio > request.time.toMillis()
+             && request.resource.data.diff(ag()).affectedKeys().hasOnly(['clienteTelefone', 'atualizadoEm'])
+             && request.resource.data.get('clienteTelefone', '') == get(/databases/$(database)/documents/users/$(eu())).data.get('telefone', ''))
           || (daCasaParaEste(ag()) && ag().status != 'cancelado'
              && request.resource.data.status in ['confirmado', 'concluido', 'faltou', 'cancelado']
              && cancelamentoOk('casa'))

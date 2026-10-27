@@ -9,10 +9,12 @@ import { lembrar } from '../../services/cache';
 import { dataLocal, formatarPreco } from '../../lib/agenda';
 import { calcularPainel, type Painel } from '../../lib/painel';
 import { colors, space, type } from '../../theme';
+import { useVersao } from '../../hooks/useAtualizar';
 
 export function PainelDono({ barbeariaId }: { barbeariaId: string }) {
   const [p, setP] = useState<Painel | null>(null);
   const [erro, setErro] = useState(false);
+  const versao = useVersao();
 
   useEffect(() => {
     const agora = Date.now();
@@ -20,7 +22,7 @@ export function PainelDono({ barbeariaId }: { barbeariaId: string }) {
     lembrar(`painel:${barbeariaId}:${dataLocal(agora)}`, () => agendamentosDaSemana(db, barbeariaId, dataLocal(agora)))
       .then(l => setP(calcularPainel(l, agora)))
       .catch(() => setErro(true));
-  }, [barbeariaId]);
+  }, [barbeariaId, versao]);
 
   if (erro) return null;
   return (

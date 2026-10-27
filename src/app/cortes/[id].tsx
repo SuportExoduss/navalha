@@ -11,16 +11,18 @@ import { db } from '../../services/firebase';
 import { formatarPreco } from '../../lib/agenda';
 import { colors, radius, space, type } from '../../theme';
 import type { Barbearia, Barbeiro, Servico } from '../../types/models';
+import { useVersao } from '../../hooks/useAtualizar';
 
 export default function EscolherCorte() {
   const { id, barbeiro: barbeiroId } = useLocalSearchParams<{ id: string; barbeiro?: string }>();
   const [dados, setDados] = useState<{ barbearia: Barbearia | null; equipe: Barbeiro[]; servicos: Servico[] } | null | undefined>(undefined);
   const [tentativa, setTentativa] = useState(0);
+  const versao = useVersao();
 
   useEffect(() => {
     if (!id) return;
     dadosDaCasa(db, id, { forcar: tentativa > 0 }).then(setDados).catch(() => setDados(null));
-  }, [id, tentativa]);
+  }, [id, tentativa, versao]);
 
   if (!id) return <Redirect href="/" />;
   if (!barbeiroId) return <Redirect href={{ pathname: '/barbearia/[id]', params: { id } }} />;

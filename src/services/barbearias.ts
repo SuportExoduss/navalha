@@ -75,8 +75,8 @@ export async function lerBarbearia(db: Firestore, id: string) {
   return s?.exists() ? (s.data() as Barbearia) : null;
 }
 
-export function ouvirBarbearia(db: Firestore, id: string, cb: (b: Barbearia | null) => void): Unsubscribe {
-  return onSnapshot(doc(db, 'barbearias', id), s => cb(s.exists() ? (s.data() as Barbearia) : null), () => cb(null));
+export function ouvirBarbearia(db: Firestore, id: string, cb: (b: Barbearia | null) => void, erro = () => cb(null)): Unsubscribe {
+  return onSnapshot(doc(db, 'barbearias', id), s => cb(s.exists() ? (s.data() as Barbearia) : null), erro);
 }
 
 export async function listarBarbeiros(db: Firestore, barbeariaId: string) {

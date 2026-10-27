@@ -10,7 +10,7 @@ import { irParaPapel } from './irParaPapel';
 import { Capa } from './Capa';
 import { useAuth } from '../auth/AuthProvider';
 import { auth, db } from '../services/firebase';
-import { DONO_NAO_EXCLUI, atualizarPerfil, escolherPapel, excluirConta, meusDados, refletirNaEquipe } from '../services/usuarios';
+import { DONO_NAO_EXCLUI, atualizarPerfil, escolherPapel, excluirConta, meusDados, refletirNaEquipe, telefoneNosAgendamentos } from '../services/usuarios';
 import { reautenticarGoogle, sairDoGoogle } from '../services/googleSignIn';
 import { escolherEEnviar } from '../services/fotos';
 import { telefoneNaEquipe } from '../services/barbearias';
@@ -47,6 +47,7 @@ export function PerfilConta() {
       await atualizarPerfil(db, perfil!.uid, { nome: nome.trim() || perfil!.nome, apelido: apelido.trim(), telefone: tel });
       // Quem atende numa casa: o dono vê o telefone na ficha do barbeiro.
       await telefoneNaEquipe(db, perfil!.barbearias, perfil!.uid, tel);
+      if (tel !== (perfil!.telefone ?? '')) await telefoneNosAgendamentos(db, perfil!.uid, tel);
       setSalvo(true); setTimeout(() => setSalvo(false), 2000);
     } catch { setErro('Não foi possível salvar.'); }
     finally { setSalvando(false); }

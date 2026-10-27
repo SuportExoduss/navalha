@@ -15,7 +15,7 @@ import { chavesOcupacao, paraMillis } from '../src/lib/agenda';
 import {
   agendamentosDaSemana, cancelar, concluir, criarFolga, definirStatus, horariosLivres, removerFolga, reservar, type NovaReserva,
 } from '../src/services/agendamentos';
-import { NOME_REMOVIDO } from '../src/services/usuarios';
+import { NOME_REMOVIDO, telefoneNosAgendamentos } from '../src/services/usuarios';
 import { MOTIVO_CASA_ENCERRADA, definirBarbeiroAtivo, excluirBarbearia } from '../src/services/barbearias';
 import type { Barbearia, Barbeiro } from '../src/types/models';
 
@@ -240,6 +240,8 @@ test('barbearia em rascunho só aparece para a própria casa', async () => {
   await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'barbearias/rasc'), { id: 'rasc', donoUid: 'dono', publicada: false, assinatura: { status: 'teste' }, resumo: {} }));
   await assertFails(getDoc(doc(env.authenticatedContext('ana').firestore(), 'barbearias/rasc')));
   await assertSucceeds(getDoc(doc(env.authenticatedContext('dono').firestore(), 'barbearias/rasc')));
+  // Casa que ainda não existe: a escuta do dono que acabou de criar não pode ser recusada.
+  await assertSucceeds(getDoc(doc(env.authenticatedContext('ana').firestore(), 'barbearias/ainda-nao-existe')));
 });
 
 // ---------- Sprint 3: agenda ----------
@@ -474,6 +476,22 @@ test('exclusão de conta: cliente cancela e tira o nome e o telefone do históri
   assert.equal((await getDoc(ref)).data()?.clienteTelefone, undefined);
   await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'users/ana'), { uid: 'ana', maiorDeIdadeEm: 1 }));
   await assertSucceeds(deleteDoc(doc(dbDe('ana'), 'users/ana')));
+});
+
+test('WhatsApp novo no perfil: o cliente leva o número do perfil aos horários de pé, e nenhum outro', async () => {
+  const id = await reservar(dbDe('ana'), novaReserva('ana', inicio + 3 * 3600_000, { cliente: { uid: 'ana', nome: 'ana', telefone: '15999990000' } }));
+  const ref = doc(dbDe('ana'), 'agendamentos', id);
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'users/ana'), { telefone: '15988887777' }, { merge: true }));
+  await assertFails(updateDoc(ref, { clienteTelefone: '11911112222', atualizadoEm: 1 })); // número que não é o do perfil
+  await assertFails(updateDoc(ref, { clienteTelefone: '15988887777', clienteNome: 'Outra', atualizadoEm: 1 })); // junto com outro campo
+  await assertFails(updateDoc(doc(dbDe('beto'), 'agendamentos', id), { clienteTelefone: '15988887777', atualizadoEm: 1 }));
+  await telefoneNosAgendamentos(dbDe('ana'), 'ana', '15988887777');
+  assert.equal((await getDoc(doc(dbDe('lucas'), 'agendamentos', id))).data()?.clienteTelefone, '15988887777');
+  // Cancelado não muda mais.
+  const ag = (await getDoc(ref)).data()!;
+  await cancelar(dbDe('ana'), { id, slots: ag.slots });
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'users/ana'), { telefone: '15977776666' }, { merge: true }));
+  await assertFails(updateDoc(ref, { clienteTelefone: '15977776666', atualizadoEm: 2 }));
 });
 
 test('barbeiro conclui sem foto (ninguém anexa foto ao corte); painel do dono lê a semana', async () => {

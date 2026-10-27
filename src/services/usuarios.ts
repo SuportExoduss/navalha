@@ -1,5 +1,5 @@
 import {
-  collection, deleteDoc, doc, getDocs, onSnapshot, query, setDoc, updateDoc, where,
+  collection, deleteDoc, deleteField, doc, getDocs, onSnapshot, orderBy, query, setDoc, updateDoc, where,
   type Firestore, type Unsubscribe,
 } from 'firebase/firestore';
 import { deleteUser, type User } from 'firebase/auth';
@@ -49,6 +49,17 @@ export async function atualizarPerfil(
   db: Firestore, uid: string, dados: Partial<Pick<UserProfile, 'nome' | 'apelido' | 'fotoUrl' | 'bannerUrl' | 'telefone' | 'pushToken' | 'maiorDeIdadeEm'>>,
 ) {
   await updateDoc(doc(db, 'users', uid), dados);
+}
+
+/**
+ * WhatsApp novo no Perfil vale também nos horários que ainda vão acontecer: cada reserva guarda uma cópia do número
+ * e o barbeiro avisava no antigo. As regras só aceitam o número que está no perfil.
+ */
+export async function telefoneNosAgendamentos(db: Firestore, uid: string, telefone: string, agora = Date.now()) {
+  const s = await getDocs(query(collection(db, 'agendamentos'), where('clienteUid', '==', uid), where('inicio', '>', agora), orderBy('inicio', 'desc')));
+  await Promise.all(s.docs
+    .filter(d => ['reservado', 'confirmado'].includes(d.data().status) && (d.data().clienteTelefone ?? '') !== telefone)
+    .map(d => updateDoc(d.ref, { clienteTelefone: telefone || deleteField(), atualizadoEm: agora })));
 }
 
 /**

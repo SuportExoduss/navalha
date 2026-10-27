@@ -12,15 +12,22 @@ export function useMinhaBarbearia() {
   const [barbearia, setBarbearia] = useState<Barbearia | null>(null);
   const [equipe, setEquipe] = useState<Barbeiro[]>([]);
   const [carregando, setCarregando] = useState(true);
+  const [tentativa, setTentativa] = useState(0);
 
   useEffect(() => {
     if (!perfil) return;
     if (!id) { setBarbearia(null); setEquipe([]); setCarregando(false); return; }
     setCarregando(true);
-    const a = ouvirBarbearia(db, id, b => { setBarbearia(b); setCarregando(false); });
+    // Recusa logo depois de criar a casa ou entrar por convite (a gravação ainda não chegou ao servidor):
+    // escuta de novo em instantes em vez de cair na tela de cadastro com a casa já criada.
+    let espera: ReturnType<typeof setTimeout> | undefined;
+    const a = ouvirBarbearia(db, id, b => { setBarbearia(b); setCarregando(false); }, () => {
+      if (tentativa < 3) espera = setTimeout(() => setTentativa(t => t + 1), 1500);
+      else { setBarbearia(null); setCarregando(false); }
+    });
     const b = ouvirBarbeiros(db, id, setEquipe);
-    return () => { a(); b(); };
-  }, [id, !!perfil]);
+    return () => { a(); b(); clearTimeout(espera); };
+  }, [id, !!perfil, tentativa]);
 
   const ehDono = !!perfil && !!barbearia && barbearia.donoUid === perfil.uid;
   return { barbearia, equipe, carregando: carregando || !perfil, ehDono, uid: perfil?.uid };

@@ -5,12 +5,14 @@ import { useEffect, useState } from 'react';
 import { useLocalizacao } from './useLocalizacao';
 import { buscarPerto, type BarbeariaPerto } from '../services/barbearias';
 import { db } from '../services/firebase';
+import { useVersao } from './useAtualizar';
 
 export function useBarbeariasPerto() {
   const { loc, negada, semSinal, tentarDeNovo } = useLocalizacao();
   const [lista, setLista] = useState<BarbeariaPerto[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [tentativa, setTentativa] = useState(0);
+  const versao = useVersao();
 
   useEffect(() => {
     if (!loc) return;
@@ -18,7 +20,7 @@ export function useBarbeariasPerto() {
     buscarPerto(db, loc.lat, loc.lng, { forcar: tentativa > 0 })
       .then(setLista)
       .catch(() => setErro('Não foi possível buscar as barbearias. Verifique a conexão.'));
-  }, [loc?.lat, loc?.lng, tentativa]);
+  }, [loc?.lat, loc?.lng, tentativa, versao]);
 
   return { loc, negada, semSinal, tentarDeNovo, lista, erro, recarregar: () => setTentativa(n => n + 1) };
 }
