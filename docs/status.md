@@ -298,5 +298,5 @@ Para isso, nesta ordem:
 
 ## Próximo no roadmap: Fase 2 — Piloto fechado (4/jan – 7/fev 2027)
 Teste fechado: 14 testadores conseguidos em 26/out; contar 14 dias seguidos com eles no teste fechado antes de pedir a produção. Onboarding presencial das barbearias,
-correções por nova versão no Play (sem EAS Update; subir `versionCode` a cada AAB — hoje 6 (0.4.2) em `android/app/build.gradle`; no Play: 5 (0.4.1) no teste interno e no fechado). O próximo AAB leva o clube completo e a revisão de 26/out.
+correções por nova versão no Play (sem EAS Update; subir `versionCode` a cada AAB — hoje 7 (0.4.3) em `android/app/build.gradle`; no Play: 5 (0.4.1) no teste interno e no fechado). O próximo AAB leva o clube completo, a revisão de 26/out e as correções de 27/out (cadastro da casa sem voltar ao formulário, WhatsApp novo nos horários marcados, puxar para atualizar).
 Depois do piloto: publicação aberta no Google Play. As Fases 3 a 5 estão fora do plano por enquanto (decisão do dono, 20/out/2026).
