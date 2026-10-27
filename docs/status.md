@@ -7,9 +7,9 @@ Código no computador: `C:\Users\andre\AndroidStudioProjects\navalha` (no Androi
 ## Onde estamos (26/out/2026, validado contra o código)
 | Fase | Calendário | Código | Falta |
 | --- | --- | --- | --- |
-| 0 · Fundação | 19/out – 1/nov | modelo de dados e contas técnicas prontos | dono: entrevistas, INPI/nome (conflito na classe 44), landing, contador; termos e política v2 no ar |
+| 0 · Fundação | 19/out – 1/nov | **portão atingido** (26/out): entrevistas confirmadas pelo dono, barbearias de teste conseguidas, termos e política v3 no ar | INPI adiado até haver verba (conflito na classe 44); landing e Instagram opcionais |
 | 1 · MVP | 2/nov – 27/dez | **100%** (adiantado ~6 semanas) + extras | portão: 3 barbearias amigas por 1 semana; cronometrar um dono montando a casa |
-| 2 · Piloto | jan – fev/2027 | código pronto; 0.4.1 (código 5) no teste interno e no fechado do Play | dono: 12 testadores por 14 dias, Segurança de Dados no Play, onboarding das 10 barbearias, cartaz com QR |
+| 2 · Piloto | jan – fev/2027 | código pronto; 0.4.1 (código 5) no teste interno e no fechado do Play; 14 testadores conseguidos | 14 dias seguidos no teste fechado, Segurança de Dados no Play, onboarding das barbearias, cartaz com QR; evoluir o app subindo versões |
 | 3 · Lançamento | — | **fora do plano** (decisão do dono, 20/out) | ficam, já feitos: mensalidades pelo Google Play com cupom de cortesia e avaliação da barbearia (só estrelas) + ranking, sem Google |
 | 4 · Crescimento | — | **fora do plano**, menos o clube de assinatura (feito em 26/out) | — |
 | 5 · Escala | — | **fora do plano** | — |
@@ -18,7 +18,10 @@ Requisitos da Google Play: `docs/publicar-google-play.md`. Pacote definitivo `co
 
 ## Fase 0 — Fundação
 - [x] Desenhar o modelo de dados completo (inclui pagamentos, avaliações e assinaturas) — `docs/modelo-de-dados.md` no código
-- [ ] Demais itens (entrevistas, nome, contas, termos, backlog) — dependem do dono do projeto
+- [x] Entrevistas com donos/barbeiros e clientes: confirmadas pelo dono (26/out/2026)
+- [x] Barbearias para o teste conseguidas (dono, 26/out/2026)
+- [x] Contas técnicas (GitHub, Firebase, Cloudflare), termos e política (v3 no ar); protótipo no Figma substituído pelo app real
+- [ ] Nome no INPI: adiado até haver verba (decisão do dono, 26/out/2026); há registro "Navalha" na classe 44
 
 ## Fase 1 · Sprint 1 — Base (código concluído)
 - [x] Projeto Expo (Android, iOS, web) com Expo Router
@@ -291,9 +294,9 @@ Para isso, nesta ordem:
    - Bugs achados e corrigidos no teste: Firestore travava no Android (long polling), capa recusada pelo Worker (tipo pelos bytes), permissão de push engolida no 1º login, falha do FCM silenciosa no Worker (agora vai para o log).
 4. [x] Versão web publicada em **https://navalha.web.app** (Firebase Hosting, plano gratuito; `npm run export:web && npx firebase deploy --only hosting --project prod`; o `export:web` move as fontes para fora de `assets/node_modules`, que o Hosting não publica — corrigido em 25/out); domínio autorizado no login do Firebase. A versão antiga na Cloudflare (navalha-web) foi desativada em 19/out; o Worker de fotos e lembretes segue lá. Falta o dono entrar com Google uma vez para conferir.
    - Corrigido: `src/services/firebase.ts` lia `env.EXPO_PUBLIC_*` por um apelido de `process.env`, que o Expo não embute no build; o app real cairia no emulador.
-5. Colocar 3 barbearias amigas para usar de 28/dez a 3/jan.
+5. Colocar 3 barbearias amigas para usar por 1 semana (as barbearias de teste já foram conseguidas em 26/out; falta a semana de uso sem erro grave nem horário duplo).
 
 ## Próximo no roadmap: Fase 2 — Piloto fechado (4/jan – 7/fev 2027)
-Teste fechado com 12+ testadores por 14 dias (conta Play e fichas já em andamento), onboarding presencial de 10 barbearias,
+Teste fechado: 14 testadores conseguidos em 26/out; contar 14 dias seguidos com eles no teste fechado antes de pedir a produção. Onboarding presencial das barbearias,
 correções por nova versão no Play (sem EAS Update; subir `versionCode` a cada AAB — hoje 6 (0.4.2) em `android/app/build.gradle`; no Play: 5 (0.4.1) no teste interno e no fechado). O próximo AAB leva o clube completo e a revisão de 26/out.
 Depois do piloto: publicação aberta no Google Play. As Fases 3 a 5 estão fora do plano por enquanto (decisão do dono, 20/out/2026).

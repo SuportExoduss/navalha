@@ -72,28 +72,28 @@ Duas semanas para provar que barbeiros e clientes querem o app antes de escrever
 
 **Produto e validação**
 
-- [ ] Entrevistar 10 donos/barbeiros: como agendam hoje (WhatsApp, caderno, outro app), quanto pagam, o que mais dói (faltas, horário duplo, cobrar)
-- [ ] Entrevistar 15 clientes: como escolhem barbearia, se pagariam pelo app, se escolheriam o corte pela foto
-- [ ] Listar 30 barbearias da região para o piloto e conseguir 10 "sim, quero testar"
-- [ ] Aplicar os ajustes de tela da revisão (próximo horário no card, "Qualquer barbeiro", resumo no botão, nome da barbearia em Serviços)
-- [ ] Protótipo clicável no Figma com as 9 telas do MVP e teste com 5 clientes e 2 barbeiros
+- [x] Entrevistar 10 donos/barbeiros: como agendam hoje (WhatsApp, caderno, outro app), quanto pagam, o que mais dói (faltas, horário duplo, cobrar) — confirmado pelo dono em 26/out/2026
+- [x] Entrevistar 15 clientes: como escolhem barbearia, se pagariam pelo app — confirmado pelo dono em 26/out/2026 (a pergunta da foto do corte caiu: a foto saiu do app)
+- [x] Listar barbearias da região para o piloto e conseguir os "sim, quero testar" — barbearias de teste conseguidas (dono, 26/out/2026)
+- [x] ~~Aplicar os ajustes de tela da revisão~~ — substituído pelo app real (agendar em 3 etapas: barbeiro, corte, horário + confirmação)
+- [x] ~~Protótipo clicável no Figma~~ — substituído pelo app real, testado no celular e no teste interno/fechado do Play
 
 **Marca e base legal**
 
-- [ ] Confirmar o nome: busca no INPI, no Registro.br e nas lojas de apps
+- [ ] Confirmar o nome: busca no INPI, no Registro.br e nas lojas de apps — **adiado** (decisão do dono, 26/out/2026: o registro no INPI fica para quando houver verba; há registro "Navalha" na classe 44, consultar antes)
 - [ ] Criar e-mail do projeto (Gmail), perfil no Instagram e uma landing page simples com lista de espera para barbearias
-- [ ] Rascunhar Termos de Uso e Política de Privacidade (LGPD): dados de localização, fotos, avaliações, exclusão de conta
-- [ ] Conversar com contador sobre a forma jurídica (CNPJ será necessário na Fase 3 para pagamentos)
+- [x] Termos de Uso e Política de Privacidade (LGPD): no ar em navalha.web.app/termos e /privacidade (versão 3, 26/out)
+- [ ] ~~Conversar com contador sobre a forma jurídica~~ — não é preciso agora: a Fase 3 (pagamentos com split) está fora do plano e a marca TrevoTec segue sem CNPJ
 
 **Técnico**
 
-- [ ] Criar contas gratuitas: GitHub, Firebase (plano Spark) e Cloudflare (R2 + Workers) — sem conta Expo
-- [x] Desenhar o modelo de dados completo, já incluindo pagamentos, avaliações e assinaturas (mesmo que vazios no MVP)
-- [ ] Montar o quadro de tarefas no GitHub Projects com o backlog da Fase 1
+- [x] Criar contas gratuitas: GitHub, Firebase (plano Spark) e Cloudflare (R2 + Workers) — sem conta Expo
+- [x] Desenhar o modelo de dados completo (`docs/modelo-de-dados.md`; o pagamento do corte saiu em 26/out)
+- [x] ~~Quadro no GitHub Projects~~ — o andamento fica em `docs/status.md`
 
 **Prepara a próxima com:** telas aprovadas por usuários reais, modelo de dados fechado e backlog priorizado — a Fase 1 começa codando no primeiro dia.
 
-**Portão para a Fase 1:** 10 barbearias confirmadas para o piloto e pelo menos 70% dos clientes entrevistados dizendo que usariam.
+**Portão para a Fase 1:** 10 barbearias confirmadas para o piloto e pelo menos 70% dos clientes entrevistados dizendo que usariam. **Atingido** (confirmado pelo dono em 26/out/2026: entrevistas feitas e barbearias de teste conseguidas).
 
 ## Fase 1 — MVP (2/nov – 27/dez 2026)
 
@@ -126,7 +126,7 @@ Cinco semanas com 10 barbearias reais usando o app de graça, em troca de feedba
 
 **O que fazer**
 
-- [ ] Pagar a conta Google Play, concluir a verificação de identidade do desenvolvedor e publicar no canal de teste fechado (conta pessoal nova precisa de pelo menos 12 testadores antes de liberar a produção — as 10 barbearias e seus clientes servem). **Em andamento:** conta paga, versão 0.4.1 (código 5) no teste interno e no fechado em 26/out; faltam os 12 testadores por 14 dias
+- [ ] Pagar a conta Google Play, concluir a verificação de identidade do desenvolvedor e publicar no canal de teste fechado (conta pessoal nova precisa de pelo menos 12 testadores antes de liberar a produção — as 10 barbearias e seus clientes servem). **Em andamento:** conta paga, versão 0.4.1 (código 5) no teste interno e no fechado em 26/out; **14 testadores conseguidos** (26/out): falta completar os 14 dias seguidos no teste fechado para pedir a produção
 - [ ] Preencher na Play Console a política de privacidade (navalha.web.app/privacidade, versão 3) e o formulário de Segurança de Dados (localização, fotos, dados de conta, clube)
 - [ ] Onboarding presencial em cada barbearia: cadastrar a casa, os barbeiros e as fotos junto com o dono
 - [ ] Cartaz com QR Code no balcão: "Agende seu próximo corte pelo app"
