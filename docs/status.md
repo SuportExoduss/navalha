@@ -69,6 +69,7 @@ Requisitos da Google Play: `docs/publicar-google-play.md`. Pacote definitivo `co
 - [x] Resumo da casa (27/out): filtros Hoje, Semana (segunda a domingo) e Mês (dia 1 até hoje), com agendamentos, faturado, a receber, faltas e corte mais pedido, em tempo real (uma escuta)
 - [x] Resumo por pessoa e por dia (01/nov): o barbeiro vê só os próprios agendamentos ("Seu resumo"); o dono vê a casa toda e filtra por barbeiro; filtro Calendário (um dia qualquer, mês a mês) ao lado de Hoje/Semana/Mês
 - [x] Resumos anteriores (01/nov): abaixo do resumo da casa, a lista dos meses fechados (geral e filtro por barbeiro; o barbeiro vê só os dele), salvos no servidor pelo Worker nos dias 1 a 3 e guardados no celular; a notificação do resumo (sino e push) abre o mês; cada barbeiro recebe o próprio resumo
+- [x] Exportar o mês (01/nov): disquete no topo de Resumos anteriores; PDF (números + atendimentos) ou planilha CSV (`;`, abre no Excel), da casa toda ou de um barbeiro (o barbeiro só o dele). Web baixa/imprime; celular compartilha (`expo-print`, `expo-sharing`, `expo-file-system`: entram no AAB 0.4.7). Lógica em `src/lib/exportar.ts` com teste; e2e em `tests/e2e/resumos.cjs`
 - [x] Expediente do barbeiro acompanha o da casa até ele mudar (botão "Usar o horário da casa"); barbeiro novo ganha uma cópia do cardápio do dono ao entrar
 - [x] Eventos de uso (viu barbearia, agendou, cancelou, faltou, concluiu). ~~Place ID do Google~~ saiu em 22/out
 - [x] Corrigido: barbeiro não conseguia atualizar o resumo do cardápio da casa (regra de segurança)

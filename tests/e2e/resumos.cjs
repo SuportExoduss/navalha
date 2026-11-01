@@ -54,6 +54,14 @@ const resumo = (bid, mes, barbeiroId, nome, faturadoCentavos, porBarbeiro = []) 
   await resumo(bid, '2026-10', Z.uid, 'Zeca', 5000);
   await resumo(bid, '2026-09', 'casa', 'Casa', 9000);
   await resumo(bid, '2026-09', Z.uid, 'Zeca', 4000);
+  // Atendimentos de outubro para exportar: um do dono, um do Zeca (cliente com ";" testa o CSV).
+  const ag = (id, barbeiroId, barbeiroNome, clienteNome, dia, precoCentavos) => gravar(`agendamentos/${id}`, {
+    id, barbeariaId: bid, barbeiroId, barbeiroNome, clienteUid: null, clienteNome, servicoId: 's1', servicoNome: 'Degradê',
+    precoCentavos, duracaoMin: 30, data: `2026-10-${dia}`, inicio: Date.UTC(2026, 9, +dia, 17), fim: Date.UTC(2026, 9, +dia, 17, 30),
+    slots: [], status: 'concluido', origem: 'balcao', lembretes: {}, criadoEm: Date.now(), atualizadoEm: Date.now(),
+  });
+  await ag('exp1', D.uid, 'Dono Resumo', 'Ana', '05', 7000);
+  await ag('exp2', Z.uid, 'Zeca', 'Bia; Jr', '06', 5000);
   await gravar(`notificacoes/resumo_2026-09_${bid}`, { id: `resumo_2026-09_${bid}`, paraUid: D.uid, barbeariaId: bid, tipo: 'resumo_mes', titulo: 'Resumo de setembro de 2026', corpo: 'Faturado: R$ 90,00', em: Date.now(), lida: false });
 
   // Dono: a linha abaixo do resumo da casa abre a lista; o geral mostra os dois meses e as linhas por barbeiro.
@@ -71,6 +79,28 @@ const resumo = (bid, mes, barbeiroId, nome, faturadoCentavos, porBarbeiro = []) 
   assert.match(t, /R\$\s?40,00/);
   assert.doesNotMatch(t, /R\$\s?120,00/);
 
+  // Disquete: exporta outubro. CSV do Zeca só com a linha dele; PDF da casa com as duas.
+  const baixarCsv = async pg => {
+    const [d] = await Promise.all([pg.waitForEvent('download'), pg.getByRole('button', { name: 'Planilha (CSV)' }).click()]);
+    assert.match(d.suggestedFilename(), /^resumo-2026-10-.*\.csv$/);
+    return require('fs').readFileSync(await d.path(), 'utf8');
+  };
+  await p.getByText('outubro de 2026', { exact: true }).click(); await p.waitForTimeout(300); // abre outubro
+  await p.getByLabel('Exportar o mês').click();
+  await p.getByText('Exportar outubro de 2026').waitFor();
+  await p.getByRole('button', { name: 'Zeca', exact: true }).last().click();
+  let csv = await baixarCsv(p);
+  assert.match(csv, /^\uFEFFData;Hora;Barbeiro/);
+  assert.match(csv, /06\/10\/2026;14:00;Zeca;"Bia; Jr";Degradê;50,00;Concluído;Balcão/);
+  assert.doesNotMatch(csv, /Ana/);
+  await p.getByRole('button', { name: 'Barbearia toda', exact: true }).click();
+  await p.getByText('PDF', { exact: true }).click();
+  await p.getByText('Pronto.').waitFor({ timeout: 10_000 });
+  const pdf = await p.frames().find(f => f !== p.mainFrame())?.content();
+  assert.match(pdf ?? '', /Casa dos Resumos/);
+  assert.match(pdf, /Ana/); assert.match(pdf, /Bia; Jr/);
+  await p.screenshot({ path: 'shots4/11-resumos-exportar.png', fullPage: true });
+
   // Toque na notificação do resumo de setembro abre a tela naquele mês.
   await p.goto(`${BASE}/agenda`); await p.waitForTimeout(3500);
   await p.getByLabel(/Notificações/).first().click(); await p.waitForTimeout(800);
@@ -85,6 +115,10 @@ const resumo = (bid, mes, barbeiroId, nome, faturadoCentavos, porBarbeiro = []) 
   assert.match(t, /R\$\s?50,00/);
   assert.doesNotMatch(t, /R\$\s?120,00|Geral/);
   await Z.p.screenshot({ path: 'shots4/10-resumos-barbeiro.png', fullPage: true });
+  await Z.p.getByLabel('Exportar o mês').click();
+  assert.doesNotMatch(await Z.p.innerText('body'), /Barbearia toda/);
+  csv = await baixarCsv(Z.p);
+  assert.match(csv, /Bia; Jr/); assert.doesNotMatch(csv, /Ana/);
 
   // Expediente: Zeca segue a casa; ao salvar o dele, aparece o botão para voltar ao da casa.
   await Z.p.goto(`${BASE}/expediente`); await Z.p.waitForTimeout(3000);

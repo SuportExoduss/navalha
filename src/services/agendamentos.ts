@@ -272,8 +272,15 @@ export function ouvirAgendamentosDaCasa(
   db: Firestore, barbeariaId: string, de: ISODate, ate: ISODate, cb: (l: Agendamento[]) => void, erro: (e: Error) => void,
   barbeiroId: string | null = null,
 ): Unsubscribe {
-  // Com barbeiroId, só os do barbeiro: é o que as regras deixam o barbeiro (não dono) ler.
-  const q = query(collection(db, 'agendamentos'), where('barbeariaId', '==', barbeariaId),
-    ...(barbeiroId ? [where('barbeiroId', '==', barbeiroId)] : []), where('data', '>=', de), where('data', '<=', ate));
-  return onSnapshot(q, s => cb(s.docs.map(d => d.data() as Agendamento)), erro);
+  return onSnapshot(consultaDaCasa(db, barbeariaId, de, ate, barbeiroId), s => cb(s.docs.map(d => d.data() as Agendamento)), erro);
 }
+
+/** Os mesmos agendamentos, lidos uma vez (exportar o mês). */
+export async function agendamentosDaCasa(db: Firestore, barbeariaId: string, de: ISODate, ate: ISODate, barbeiroId: string | null = null) {
+  return (await getDocs(consultaDaCasa(db, barbeariaId, de, ate, barbeiroId))).docs.map(d => d.data() as Agendamento);
+}
+
+// Com barbeiroId, só os do barbeiro: é o que as regras deixam o barbeiro (não dono) ler.
+const consultaDaCasa = (db: Firestore, barbeariaId: string, de: ISODate, ate: ISODate, barbeiroId: string | null) =>
+  query(collection(db, 'agendamentos'), where('barbeariaId', '==', barbeariaId),
+    ...(barbeiroId ? [where('barbeiroId', '==', barbeiroId)] : []), where('data', '>=', de), where('data', '<=', ate));
