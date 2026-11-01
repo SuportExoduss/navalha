@@ -13,11 +13,12 @@ firebase.initializeApp({
 });
 firebase.messaging();
 
-// Tocar no lembrete abre (ou traz para frente) a tela de agendamentos.
+// Tocar no lembrete abre (ou traz para frente) a tela da mensagem (`rota`, ex.: o resumo do mês) ou os agendamentos.
 self.addEventListener('notificationclick', evento => {
   evento.notification.close();
+  const rota = evento.notification.data?.FCM_MSG?.data?.rota || '/agendamentos';
   evento.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(janelas => {
     const aberta = janelas.find(j => j.url.startsWith(self.location.origin));
-    return aberta ? aberta.focus().then(j => j.navigate('/agendamentos')) : clients.openWindow('/agendamentos');
+    return aberta ? aberta.focus().then(j => j.navigate(rota)) : clients.openWindow(rota);
   }));
 });

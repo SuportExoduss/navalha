@@ -7,7 +7,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Aviso, Botao, Campo, Carregando, Cartao, Chip, Interruptor, Secao, Tela, Titulo } from '../components/ui';
 import { useMinhaBarbearia } from '../hooks/useMinhaBarbearia';
 import { db } from '../services/firebase';
-import { salvarExpedienteBarbeiro, salvarExpedienteCasa } from '../services/barbearias';
+import { salvarExpedienteBarbeiro, salvarExpedienteCasa, seguirHorarioDaCasa } from '../services/barbearias';
 import { criarFolga, ouvirFolgas, removerFolga } from '../services/agendamentos';
 import {
   NOMES_DIAS, dataLocal, formatarData, formatarHora, intervaloFolga, normalizarData, normalizarHora,
@@ -75,11 +75,17 @@ export default function ExpedienteTela() {
       <Text style={type.caption}>
         {daCasa
           ? 'Quando a barbearia abre. Nenhum barbeiro atende fora deste horário.'
-          : 'Seus dias e horários de trabalho. O cliente só vê horários dentro do expediente da casa.'}
+          : eu.segueCasa
+            ? 'Você segue o horário da casa. Mude aqui para ter o seu próprio horário.'
+            : 'Seus dias e horários de trabalho. O cliente só vê horários dentro do expediente da casa.'}
       </Text>
       {daCasa
         ? <EditorSemana key="casa" inicial={barbearia.expediente} salvar={e => salvarExpedienteCasa(db, barbearia.id, e)} />
-        : <EditorSemana key="meu" inicial={eu.expediente} salvar={e => salvarExpedienteBarbeiro(db, barbearia.id, uid, e)} />}
+        : <EditorSemana key={eu.segueCasa ? 'meu-casa' : 'meu'} inicial={eu.segueCasa ? barbearia.expediente : eu.expediente}
+            salvar={e => salvarExpedienteBarbeiro(db, barbearia.id, uid, e)} />}
+      {!daCasa && !eu.segueCasa
+        ? <Botao titulo="Usar o horário da casa" variante="secundario" onPress={() => seguirHorarioDaCasa(db, barbearia.id, uid).catch(() => {})} />
+        : null}
       <Folgas barbeariaId={barbearia.id} barbeiroId={uid} />
     </Tela>
   );

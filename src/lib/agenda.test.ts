@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   gerarHorarios, chavesOcupacao, paraMillis, formatarHora, agruparPorPeriodo,
-  primeiroHorarioDaCasa, formatarPreco, expedienteEfetivo, validarExpediente, proximosDias,
+  primeiroHorarioDaCasa, formatarPreco, expedienteEfetivo, expedienteDoBarbeiro, validarExpediente, proximosDias,
   intervaloFolga, rotuloDia, normalizarHora, cancelamentoGratis, somarDias, normalizarData, formatarData,
 } from './agenda';
 import type { Expediente } from '../types/models';
@@ -73,6 +73,13 @@ test('expediente do barbeiro é recortado pelo horário da casa, somando as paus
   assert.deepEqual(e[4], { abre: '09:00', fecha: '17:00', pausas: [{ inicio: '12:00', fim: '13:00' }, { inicio: '15:00', fim: '15:30' }] });
   assert.equal(e[5], undefined); // barbeiro folga na sexta
   assert.equal(e[6], undefined); // casa fechada no sábado
+});
+
+test('barbeiro que segue a casa usa o horário dela; quem mudou usa o próprio recortado', () => {
+  const casa: Expediente = { 4: { abre: '09:00', fecha: '19:00' }, 6: { abre: '08:00', fecha: '12:00' } };
+  const proprio: Expediente = { 4: { abre: '10:00', fecha: '20:00' } };
+  assert.deepEqual(expedienteDoBarbeiro(casa, { expediente: proprio, segueCasa: true }), casa);
+  assert.deepEqual(expedienteDoBarbeiro(casa, { expediente: proprio }), { 4: { abre: '10:00', fecha: '19:00' } });
 });
 
 test('horários respeitam o expediente efetivo', () => {

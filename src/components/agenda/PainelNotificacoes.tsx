@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { router } from 'expo-router';
 import { db } from '../../services/firebase';
 import { marcarLidas, ouvirNotificacoes } from '../../services/notificacoes';
 import { LembrarPelaNotificacao } from './LembrarNoWhatsapp';
@@ -66,8 +67,12 @@ export function PainelNotificacoes({ uid, vazio = VAZIO_CASA }: { uid: string; v
               <ScrollView contentContainerStyle={{ paddingHorizontal: space(4), paddingBottom: space(6), gap: space(2) }}>
                 {lista.map(n => {
                   const nova = novasAoAbrir.has(n.id);
+                  // Resumo do mês abre a tela de resumos naquele mês (id: resumo_AAAA-MM_casa[_uid]).
+                  const mes = n.tipo === 'resumo_mes' ? n.id.split('_')[1] : null;
+                  const Caixa = mes ? Pressable : View;
                   return (
-                    <View key={n.id} style={{ flexDirection: 'row', gap: space(3), padding: space(3), borderRadius: radius.card,
+                    <Caixa key={n.id} {...(mes ? { onPress: () => { setAberto(false); router.push({ pathname: '/resumos', params: { mes } }); },
+                      accessibilityRole: 'button' as const, accessibilityHint: 'Abre os resumos anteriores' } : {})} style={{ flexDirection: 'row', gap: space(3), padding: space(3), borderRadius: radius.card,
                       backgroundColor: nova ? colors.surfaceRaised : colors.surface, borderWidth: 1, borderColor: nova ? colors.accent : colors.border }}>
                       <Ionicons name={ICONE[n.tipo]} size={20} color={n.tipo === 'cancelado' ? colors.danger : colors.accent} style={{ marginTop: 2 }} />
                       <View style={{ flex: 1, gap: 2 }}>
@@ -78,8 +83,9 @@ export function PainelNotificacoes({ uid, vazio = VAZIO_CASA }: { uid: string; v
                         <Text style={[type.caption, { color: colors.text, lineHeight: 20 }]}>{n.corpo}</Text>
                         {n.tipo === 'agendado' && n.agendamentoId && n.barbeiroId === uid && (n.inicio ?? 0) > Date.now()
                           ? <View style={{ marginTop: space(2) }}><LembrarPelaNotificacao agendamentoId={n.agendamentoId} uid={uid} /></View> : null}
+                        {mes ? <Text style={[type.caption, { color: colors.accent, marginTop: space(1) }]}>Ver o resumo completo</Text> : null}
                       </View>
-                    </View>
+                    </Caixa>
                   );
                 })}
               </ScrollView>

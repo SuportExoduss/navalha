@@ -954,3 +954,21 @@ test('clube: listas: o cliente lista só os próprios clubes; a casa, os membros
   assert.equal(daCasa.size, 2);
   await assertFails(getDocs(query(collection(dbDe('estranho'), 'clubeMembros'), where('barbeariaId', '==', 'b1'))));
 });
+
+test('resumos do mês: só o Worker grava; o dono lê todos da casa; o barbeiro só o dele', async () => {
+  await env.withSecurityRulesDisabled(async ctx => {
+    const db = ctx.firestore();
+    await setDoc(doc(db, 'resumos/b1_2026-10_casa'), { barbeariaId: 'b1', mes: '2026-10', barbeiroId: 'casa', em: 1 });
+    await setDoc(doc(db, 'resumos/b1_2026-10_lucas'), { barbeariaId: 'b1', mes: '2026-10', barbeiroId: 'lucas', em: 1 });
+  });
+  const daCasa = query(collection(dbDe('dono'), 'resumos'), where('barbeariaId', '==', 'b1'), where('em', '>', 0), orderBy('em'));
+  assert.equal((await assertSucceeds(getDocs(daCasa))).size, 2);
+  const meus = query(collection(dbDe('lucas'), 'resumos'), where('barbeariaId', '==', 'b1'), where('barbeiroId', '==', 'lucas'), where('em', '>', 0), orderBy('em'));
+  assert.equal((await assertSucceeds(getDocs(meus))).size, 1);
+  await assertFails(getDocs(query(collection(dbDe('lucas'), 'resumos'), where('barbeariaId', '==', 'b1'))));
+  await assertFails(getDoc(doc(dbDe('lucas'), 'resumos/b1_2026-10_casa')));
+  await assertFails(getDoc(doc(dbDe('estranho'), 'resumos/b1_2026-10_casa')));
+  await assertFails(getDocs(query(collection(dbDe('estranho'), 'resumos'), where('barbeariaId', '==', 'b1'), where('barbeiroId', '==', 'estranho'))));
+  await assertFails(setDoc(doc(dbDe('dono'), 'resumos/b1_2026-11_casa'), { barbeariaId: 'b1', barbeiroId: 'casa', em: 2 }));
+  await assertFails(updateDoc(doc(dbDe('lucas'), 'resumos/b1_2026-10_lucas'), { faturadoCentavos: 1 }));
+});

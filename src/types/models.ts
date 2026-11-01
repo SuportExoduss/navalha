@@ -123,8 +123,10 @@ export interface Barbeiro {
   /** Capa do barbeiro: aparece ao fundo na escolha do barbeiro. */
   bannerUrl?: string;
   especialidades: string[];
-  /** Expediente próprio dentro do horário da casa. */
+  /** Expediente próprio dentro do horário da casa (vale só quando não segue a casa). */
   expediente: Expediente;
+  /** true: usa o horário da casa e acompanha as mudanças do dono, até o barbeiro mudar o próprio. */
+  segueCasa?: boolean;
   ativo: boolean;
   // Comissão não fica aqui: este documento é público (leitura aberta). Na Fase 4 vai para um doc só do dono.
 }

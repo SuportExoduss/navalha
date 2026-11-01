@@ -12,6 +12,18 @@ Notifications.setNotificationHandler({
 
 export type ResultadoPush = 'ativo' | 'negado' | 'indisponivel';
 
+/** Toque na notificação: abre a tela que o Worker mandou em `data.rota` (ex.: o resumo do mês). Inclui o toque que abriu o app. */
+export function ouvirToquePush(abrir: (rota: string) => void): () => void {
+  const rotaDe = (r: Notifications.NotificationResponse | null) => {
+    const c = r?.notification.request;
+    const rota = (c?.content.data?.rota ?? (c?.trigger as { remoteMessage?: { data?: Record<string, string> } } | null)?.remoteMessage?.data?.rota) as string | undefined;
+    if (rota?.startsWith('/')) abrir(rota);
+  };
+  rotaDe(Notifications.getLastNotificationResponse());
+  const sub = Notifications.addNotificationResponseReceivedListener(rotaDe);
+  return () => sub.remove();
+}
+
 export async function registrarPush(uid: string, tokenAtual?: string): Promise<ResultadoPush> {
   if (!Device.isDevice) return 'indisponivel'; // emulador não recebe push
   if (Platform.OS === 'android') {

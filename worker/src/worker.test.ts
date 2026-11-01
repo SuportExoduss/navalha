@@ -673,3 +673,40 @@ test('clube: horário fixo reserva o ciclo pago com a trava, pula folga e ocupad
   assert.equal(fixos().length, 0);
   assert.equal('reservadoPara' in docs.get('clubeMembros/b1_ana')!, false);
 });
+
+test('resumo do mês: salva o geral e o de cada barbeiro, avisa cada um e não repete', async () => {
+  const { resumoDoMes } = await import('./avisos');
+  const agora = Date.UTC(2026, 10, 1, 12); // 1º/nov, 9h em Brasília
+  const docs = new Map<string, Record<string, unknown>>([
+    ['notificacoes/resumo_2026-10_b1', { lida: true }], // do formato antigo: não volta a "não lida"
+  ]);
+  const ag = (barbeiroId: string, barbeiroNome: string, precoCentavos: number) =>
+    ({ dados: { barbeiroId, barbeiroNome, precoCentavos, status: 'concluido', servicoNome: 'Corte', origem: 'app' } });
+  const db = {
+    query: async (sq: { from: { collectionId: string }[] }, pai?: string) => {
+      const col = sq.from[0].collectionId;
+      if (col === 'barbearias') return [{ id: 'b1', dados: { donoUid: 'dono' } }];
+      if (col === 'barbeiros') return pai === 'barbearias/b1' ? [{ id: 'dono', dados: { nome: 'Dono' } }, { id: 'zeca', dados: { nome: 'José', apelido: 'Zeca' } }] : [];
+      return [ag('dono', 'Dono', 5000), ag('zeca', 'Zeca', 3000)];
+    },
+    varios: async (cs: string[]) => new Map(cs.filter(c => docs.has(c)).map(c => [c, docs.get(c)!])),
+    escrever: async (l: { caminho: string; campos: Record<string, unknown> }[]) => { for (const w of l) docs.set(w.caminho, w.campos); },
+  } as never;
+  await resumoDoMes(db, 't', 'p', agora);
+  assert.equal(docs.get('resumos/b1_2026-10_casa')!.faturadoCentavos, 8000);
+  assert.equal(docs.get('resumos/b1_2026-10_zeca')!.faturadoCentavos, 3000);
+  assert.equal(docs.get('resumos/b1_2026-10_zeca')!.nome, 'Zeca');
+  assert.equal(docs.get('notificacoes/resumo_2026-10_b1')!.lida, true);
+  assert.equal(docs.get('notificacoes/resumo_2026-10_b1_zeca')!.paraUid, 'zeca');
+  assert.match(docs.get('notificacoes/resumo_2026-10_b1_zeca')!.titulo as string, /^Seu resumo de outubro/);
+  assert.equal(docs.has('notificacoes/resumo_2026-10_b1_dono'), false); // o dono já recebe o geral
+  const antes = docs.size;
+  await resumoDoMes(db, 't', 'p', agora);
+  assert.equal(docs.size, antes);
+});
+
+test('push com rota abre a tela certa no toque', () => {
+  const m = mensagemFcm({ token: 't', title: 'a', body: 'b', agendamentoId: 'x', link: 'https://navalha.web.app/resumos?mes=2026-10', rota: '/resumos?mes=2026-10' });
+  assert.equal(m.message.data.rota, '/resumos?mes=2026-10');
+  assert.equal('rota' in mensagemFcm({ token: 't', title: 'a', body: 'b', agendamentoId: 'x' }).message.data, false);
+});

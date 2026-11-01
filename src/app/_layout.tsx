@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Text, View } from 'react-native';
-import { Redirect, Stack, usePathname, type ErrorBoundaryProps } from 'expo-router';
+import { Redirect, Stack, router, usePathname, type ErrorBoundaryProps } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../auth/AuthProvider';
 import { TemaProvider } from '../components/TemaProvider';
@@ -9,6 +9,7 @@ import { Abertura } from '../components/Abertura';
 import * as SplashScreen from 'expo-splash-screen';
 import { Botao, Titulo } from '../components/ui';
 import { capturarErrosGlobais, registrarErro } from '../services/erros';
+import { ouvirToquePush } from '../services/push';
 import { colors, space, type } from '../theme';
 
 capturarErrosGlobais();
@@ -24,6 +25,7 @@ export default function RootLayout() {
             <AvisoApp />
             <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />
             <PortaoIdade />
+            <ToquePush />
             <Abertura />
           </View>
         </AuthProvider>
@@ -44,6 +46,14 @@ function PortaoIdade() {
   const caminho = usePathname();
   if (!user || !perfil || perfil.maiorDeIdadeEm || SEM_IDADE.includes(caminho)) return null;
   return <Redirect href="/idade" />;
+}
+
+/** Toque na notificação (Android): abre a tela dela depois que o perfil carregou, para a entrada não passar por cima. */
+function ToquePush() {
+  const { perfil } = useAuth();
+  const pronto = !!perfil;
+  useEffect(() => (pronto ? ouvirToquePush(rota => router.push(rota as never)) : undefined), [pronto]);
+  return null;
 }
 
 /** Uma tela quebrou: em vez de tela branca, explica, registra o erro e deixa tentar de novo. */

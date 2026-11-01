@@ -2,14 +2,14 @@
 // Sem Cloud Functions: o app avisa o Worker logo depois de reservar/cancelar; o Worker confere o agendamento
 // no Firestore (nunca confia no que o app manda), grava a notificação com id fixo (sem duplicar) e manda o push.
 import {
-  calcularResumoMes, ehDiaDoResumo, idAviso, mesAnterior, textoAviso, textoPedidoAvaliacao, textoResumoMes,
+  ehDiaDoResumo, idAviso, mesAnterior, resumosDoMes, textoAviso, textoPedidoAvaliacao, textoResumoMes,
 } from '../../src/lib/notificacoes';
 import type { Firestore } from './firestore';
 import { mensagemFcm } from './util';
 
 const RECENTE_MS = 15 * 60_000;
 
-export async function enviarPush(projectId: string, tokenSA: string, m: { token: string; title: string; body: string; agendamentoId: string; link: string }) {
+export async function enviarPush(projectId: string, tokenSA: string, m: { token: string; title: string; body: string; agendamentoId: string; link: string; rota?: string }) {
   const r = await fetch(`https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenSA}` },
     body: JSON.stringify(mensagemFcm(m)),
@@ -66,35 +66,48 @@ export async function avisarAgendamento(db: Firestore, tokenSA: string, projectI
 }
 
 /**
- * Cron, no dia 1 (Brasília): resumo do mês anterior para o dono de cada casa. Id fixo por casa e mês, então cada
- * execução do dia faz só as que faltam. ponytail: 5 casas por execução (limite de 50 chamadas do Worker grátis,
- * dividido com lembretes e vencimentos) = até 120 casas no dia 1; acima disso, Workers pago ou fila.
+ * Cron, nos dias 1 a 3 (Brasília): salva os resumos do mês anterior de cada casa (o geral e um por barbeiro, em
+ * `resumos`) e avisa o dono e cada barbeiro. Ids fixos, então cada execução faz só as casas que faltam.
+ * ponytail: 3 casas por execução (limite de 50 chamadas do Worker grátis, dividido com lembretes e vencimentos);
+ * acima de ~200 casas, Workers pago ou fila.
  */
 export async function resumoDoMes(db: Firestore, tokenSA: string, projectId: string, agora = Date.now()) {
   if (!ehDiaDoResumo(agora)) return;
   const mes = mesAnterior(agora);
   const casas = await db.query({ from: [{ collectionId: 'barbearias' }], limit: 300 });
-  const idDe = (bid: string) => `resumo_${mes.chave}_${bid}`;
-  const feitos = await db.varios(casas.map(c => `notificacoes/${idDe(c.id)}`));
-  const pendentes = casas.filter(c => !feitos.has(`notificacoes/${idDe(c.id)}`) && c.dados.donoUid).slice(0, 5);
-  if (!pendentes.length) return;
-  const perfis = await db.varios(pendentes.map(c => `users/${c.dados.donoUid as string}`));
+  const feitos = await db.varios(casas.map(c => `resumos/${c.id}_${mes.chave}_casa`));
+  const pendentes = casas.filter(c => !feitos.has(`resumos/${c.id}_${mes.chave}_casa`) && c.dados.donoUid).slice(0, 3);
+  const rota = `/resumos?mes=${mes.chave}`;
   for (const c of pendentes) {
-    const ags = await db.query({
-      from: [{ collectionId: 'agendamentos' }],
-      where: { compositeFilter: { op: 'AND', filters: [
-        { fieldFilter: { field: { fieldPath: 'barbeariaId' }, op: 'EQUAL', value: { stringValue: c.id } } },
-        { fieldFilter: { field: { fieldPath: 'data' }, op: 'GREATER_THAN_OR_EQUAL', value: { stringValue: mes.de } } },
-        { fieldFilter: { field: { fieldPath: 'data' }, op: 'LESS_THAN_OR_EQUAL', value: { stringValue: mes.ate } } },
-      ] } },
-    });
-    const t = textoResumoMes(mes.chave, calcularResumoMes(ags.map(a => a.dados) as never));
     const dono = c.dados.donoUid as string;
-    const n = { id: idDe(c.id), paraUid: dono, barbeariaId: c.id, tipo: 'resumo_mes', ...t, em: agora, lida: false };
-    await db.escrever([{ caminho: `notificacoes/${n.id}`, criar: true, campos: n }]);
-    const token = perfis.get(`users/${dono}`)?.pushToken as string | undefined;
-    if (token) {
-      await enviarPush(projectId, tokenSA, { token, title: t.titulo, body: t.corpo.split('\n')[0], agendamentoId: n.id, link: 'https://navalha.web.app/agenda' });
+    const [ags, equipe] = await Promise.all([
+      db.query({
+        from: [{ collectionId: 'agendamentos' }],
+        where: { compositeFilter: { op: 'AND', filters: [
+          { fieldFilter: { field: { fieldPath: 'barbeariaId' }, op: 'EQUAL', value: { stringValue: c.id } } },
+          { fieldFilter: { field: { fieldPath: 'data' }, op: 'GREATER_THAN_OR_EQUAL', value: { stringValue: mes.de } } },
+          { fieldFilter: { field: { fieldPath: 'data' }, op: 'LESS_THAN_OR_EQUAL', value: { stringValue: mes.ate } } },
+        ] } },
+      }),
+      db.query({ from: [{ collectionId: 'barbeiros' }] }, `barbearias/${c.id}`),
+    ]);
+    const resumos = resumosDoMes(c.id, mes.chave, agora, ags.map(a => a.dados) as never,
+      equipe.map(b => ({ uid: b.id, nome: (b.dados.apelido as string) || (b.dados.nome as string) || 'Barbeiro' })));
+    // O dono recebe o geral; cada barbeiro (menos o dono) recebe o dele.
+    const avisos = resumos.flatMap(r => r.barbeiroId === 'casa'
+      ? [{ id: `resumo_${mes.chave}_${c.id}`, paraUid: dono, ...textoResumoMes(mes.chave, r) }]
+      : r.barbeiroId === dono ? [] : [{ id: `resumo_${mes.chave}_${c.id}_${r.barbeiroId}`, paraUid: r.barbeiroId, ...textoResumoMes(mes.chave, r, true) }]);
+    // Notificação que já existe (ex.: a do formato antigo) não é regravada, para não voltar a "não lida".
+    const lidos = await db.varios([...avisos.map(n => `notificacoes/${n.id}`), ...avisos.map(n => `users/${n.paraUid}`)]);
+    const novos = avisos.filter(n => !lidos.has(`notificacoes/${n.id}`));
+    await db.escrever([
+      ...resumos.map(({ id, ...campos }) => ({ caminho: `resumos/${id}`, criar: true, campos })),
+      ...novos.map(n => ({ caminho: `notificacoes/${n.id}`, criar: true,
+        campos: { ...n, barbeariaId: c.id, tipo: 'resumo_mes', em: agora, lida: false } })),
+    ]);
+    for (const n of novos) {
+      const token = lidos.get(`users/${n.paraUid}`)?.pushToken as string | undefined;
+      if (token) await enviarPush(projectId, tokenSA, { token, title: n.titulo, body: n.corpo.split('\n')[0], agendamentoId: n.id, link: `https://navalha.web.app${rota}`, rota });
     }
   }
 }

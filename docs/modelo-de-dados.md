@@ -18,6 +18,7 @@ Tipos completos em `src/types/models.ts`; permissões em `firestore.rules`.
 | `ocupacao/{barbeiro_data_HHMM}` | junto com o agendamento | 1 | **Trava contra horário duplo** (abaixo) |
 | `eventos/{id}` | app | 1 | Métricas do piloto: agendou, cancelou, faltou, tempo até agendar |
 | `notificacoes/{id}` | Worker | 1 | Sino na Agenda (casa) e em Agendamentos (cliente): marcado e cancelado avisam os outros lados (cliente, barbeiro, dono), nunca quem fez (id `agendamento_tipo_uid`, nunca duplica) e resumo do mês no dia 1 (`resumo_AAAA-MM_casa`). O destinatário só lê e marca como lida |
+| `resumos/{casa}_{AAAA-MM}_{casa\|uid}` | Worker | 1 | Fechamento do mês (dias 1 a 3): o geral (`casa`) e um por barbeiro. O dono lê todos da casa; o barbeiro só o dele. No celular fica guardado no AsyncStorage e só pede ao servidor os com `em` maior que o último guardado; na web, sempre do servidor |
 | `barbearias/{id}/clubePlanos/{id}` | dono | clube | Planos do clube de assinatura (`docs/clube.md`): nome, preço informativo, serviços cobertos, cortes por mês (sem o campo = ilimitado), pausado/ativo. Leitura aberta |
 | `clubeMembros/{barbeariaId_uid}` | cliente (pede, sai, horário fixo), equipe ativa (aceita, recusa, pagamento, encerra), Worker (vencido, lembretes, `reservadoAte`) | clube | Um por cliente por casa; ciclo de 28 a 31 dias (`src/lib/clube.ts`). Lê o próprio cliente e a equipe ativa |
 | `clubeMembros/{id}/pagamentos/{id}` | equipe ativa | clube | "Recebi o pagamento" (data, quem, valor, novo vencimento). Ninguém altera nem apaga |

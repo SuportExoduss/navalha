@@ -71,7 +71,8 @@ const H = 3_600_000;
 const brasilia = (agora: Millis) => new Date(agora - 3 * H);
 
 /** Dia 1 no horário de Brasília: o cron do Worker manda o resumo do mês anterior. */
-export const ehDiaDoResumo = (agora: Millis) => brasilia(agora).getUTCDate() === 1;
+/** Dias 1 a 3 (Brasília): o resumo sai no dia 1; os dias seguintes só pegam casas que ficaram para trás. */
+export const ehDiaDoResumo = (agora: Millis) => brasilia(agora).getUTCDate() <= 3;
 
 /** Mês anterior ao de `agora` (Brasília) como 'YYYY-MM', e o primeiro e o último dia em ISODate. */
 export function mesAnterior(agora: Millis) {
@@ -84,6 +85,8 @@ export function mesAnterior(agora: Millis) {
 }
 
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+/** '2026-10' → 'outubro de 2026'. */
+export const nomeDoMes = (chave: string) => `${MESES[Number(chave.slice(5, 7)) - 1]} de ${chave.slice(0, 4)}`;
 
 export interface ResumoMes {
   agendamentos: number; concluidos: number; faltas: number; cancelados: number;
@@ -116,18 +119,38 @@ export function calcularResumoMes(ags: Pick<Agendamento, 'status' | 'precoCentav
   };
 }
 
-/** Texto do resumo (push mostra o começo; o painel de notificações mostra tudo). */
-export function textoResumoMes(chaveMes: string, r: ResumoMes) {
-  const [ano, mm] = chaveMes.split('-');
-  const nomeMes = `${MESES[Number(mm) - 1]} de ${ano}`;
+/** Resumo salvo no servidor (`resumos/{casa}_{AAAA-MM}_{casa|uid}`): um da casa toda e um de cada barbeiro. */
+export interface ResumoSalvo extends ResumoMes {
+  id: string; barbeariaId: string; mes: string;
+  /** 'casa' no geral; uid no de cada barbeiro (o barbeiro só lê o dele). */
+  barbeiroId: string; nome: string; em: Millis;
+}
+
+/** Os resumos do mês de uma casa: o geral e um por barbeiro (da equipe ou que atendeu no mês). */
+export function resumosDoMes(
+  barbeariaId: string, mes: string, em: Millis,
+  ags: (Parameters<typeof calcularResumoMes>[0][number] & Pick<Agendamento, 'barbeiroId'>)[],
+  equipe: { uid: string; nome: string }[],
+): ResumoSalvo[] {
+  const nomes = new Map(equipe.map(b => [b.uid, b.nome]));
+  for (const a of ags) if (!nomes.has(a.barbeiroId)) nomes.set(a.barbeiroId, a.barbeiroNome || 'Barbeiro');
+  const doc = (barbeiroId: string, nome: string, lista: typeof ags): ResumoSalvo =>
+    ({ id: `${barbeariaId}_${mes}_${barbeiroId}`, barbeariaId, mes, barbeiroId, nome, em, ...calcularResumoMes(lista) });
+  return [doc('casa', '', ags), ...[...nomes].map(([uid, nome]) => doc(uid, nome, ags.filter(a => a.barbeiroId === uid)))];
+}
+
+/** Texto do resumo (push mostra o começo; o painel de notificações mostra tudo). `seu`: o do próprio barbeiro. */
+export function textoResumoMes(chaveMes: string, r: ResumoMes, seu = false) {
+  const nomeMes = nomeDoMes(chaveMes);
+  const titulo = `${seu ? 'Seu resumo' : 'Resumo'} de ${nomeMes}`;
   if (!r.agendamentos && !r.cancelados) {
-    return { titulo: `Resumo de ${nomeMes}`, corpo: `Nenhum agendamento em ${nomeMes}.` };
+    return { titulo, corpo: `Nenhum agendamento em ${nomeMes}.` };
   }
   const linhas = [
     `Faturado: ${formatarPreco(r.faturadoCentavos)} em ${r.concluidos} ${r.concluidos === 1 ? 'atendimento' : 'atendimentos'}.`,
     `${r.agendamentos} ${r.agendamentos === 1 ? 'agendamento' : 'agendamentos'} (${r.pelaApp} pelo app), ${r.faltas} ${r.faltas === 1 ? 'falta' : 'faltas'} e ${r.cancelados} ${r.cancelados === 1 ? 'cancelamento' : 'cancelamentos'}.`,
     ...(r.maisPedido ? [`Mais pedido: ${r.maisPedido.nome} (${r.maisPedido.vezes}×).`] : []),
-    ...r.porBarbeiro.map(b => `${b.nome}: ${b.concluidos} ${b.concluidos === 1 ? 'atendimento' : 'atendimentos'}, ${formatarPreco(b.faturadoCentavos)}.`),
+    ...(seu ? [] : r.porBarbeiro).map(b => `${b.nome}: ${b.concluidos} ${b.concluidos === 1 ? 'atendimento' : 'atendimentos'}, ${formatarPreco(b.faturadoCentavos)}.`),
   ];
-  return { titulo: `Resumo de ${nomeMes}`, corpo: linhas.join('\n') };
+  return { titulo, corpo: linhas.join('\n') };
 }

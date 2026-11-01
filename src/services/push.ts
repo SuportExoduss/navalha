@@ -7,6 +7,8 @@ import { app, db } from './firebase';
 import { atualizarPerfil } from './usuarios';
 
 export type ResultadoPush = 'ativo' | 'negado' | 'indisponivel';
+/** Na web o toque é tratado pelo service worker (abre o link da mensagem). */
+export function ouvirToquePush(_abrir: (rota: string) => void): () => void { return () => {}; }
 /** "pedir" = dá para ativar com um toque; "instalar" = iPhone fora da Tela de Início (lá o push não existe). */
 export type EstadoLembretesWeb = 'ativo' | 'pedir' | 'negado' | 'instalar' | 'indisponivel';
 

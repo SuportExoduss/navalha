@@ -12,6 +12,7 @@ node tests/e2e/sprint3-agenda.cjs                    # 4. terminal 3: dois celul
 node tests/e2e/sprint4-cliente.cjs                   #    busca com filtros, barbeiro → corte → horário, concluído, painel, perfil
 npx tsx tests/e2e/clube.cts                          #    clube: usar ao agendar, horário fixo e sair (rotas do Worker pelo código real)
 node tests/e2e/criar-barbearia.cjs                  #    dono cria a casa: popup dos 60 dias, botão gira até o servidor confirmar, uma casa só
+node tests/e2e/resumos.cjs                          #    resumos anteriores (geral, por barbeiro, só o do barbeiro), notificação abre o mês, expediente segue a casa
 ```
 
 Para o build, use `EXPO_NO_DOTENV=1 npx expo export --platform web --output-dir dist-e2e` e `WEB_DIR=dist-e2e` no servidor:

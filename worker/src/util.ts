@@ -26,12 +26,13 @@ export function mensagemLembrete(a: { servicoNome: string; inicio: number; barbe
 }
 
 /** Corpo do FCM HTTP v1: `notification` aparece sozinho com o app fechado; o canal é o que o app cria. */
-export function mensagemFcm(m: { token: string; title: string; body: string; agendamentoId: string; link?: string }) {
+export function mensagemFcm(m: { token: string; title: string; body: string; agendamentoId: string; link?: string; rota?: string }) {
   return {
     message: {
       token: m.token,
       notification: { title: m.title, body: m.body },
-      data: { agendamentoId: m.agendamentoId },
+      // `rota`: a tela que o app abre no toque (ex.: o resumo do mês).
+      data: { agendamentoId: m.agendamentoId, ...(m.rota ? { rota: m.rota } : {}) },
       android: { priority: 'HIGH', notification: { channel_id: 'lembretes' } },
       // Na web (e no iPhone pela Tela de Início) o toque abre os agendamentos.
       webpush: { fcm_options: { link: m.link ?? 'https://navalha.web.app/agendamentos' } },

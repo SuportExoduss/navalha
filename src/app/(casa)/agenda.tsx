@@ -17,7 +17,7 @@ import { useMinhaBarbearia } from '../../hooks/useMinhaBarbearia';
 import { db } from '../../services/firebase';
 import { cancelar, concluir, definirStatus, iniciarCorte, ouvirAgendaDoDia, registrarEvento } from '../../services/agendamentos';
 import { corteAberto, emAtendimento, podeIniciar } from '../../lib/atendimento';
-import { dataLocal, expedienteEfetivo, diaDaSemana, formatarHora, formatarPreco, proximosDias, somarDias } from '../../lib/agenda';
+import { dataLocal, expedienteDoBarbeiro, diaDaSemana, formatarHora, formatarPreco, proximosDias, somarDias } from '../../lib/agenda';
 import { colors, radius, space, type } from '../../theme';
 import type { Agendamento, ISODate } from '../../types/models';
 import { situacaoAssinatura } from '../../lib/planos';
@@ -62,7 +62,7 @@ export default function AgendaBarbeiro() {
   const barbeiroDoEncaixe = equipe.find(e => e.uid === (filtro ?? uid)) ?? eu;
   const visiveis = (lista ?? []).filter(a => !filtro || a.barbeiroId === filtro);
   const nomeDe = (id: string) => { const e = equipe.find(x => x.uid === id); return e ? e.apelido || e.nome.split(' ')[0] : ''; };
-  const expDia = barbeiroDoEncaixe ? expedienteEfetivo(barbearia.expediente, barbeiroDoEncaixe.expediente)[diaDaSemana(dia)] : undefined;
+  const expDia = barbeiroDoEncaixe ? expedienteDoBarbeiro(barbearia.expediente, barbeiroDoEncaixe)[diaDaSemana(dia)] : undefined;
   // Mesma conta do painel (ativos + concluídos): o total do dia não encolhe à medida que o barbeiro atende.
   const confirmados = visiveis.filter(a => ATIVOS.includes(a.status) || a.status === 'concluido');
   const total = confirmados.reduce((s, a) => s + a.precoCentavos, 0);

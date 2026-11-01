@@ -6,7 +6,7 @@ import {
   where, updateDoc, writeBatch, type Firestore, type Unsubscribe,
 } from 'firebase/firestore';
 import {
-  chavesOcupacao, dataLocal, expedienteEfetivo, gerarHorarios, paraMillis, somarDias, type Intervalo,
+  chavesOcupacao, dataLocal, expedienteDoBarbeiro, gerarHorarios, paraMillis, somarDias, type Intervalo,
 } from '../lib/agenda';
 import type {
   Agendamento, Barbearia, Barbeiro, Bloqueio, EventoUso, ISODate, Millis, Servico, StatusAgendamento,
@@ -159,7 +159,7 @@ export async function horariosLivres(
   ]);
   return gerarHorarios({
     data: p.data,
-    expediente: expedienteEfetivo(p.barbearia.expediente, p.barbeiro.expediente),
+    expediente: expedienteDoBarbeiro(p.barbearia.expediente, p.barbeiro),
     duracaoMin: p.duracaoMin,
     passoMin: p.barbearia.passoMin,
     ocupados: [...ocupados, ...folgas],
@@ -185,7 +185,7 @@ export function ouvirHorariosLivres(
     if (!ativo) return;
     parar = onSnapshot(consultaOcupacao(db, p.barbeiro.uid, p.data), s => cb(gerarHorarios({
       data: p.data,
-      expediente: expedienteEfetivo(p.barbearia.expediente, p.barbeiro.expediente),
+      expediente: expedienteDoBarbeiro(p.barbearia.expediente, p.barbeiro),
       duracaoMin: p.duracaoMin,
       passoMin: p.barbearia.passoMin,
       ocupados: [...blocosDe(s.docs.map(d => d.id), p.barbearia.passoMin), ...folgas],

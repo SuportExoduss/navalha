@@ -168,6 +168,11 @@ function deTrechos(trechos: [number, number][]): DiaExpediente | undefined {
  * Expediente que vale para o barbeiro: o dele, recortado pelo horário da casa.
  * Dia fechado na casa ou no barbeiro = fechado; as pausas de ambos valem.
  */
+/** Quem segue a casa usa o horário dela (e acompanha as mudanças do dono); quem mudou o próprio usa o dele recortado. */
+export function expedienteDoBarbeiro(casa: Expediente, b: { expediente: Expediente; segueCasa?: boolean }): Expediente {
+  return b.segueCasa ? casa : expedienteEfetivo(casa, b.expediente);
+}
+
 export function expedienteEfetivo(casa: Expediente, barbeiro: Expediente): Expediente {
   const r: Expediente = {};
   for (let d = 0; d < 7; d++) {

@@ -292,6 +292,14 @@ service cloud.firestore {
       allow create, delete: if false;
     }
 
+    // ---------- Resumos do mês (o geral e um por barbeiro) ----------
+    // Só o Worker grava. O dono lê todos da casa; o barbeiro, só o dele.
+    match /resumos/{id} {
+      allow read: if ehDono(resource.data.barbeariaId)
+        || (resource.data.barbeiroId == eu() && ehBarbeiro(resource.data.barbeariaId));
+      allow write: if false;
+    }
+
     // ---------- Convites (código curto, coleção raiz para o barbeiro achar a casa) ----------
     match /convites/{codigo} {
       allow get: if logado();

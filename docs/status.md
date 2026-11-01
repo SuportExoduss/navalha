@@ -68,6 +68,8 @@ Requisitos da Google Play: `docs/publicar-google-play.md`. Pacote definitivo `co
 - [x] ~~Foto no "Concluído"~~ — retirada em 25/out (decisão do dono); o barbeiro só conclui
 - [x] Resumo da casa (27/out): filtros Hoje, Semana (segunda a domingo) e Mês (dia 1 até hoje), com agendamentos, faturado, a receber, faltas e corte mais pedido, em tempo real (uma escuta)
 - [x] Resumo por pessoa e por dia (01/nov): o barbeiro vê só os próprios agendamentos ("Seu resumo"); o dono vê a casa toda e filtra por barbeiro; filtro Calendário (um dia qualquer, mês a mês) ao lado de Hoje/Semana/Mês
+- [x] Resumos anteriores (01/nov): abaixo do resumo da casa, a lista dos meses fechados (geral e filtro por barbeiro; o barbeiro vê só os dele), salvos no servidor pelo Worker nos dias 1 a 3 e guardados no celular; a notificação do resumo (sino e push) abre o mês; cada barbeiro recebe o próprio resumo
+- [x] Expediente do barbeiro acompanha o da casa até ele mudar (botão "Usar o horário da casa"); barbeiro novo ganha uma cópia do cardápio do dono ao entrar
 - [x] Eventos de uso (viu barbearia, agendou, cancelou, faltou, concluiu). ~~Place ID do Google~~ saiu em 22/out
 - [x] Corrigido: barbeiro não conseguia atualizar o resumo do cardápio da casa (regra de segurança)
 - [x] Testes: 26 de lógica, 22 de regras, 5 do Worker, typecheck e 2 roteiros no navegador (tests/e2e)
@@ -299,5 +301,5 @@ Para isso, nesta ordem:
 
 ## Próximo no roadmap: Fase 2 — Piloto fechado (4/jan – 7/fev 2027)
 Teste fechado: 14 testadores conseguidos em 26/out; contar 14 dias seguidos com eles no teste fechado antes de pedir a produção. Onboarding presencial das barbearias,
-correções por nova versão no Play (sem EAS Update; subir `versionCode` a cada AAB — hoje 10 (0.4.6) em `android/app/build.gradle`; no Play: 10 (0.4.6) no teste interno e no fechado desde 01/nov). Ela leva o clube completo, a revisão de 26/out e as correções de 27/out (cadastro da casa sem voltar ao formulário, WhatsApp novo nos horários marcados, puxar para atualizar, dados em tempo real na busca, na casa e no resumo, salvar com confirmação do servidor, convite revisado e a bateria conferida pelo app; tem código nativo novo).
+correções por nova versão no Play (sem EAS Update; subir `versionCode` a cada AAB — hoje 11 (0.4.7) em `android/app/build.gradle`, AAB a gerar; no Play: 10 (0.4.6) no teste interno e no fechado desde 01/nov). Ela leva o clube completo, a revisão de 26/out e as correções de 27/out (cadastro da casa sem voltar ao formulário, WhatsApp novo nos horários marcados, puxar para atualizar, dados em tempo real na busca, na casa e no resumo, salvar com confirmação do servidor, convite revisado e a bateria conferida pelo app; tem código nativo novo).
 Depois do piloto: publicação aberta no Google Play. As Fases 3 a 5 estão fora do plano por enquanto (decisão do dono, 20/out/2026).

@@ -224,7 +224,7 @@ export async function criarBarbearia(
   const barbeiro: Barbeiro = {
     uid: dono.uid, barbeariaId: ref.id, nome: dono.nome,
     ...(dono.fotoUrl ? { fotoUrl: dono.fotoUrl } : {}),
-    especialidades: [], expediente: EXPEDIENTE_PADRAO, ativo: true,
+    especialidades: [], expediente: EXPEDIENTE_PADRAO, segueCasa: true, ativo: true,
   };
   const batch = writeBatch(db);
   batch.set(ref, b);
@@ -302,7 +302,7 @@ export async function aceitarConvite(db: Firestore, codigoDigitado: string, eu: 
   batch.update(doc(db, 'convites', codigo), { usadoPor: eu.uid });
   batch.set(doc(db, 'barbearias', c.barbeariaId, 'barbeiros', eu.uid), {
     uid: eu.uid, barbeariaId: c.barbeariaId, nome: eu.nome, ...(eu.fotoUrl ? { fotoUrl: eu.fotoUrl } : {}),
-    especialidades: [], expediente: EXPEDIENTE_PADRAO, ativo: true, conviteCodigo: codigo,
+    especialidades: [], expediente: EXPEDIENTE_PADRAO, segueCasa: true, ativo: true, conviteCodigo: codigo,
   });
   batch.update(doc(db, 'users', eu.uid), { barbearias: arrayUnion(c.barbeariaId) });
   // Contador de ativos no mesmo lote: as regras recusam se o plano da casa já está cheio.
@@ -315,7 +315,21 @@ export async function aceitarConvite(db: Firestore, codigoDigitado: string, eu: 
   });
   // O dono vê o WhatsApp do barbeiro na ficha desde o primeiro dia (antes só depois de salvar o Perfil de novo).
   if (eu.telefone) await telefoneNaEquipe(db, [c.barbeariaId], eu.uid, eu.telefone);
+  // Cardápio: começa com uma cópia dos cortes do dono (fotos, preço e duração); depois o barbeiro ajusta o dele.
+  // Falhar aqui não desfaz a entrada na equipe: ele monta o cardápio na mão.
+  await copiarCardapio(db, c.barbeariaId, c.criadoPor, eu.uid).catch(() => {});
   return c.barbeariaId;
+}
+
+export async function copiarCardapio(db: Firestore, barbeariaId: string, de: string, para: string) {
+  const doDono = (await listarServicos(db, barbeariaId)).filter(s => s.barbeiroId === de);
+  if (!doDono.length) return;
+  const batch = writeBatch(db);
+  for (const s of doDono) {
+    const id = novoIdServico(db, barbeariaId);
+    batch.set(doc(db, 'barbearias', barbeariaId, 'servicos', id), { ...s, id, barbeiroId: para });
+  }
+  await batch.commit();
 }
 
 /** Firestore não aceita `undefined`: dia fechado simplesmente não entra no mapa. */
@@ -336,7 +350,13 @@ export async function salvarExpedienteCasa(db: Firestore, barbeariaId: string, e
 }
 
 export async function salvarExpedienteBarbeiro(db: Firestore, barbeariaId: string, uid: string, e: Expediente) {
-  await updateDoc(doc(db, 'barbearias', barbeariaId, 'barbeiros', uid), { expediente: limparExpediente(e) });
+  await updateDoc(doc(db, 'barbearias', barbeariaId, 'barbeiros', uid), { expediente: limparExpediente(e), segueCasa: false });
+  casaMudou(barbeariaId);
+}
+
+/** Volta a usar o horário da casa (e a acompanhar as mudanças do dono). */
+export async function seguirHorarioDaCasa(db: Firestore, barbeariaId: string, uid: string) {
+  await updateDoc(doc(db, 'barbearias', barbeariaId, 'barbeiros', uid), { segueCasa: true });
   casaMudou(barbeariaId);
 }
 

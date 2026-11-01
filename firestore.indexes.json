@@ -1,6 +1,23 @@
 {
   "indexes": [
     {
+      "collectionGroup": "resumos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "barbeariaId", "order": "ASCENDING" },
+        { "fieldPath": "em", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "resumos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "barbeariaId", "order": "ASCENDING" },
+        { "fieldPath": "barbeiroId", "order": "ASCENDING" },
+        { "fieldPath": "em", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "clubeMembros",
       "queryScope": "COLLECTION",
       "fields": [

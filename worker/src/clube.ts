@@ -7,7 +7,7 @@
 import {
   avisoDevido, chaveHorarioFixo, horarioFixoPendente, motivoSemClube, planoHorarioFixo, textoAvisoClube, usosNoCiclo, type AvisoClube,
 } from '../../src/lib/clube';
-import { chavesOcupacao, dataLocal, expedienteEfetivo, formatarData, gerarHorarios, paraMillis } from '../../src/lib/agenda';
+import { chavesOcupacao, dataLocal, expedienteDoBarbeiro, formatarData, gerarHorarios, paraMillis } from '../../src/lib/agenda';
 import type { Agendamento, Expediente, MembroClube, PlanoClube } from '../../src/types/models';
 import { enviarPush } from './avisos';
 import { APAGAR, type Firestore } from './firestore';
@@ -179,7 +179,7 @@ export async function sincronizarHorarioFixo(db: Firestore, membroId: string, ag
     for (const data of plano.datas) {
       const inicio = paraMillis(data, h.minutos);
       const cabe = pode && !motivoSemClube(m, pc, h.servicoId, inicio, usos) && gerarHorarios({
-        data, expediente: expedienteEfetivo(casa!.expediente as Expediente, barbeiro!.expediente as Expediente),
+        data, expediente: expedienteDoBarbeiro(casa!.expediente as Expediente, barbeiro as unknown as { expediente: Expediente; segueCasa?: boolean }),
         duracaoMin: Number(s!.duracaoMin), passoMin: Number(casa!.passoMin), ocupados, agora, antecedenciaMin: 0,
       }).includes(inicio);
       const id = cabe ? await gravarReserva(db, { barbeariaId: bid, casa: casa!, s: s!, servicoId: h.servicoId, barbeiro: barbeiro!,

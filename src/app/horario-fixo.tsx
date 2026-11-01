@@ -10,7 +10,7 @@ import { db } from '../services/firebase';
 import { dadosDaCasa } from '../services/barbearias';
 import { meuClubeNaCasa, salvarHorarioFixo } from '../services/clube';
 import { ancoraDoDia } from '../lib/clube';
-import { dataLocal, expedienteEfetivo, formatarData, formatarHora, gerarHorarios, hhmmParaMin, minParaHHMM, NOMES_DIAS } from '../lib/agenda';
+import { dataLocal, expedienteDoBarbeiro, formatarData, formatarHora, gerarHorarios, hhmmParaMin, minParaHHMM, NOMES_DIAS } from '../lib/agenda';
 import { colors, space, type } from '../theme';
 import type { FrequenciaClube } from '../types/models';
 
@@ -60,7 +60,7 @@ export default function HorarioFixoTela() {
   const barbeiros = equipe.filter(e => e.ativo !== false && doPlano.some(s => s.barbeiroId === e.uid));
   const barbeiro = barbeiros.find(e => e.uid === barbeiroId);
   const servico = doPlano.find(s => s.id === servicoId && s.barbeiroId === barbeiroId);
-  const expediente = barbeiro ? expedienteEfetivo(b.expediente, barbeiro.expediente) : {};
+  const expediente = barbeiro ? expedienteDoBarbeiro(b.expediente, barbeiro) : {};
   const hoje = dataLocal(Date.now());
   // Horas possíveis no dia da semana: a grade da casa num dia desses, sem olhar ocupação (o Worker confere cada data).
   const horas = servico && diaSemana !== null
