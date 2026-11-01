@@ -71,7 +71,7 @@ export function PainelNotificacoes({ uid, vazio = VAZIO_CASA }: { uid: string; v
                   const mes = n.tipo === 'resumo_mes' ? n.id.split('_')[1] : null;
                   const Caixa = mes ? Pressable : View;
                   return (
-                    <Caixa key={n.id} {...(mes ? { onPress: () => { setAberto(false); router.push({ pathname: '/resumos', params: { mes } }); },
+                    <Caixa key={n.id} {...(mes ? { onPress: () => { setAberto(false); router.push({ pathname: '/resumo-mes', params: { mes } }); },
                       accessibilityRole: 'button' as const, accessibilityHint: 'Abre os resumos anteriores' } : {})} style={{ flexDirection: 'row', gap: space(3), padding: space(3), borderRadius: radius.card,
                       backgroundColor: nova ? colors.surfaceRaised : colors.surface, borderWidth: 1, borderColor: nova ? colors.accent : colors.border }}>
                       <Ionicons name={ICONE[n.tipo]} size={20} color={n.tipo === 'cancelado' ? colors.danger : colors.accent} style={{ marginTop: 2 }} />

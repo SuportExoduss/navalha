@@ -60,7 +60,7 @@ const rotulo = (d, hoje) => `${DIAS[new Date(`${d}T12:00:00Z`).getUTCDay()]} ${d
   const A = await entrar(b, 'ana', 'Ana Souza', { geolocation: AQUI, permissions: ['geolocation'] });
 
   // 1) Início: duas barbearias por perto; atalho "Combo" filtra
-  await A.p.goto('http://127.0.0.1:8099/inicio'); await A.p.waitForTimeout(4000);
+  await A.p.goto('http://127.0.0.1:8099/inicio'); await A.p.getByText('Barba Negra').first().waitFor({ timeout: 20_000 });
   let t = await texto(A.p);
   assert.match(t, /Navalha de Ouro/); assert.match(t, /Barba Negra/);
   await shot(A.p, '1-inicio');
@@ -104,7 +104,7 @@ const rotulo = (d, hoje) => `${DIAS[new Date(`${d}T12:00:00Z`).getUTCDay()]} ${d
   let achou = false;
   for (const f of ['Hoje', 'Semana', 'Mês']) {
     await L.p.getByText(f, { exact: true }).first().click(); await L.p.waitForTimeout(400);
-    if (/Faturado\s*R\$ 45,00/.test(await texto(L.p))) achou = true;
+    if (/Faturado\W*R\$\s?45,00/.test(await texto(L.p))) achou = true;
   }
   assert.ok(achou, 'faturado de R$ 45,00 em nenhum filtro');
   await shot(L.p, '5-painel-do-dono');
@@ -127,7 +127,7 @@ const rotulo = (d, hoje) => `${DIAS[new Date(`${d}T12:00:00Z`).getUTCDay()]} ${d
   await env2.cleanup();
   await L.p.reload(); await L.p.waitForTimeout(4000);
   await L.p.getByText('Mês', { exact: true }).first().click(); await L.p.waitForTimeout(400);
-  const faturado = async () => (await texto(L.p)).match(/Faturado\s*R\$\s*([\d.,]+)/)[1];
+  const faturado = async () => (await texto(L.p)).match(/Faturado\W*R\$\s*([\d.,]+)/)[1];
   const todos = await faturado();
   await L.p.getByText('Rafa', { exact: true }).first().click(); await L.p.waitForTimeout(400);
   assert.equal(await faturado(), '30,00');
@@ -148,7 +148,7 @@ const rotulo = (d, hoje) => `${DIAS[new Date(`${d}T12:00:00Z`).getUTCDay()]} ${d
   t = await texto(B.p);
   assert.match(t, /Seu resumo/); assert.doesNotMatch(t, /Resumo da casa/);
   await B.p.getByText('Mês', { exact: true }).first().click(); await B.p.waitForTimeout(400);
-  assert.match(await texto(B.p), /Faturado\s*R\$\s*30,00/);
+  assert.match(await texto(B.p), /Faturado\W*R\$\s*30,00/);
   await shot(B.p, '5d-resumo-do-barbeiro');
 
   // 5) Perfil do cliente: telefone e opção de excluir conta

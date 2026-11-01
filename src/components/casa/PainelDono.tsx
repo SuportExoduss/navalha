@@ -1,14 +1,17 @@
 // Resumo na aba Barbearia, em tempo real (reserva nova ou corte concluído mudam os números na hora).
 // Dono: a casa toda, com filtro por barbeiro. Barbeiro: só os próprios agendamentos (as regras só deixam ler esses).
-// Filtros: Calendário (um dia escolhido), Hoje, Semana (segunda a domingo) e Mês (dia 1 até hoje).
+// Filtros: Calendário (um dia escolhido), Hoje, Semana (segunda a domingo) e Mês (o mês inteiro).
+// Tocar num número abre a lista do que ele soma (resumo-lista), no mesmo período e barbeiro.
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { router } from 'expo-router';
 import { Cartao, Chip, Secao } from '../ui';
+import { Numero } from '../resumo';
 import { db } from '../../services/firebase';
 import { ouvirAgendamentosDaCasa } from '../../services/agendamentos';
 import { NOMES_DIAS, dataLocal, formatarData, formatarPreco } from '../../lib/agenda';
-import { intervaloDoPainel, intervaloDoPeriodo, resumir, semanasDoMes, type Periodo } from '../../lib/painel';
+import { intervaloDoPainel, intervaloDoPeriodo, resumir, semanasDoMes, type Detalhe, type Periodo } from '../../lib/painel';
 import { colors, minTouch, radius, space, type } from '../../theme';
 import { useVersao } from '../../hooks/useAtualizar';
 import type { Agendamento, Barbeiro, ISODate } from '../../types/models';
@@ -16,7 +19,7 @@ import type { Agendamento, Barbeiro, ISODate } from '../../types/models';
 const PERIODOS: { id: Exclude<Periodo, 'calendario'>; rotulo: string; texto: string }[] = [
   { id: 'dia', rotulo: 'Hoje', texto: 'Hoje' },
   { id: 'semana', rotulo: 'Semana', texto: 'Nesta semana (segunda a domingo)' },
-  { id: 'mes', rotulo: 'Mês', texto: 'Neste mês, do dia 1 até hoje' },
+  { id: 'mes', rotulo: 'Mês', texto: 'Neste mês' },
 ];
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
@@ -47,6 +50,8 @@ export function PainelDono({ barbeariaId, equipe, barbeiroUid }: { barbeariaId: 
   const nomeFiltro = filtro ? (ativos.find(m => m.uid === filtro)?.apelido || ativos.find(m => m.uid === filtro)?.nome) : null;
   const texto = (periodo === 'calendario' ? `Em ${formatarData(escolhido, hoje)}` : PERIODOS.find(p => p.id === periodo)!.texto)
     + (nomeFiltro ? `, ${nomeFiltro}` : '');
+  const abrir = (tipo: Detalhe) => router.push({ pathname: '/resumo-lista',
+    params: { tipo, ...intervaloDoPeriodo(periodo, hoje, escolhido), barbeiro: filtro ?? '', rotulo: texto } });
   return (
     <Secao titulo={barbeiroUid ? 'Seu resumo' : 'Resumo da casa'}>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space(2) }}>
@@ -67,12 +72,12 @@ export function PainelDono({ barbeariaId, equipe, barbeiroUid }: { barbeariaId: 
       {!r ? <Text style={type.caption}>Calculando…</Text> : (
         <>
           <View style={{ flexDirection: 'row', gap: space(3) }}>
-            <Numero rotulo="Agendamentos" valor={String(r.agendamentos)} />
-            <Numero rotulo="Faturado" valor={formatarPreco(r.faturadoCentavos)} />
+            <Numero rotulo="Agendamentos" valor={String(r.agendamentos)} onPress={() => abrir('agendamentos')} />
+            <Numero rotulo="Faturado" valor={formatarPreco(r.faturadoCentavos)} onPress={() => abrir('faturado')} />
           </View>
           <View style={{ flexDirection: 'row', gap: space(3) }}>
-            <Numero rotulo="A receber" valor={formatarPreco(r.aReceberCentavos)} />
-            <Numero rotulo="Faltas" valor={`${r.taxaFaltaPercent}%`} alerta={r.taxaFaltaPercent >= 15} />
+            <Numero rotulo="A receber" valor={formatarPreco(r.aReceberCentavos)} onPress={() => abrir('receber')} />
+            <Numero rotulo="Faltas" valor={`${r.taxaFaltaPercent}%`} alerta={r.taxaFaltaPercent >= 15} onPress={() => abrir('faltas')} />
           </View>
           <Cartao style={{ gap: space(1) }}>
             <Text style={type.caption}>
@@ -123,15 +128,6 @@ function Calendario({ escolhido, hoje, aoEscolher }: { escolhido: ISODate; hoje:
           ) : <View key={j} style={celula} />)}
         </View>
       ))}
-    </Cartao>
-  );
-}
-
-function Numero({ rotulo, valor, alerta }: { rotulo: string; valor: string; alerta?: boolean }) {
-  return (
-    <Cartao style={{ flex: 1, gap: space(1) }}>
-      <Text style={type.caption}>{rotulo}</Text>
-      <Text style={[type.heading, type.number, alerta && { color: colors.danger }]}>{valor}</Text>
     </Cartao>
   );
 }
