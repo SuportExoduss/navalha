@@ -270,7 +270,10 @@ export function registrarEvento(db: Firestore, e: EventoUso) {
 /** Agendamentos da casa entre duas datas, em tempo real (resumo da casa): reserva nova ou corte concluído mudam os números na hora. */
 export function ouvirAgendamentosDaCasa(
   db: Firestore, barbeariaId: string, de: ISODate, ate: ISODate, cb: (l: Agendamento[]) => void, erro: (e: Error) => void,
+  barbeiroId: string | null = null,
 ): Unsubscribe {
-  const q = query(collection(db, 'agendamentos'), where('barbeariaId', '==', barbeariaId), where('data', '>=', de), where('data', '<=', ate));
+  // Com barbeiroId, só os do barbeiro: é o que as regras deixam o barbeiro (não dono) ler.
+  const q = query(collection(db, 'agendamentos'), where('barbeariaId', '==', barbeariaId),
+    ...(barbeiroId ? [where('barbeiroId', '==', barbeiroId)] : []), where('data', '>=', de), where('data', '<=', ate));
   return onSnapshot(q, s => cb(s.docs.map(d => d.data() as Agendamento)), erro);
 }

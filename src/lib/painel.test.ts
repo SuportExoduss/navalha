@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { intervaloDoPainel, intervaloDoPeriodo, resumir } from './painel';
+import { intervaloDoPainel, intervaloDoPeriodo, resumir, semanasDoMes } from './painel';
 import type { Agendamento } from '../types/models';
 
 const ag = (data: string, status: Agendamento['status'], preco = 4500, servicoNome = 'Degradê', origem: Agendamento['origem'] = 'app') =>
@@ -48,4 +48,28 @@ test('resumo vazio não divide por zero', () => {
   const r = resumir([], 'mes', '2026-12-20');
   assert.equal(r.taxaFaltaPercent, 0);
   assert.equal(r.maisPedido, null);
+});
+
+test('calendário: um dia escolhido, inclusive fora da semana e do mês', () => {
+  const l = [ag('2026-10-05', 'concluido'), ag('2026-10-05', 'reservado'), ag('2026-10-06', 'concluido')];
+  assert.deepEqual(intervaloDoPeriodo('calendario', '2026-12-02', '2026-10-05'), { de: '2026-10-05', ate: '2026-10-05' });
+  const r = resumir(l, 'calendario', '2026-12-02', '2026-10-05');
+  assert.equal(r.agendamentos, 2);
+  assert.equal(r.faturadoCentavos, 4500);
+  // Sem dia escolhido, "calendário" é hoje.
+  assert.equal(resumir(l, 'calendario', '2026-10-06').agendamentos, 1);
+});
+
+test('semanasDoMes: começa no domingo, preenche com null e cobre o mês todo', () => {
+  // Novembro/2026 começa num domingo e tem 30 dias.
+  const nov = semanasDoMes('2026-11-17');
+  assert.equal(nov[0][0], '2026-11-01');
+  assert.equal(nov.flat().filter(Boolean).length, 30);
+  assert.ok(nov.every(s => s.length === 7));
+  // Outubro/2026 começa numa quinta: 4 vazios antes do dia 1.
+  const out = semanasDoMes('2026-10-01');
+  assert.deepEqual(out[0].slice(0, 5), [null, null, null, null, '2026-10-01']);
+  assert.equal(out.at(-1)!.filter(Boolean).at(-1), '2026-10-31');
+  // Fevereiro bissexto.
+  assert.equal(semanasDoMes('2028-02-10').flat().filter(Boolean).length, 29);
 });

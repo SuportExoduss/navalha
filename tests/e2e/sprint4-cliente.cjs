@@ -15,12 +15,15 @@ async function uidDe(sub, nome) {
 const texto = p => p.textContent('body');
 const shot = (p, n) => p.screenshot({ path: `shots4/${n}.png`, fullPage: true });
 const AQUI = { latitude: -23.5015, longitude: -47.4526 };
+// Mesmo rótulo do calendário do app (formatarData): "Seg 21/09", com o ano se for de outro ano.
+const DIAS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+const rotulo = (d, hoje) => `${DIAS[new Date(`${d}T12:00:00Z`).getUTCDay()]} ${d.slice(8)}/${d.slice(5, 7)}${d.slice(0, 4) !== hoje.slice(0, 4) ? `/${d.slice(0, 4)}` : ''}`;
 
 (async () => {
   // Funciona no Windows também (o cmd não tem mkdir -p).
   require('node:fs').rmSync('shots4', { recursive: true, force: true }); require('node:fs').mkdirSync('shots4');
   await fetch('http://127.0.0.1:8080/emulator/v1/projects/demo-navalha/databases/(default)/documents', { method: 'DELETE' });
-  const ana = await uidDe('ana', 'Ana Souza'), lucas = await uidDe('lucas', 'Lucas Navalha');
+  const ana = await uidDe('ana', 'Ana Souza'), lucas = await uidDe('lucas', 'Lucas Navalha'), rafa = await uidDe('rafa', 'Rafa Tesoura');
   const env = await initializeTestEnvironment({ projectId: 'demo-navalha', firestore: { host: '127.0.0.1', port: 8080 } });
   const DIA = { abre: '00:00', fecha: '24:00' };
   const sempre = { 0: DIA, 1: DIA, 2: DIA, 3: DIA, 4: DIA, 5: DIA, 6: DIA };
@@ -105,6 +108,48 @@ const AQUI = { latitude: -23.5015, longitude: -47.4526 };
   }
   assert.ok(achou, 'faturado de R$ 45,00 em nenhum filtro');
   await shot(L.p, '5-painel-do-dono');
+
+  // 4b) Segundo barbeiro: o dono filtra por barbeiro e por um dia antigo no calendário; o barbeiro vê só o dele.
+  const antigo = new Date(agora - 3 * 3600e3 - 45 * 86400e3).toISOString().slice(0, 10);
+  const env2 = await initializeTestEnvironment({ projectId: 'demo-navalha', firestore: { host: '127.0.0.1', port: 8080 } });
+  await env2.withSecurityRulesDisabled(async c => {
+    const db = c.firestore();
+    await setDoc(doc(db, 'users', rafa), { uid: rafa, nome: 'Rafa Tesoura', email: '', papeis: ['barbeiro'], papelAtivo: 'barbeiro', barbearias: ['b1'],
+      favoritos: { barbearias: [], barbeiros: [] }, provedores: ['google'], maiorDeIdadeEm: agora, criadoEm: agora });
+    await setDoc(doc(db, 'barbearias/b1/barbeiros', rafa), { uid: rafa, barbeariaId: 'b1', nome: 'Rafa Tesoura', apelido: 'Rafa', especialidades: [], expediente: sempre, ativo: true, nota: { media: 0, total: 0 } });
+    const feito = (id, data, preco) => setDoc(doc(db, 'agendamentos', id), {
+      id, barbeariaId: 'b1', barbeiroId: rafa, barbeariaNome: 'Navalha de Ouro', barbeiroNome: 'Rafa', clienteUid: ana, clienteNome: 'Ana Souza',
+      servicoId: 's1', servicoNome: 'Barba', precoCentavos: preco, duracaoMin: 30, data, inicio: Date.parse(`${data}T15:00:00Z`), fim: Date.parse(`${data}T15:30:00Z`),
+      slots: [], status: 'concluido', origem: 'balcao', lembretes: {}, fotos: [], criadoEm: agora, atualizadoEm: agora });
+    await feito('rafa-mes', hoje, 3000);
+    await feito('rafa-antigo', antigo, 5000);
+  });
+  await env2.cleanup();
+  await L.p.reload(); await L.p.waitForTimeout(4000);
+  await L.p.getByText('Mês', { exact: true }).first().click(); await L.p.waitForTimeout(400);
+  const faturado = async () => (await texto(L.p)).match(/Faturado\s*R\$\s*([\d.,]+)/)[1];
+  const todos = await faturado();
+  await L.p.getByText('Rafa', { exact: true }).first().click(); await L.p.waitForTimeout(400);
+  assert.equal(await faturado(), '30,00');
+  assert.notEqual(todos, '30,00');
+  // Calendário: volta dois meses se preciso e escolhe o dia antigo (só o corte de R$ 50).
+  await L.p.getByText('Calendário', { exact: true }).click(); await L.p.waitForTimeout(400);
+  for (let i = 0; i < 3 && !(await L.p.getByRole('button', { name: rotulo(antigo, hoje), exact: true }).count()); i++) {
+    await L.p.getByRole('button', { name: 'Mês anterior' }).click(); await L.p.waitForTimeout(200);
+  }
+  await shot(L.p, '5b-calendario');
+  await L.p.getByRole('button', { name: rotulo(antigo, hoje), exact: true }).click(); await L.p.waitForTimeout(2500);
+  assert.equal(await faturado(), '50,00');
+  await L.p.getByText('Todos', { exact: true }).first().click(); await L.p.waitForTimeout(400);
+  assert.equal(await faturado(), '50,00');
+  await shot(L.p, '5c-resumo-dia-antigo');
+  const B = await entrar(b, 'rafa', 'Rafa Tesoura');
+  await B.p.goto('http://127.0.0.1:8099/casa'); await B.p.waitForTimeout(4000);
+  t = await texto(B.p);
+  assert.match(t, /Seu resumo/); assert.doesNotMatch(t, /Resumo da casa/);
+  await B.p.getByText('Mês', { exact: true }).first().click(); await B.p.waitForTimeout(400);
+  assert.match(await texto(B.p), /Faturado\s*R\$\s*30,00/);
+  await shot(B.p, '5d-resumo-do-barbeiro');
 
   // 5) Perfil do cliente: telefone e opção de excluir conta
   await A.p.goto('http://127.0.0.1:8099/perfil'); await A.p.waitForTimeout(3000);

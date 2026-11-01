@@ -514,8 +514,8 @@ test('WhatsApp novo no perfil: o cliente leva o número do perfil aos horários 
 });
 
 // O resumo da casa é uma escuta: a primeira resposta (ou a recusa) vira promessa.
-const lerResumo = (db: Firestore, de: string, ate: string) => new Promise<unknown[]>((ok, falha) => {
-  const parar = ouvirAgendamentosDaCasa(db, 'b1', de, ate, l => { parar(); ok(l); }, falha);
+const lerResumo = (db: Firestore, de: string, ate: string, barbeiroId: string | null = null) => new Promise<unknown[]>((ok, falha) => {
+  const parar = ouvirAgendamentosDaCasa(db, 'b1', de, ate, l => { parar(); ok(l); }, falha, barbeiroId);
 });
 
 test('barbeiro conclui sem foto (ninguém anexa foto ao corte); o resumo do dono lê o período', async () => {
@@ -526,6 +526,12 @@ test('barbeiro conclui sem foto (ninguém anexa foto ao corte); o resumo do dono
   const l = await assertSucceeds(lerResumo(dbDe('dono'), '2030-01-06', '2030-01-12'));
   assert.equal(l.length, 1);
   await assertFails(lerResumo(dbDe('beto'), '2030-01-06', '2030-01-12'));
+  // Barbeiro: o próprio resumo sim; o da casa toda ou o de outro barbeiro, não.
+  assert.equal((await assertSucceeds(lerResumo(dbDe('lucas'), '2030-01-06', '2030-01-12', 'lucas'))).length, 1);
+  await assertFails(lerResumo(dbDe('lucas'), '2030-01-06', '2030-01-12'));
+  await assertFails(lerResumo(dbDe('lucas'), '2030-01-06', '2030-01-12', 'rafael'));
+  // O dono filtra por barbeiro.
+  assert.equal((await assertSucceeds(lerResumo(dbDe('dono'), '2030-01-06', '2030-01-12', 'lucas'))).length, 1);
 });
 
 // ---------- Correções de segurança (auditoria 18/out/2026) ----------

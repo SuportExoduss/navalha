@@ -1,9 +1,9 @@
 // Resumo da casa para o dono, calculado dos agendamentos já lidos (uma escuta cobre os três filtros).
-// Hoje = só hoje; Semana = segunda a domingo desta semana; Mês = do dia 1 até hoje.
+// Calendário = um dia escolhido; Hoje = só hoje; Semana = segunda a domingo desta semana; Mês = do dia 1 até hoje.
 import { diaDaSemana, somarDias } from './agenda';
 import type { Agendamento, ISODate } from '../types/models';
 
-export type Periodo = 'dia' | 'semana' | 'mes';
+export type Periodo = 'calendario' | 'dia' | 'semana' | 'mes';
 
 export interface Resumo {
   agendamentos: number; concluidos: number; faltas: number; cancelados: number; pelaApp: number;
@@ -17,7 +17,8 @@ export interface Resumo {
 
 const DE_PE = new Set(['reservado', 'confirmado', 'pago']);
 
-export function intervaloDoPeriodo(periodo: Periodo, hoje: ISODate): { de: ISODate; ate: ISODate } {
+export function intervaloDoPeriodo(periodo: Periodo, hoje: ISODate, escolhido: ISODate = hoje): { de: ISODate; ate: ISODate } {
+  if (periodo === 'calendario') return { de: escolhido, ate: escolhido };
   if (periodo === 'dia') return { de: hoje, ate: hoje };
   if (periodo === 'mes') return { de: `${hoje.slice(0, 8)}01`, ate: hoje };
   const segunda = somarDias(hoje, -((diaDaSemana(hoje) + 6) % 7));
@@ -31,8 +32,8 @@ export function intervaloDoPainel(hoje: ISODate): { de: ISODate; ate: ISODate } 
   return { de: s.de < m.de ? s.de : m.de, ate: s.ate };
 }
 
-export function resumir(ags: Agendamento[], periodo: Periodo, hoje: ISODate): Resumo {
-  const { de, ate } = intervaloDoPeriodo(periodo, hoje);
+export function resumir(ags: Agendamento[], periodo: Periodo, hoje: ISODate, escolhido: ISODate = hoje): Resumo {
+  const { de, ate } = intervaloDoPeriodo(periodo, hoje, escolhido);
   const doPeriodo = ags.filter(a => a.data >= de && a.data <= ate);
   const valendo = doPeriodo.filter(a => a.status !== 'cancelado');
   const concluidos = doPeriodo.filter(a => a.status === 'concluido');
@@ -51,4 +52,13 @@ export function resumir(ags: Agendamento[], periodo: Periodo, hoje: ISODate): Re
     taxaFaltaPercent: concluidos.length + faltas ? Math.round((faltas / (concluidos.length + faltas)) * 100) : 0,
     maisPedido: top ? { nome: top[0], vezes: top[1] } : null,
   };
+}
+
+/** Calendário do mês de `dia`: semanas de domingo a sábado, com null nas casas fora do mês. */
+export function semanasDoMes(dia: ISODate): (ISODate | null)[][] {
+  const primeiro = `${dia.slice(0, 8)}01`;
+  const dias: (ISODate | null)[] = Array(diaDaSemana(primeiro)).fill(null);
+  for (let d = primeiro; d.slice(0, 7) === primeiro.slice(0, 7); d = somarDias(d, 1)) dias.push(d);
+  while (dias.length % 7) dias.push(null);
+  return Array.from({ length: dias.length / 7 }, (_, i) => dias.slice(i * 7, i * 7 + 7));
 }

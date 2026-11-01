@@ -67,6 +67,7 @@ Requisitos da Google Play: `docs/publicar-google-play.md`. Pacote definitivo `co
 - [x] Push de lembrete: o app registra o token do FCM no login (sem Expo Push desde 18/out); o Worker (cron de hora em hora) manda 24 h e 2 h antes
 - [x] ~~Foto no "Concluído"~~ — retirada em 25/out (decisão do dono); o barbeiro só conclui
 - [x] Resumo da casa (27/out): filtros Hoje, Semana (segunda a domingo) e Mês (dia 1 até hoje), com agendamentos, faturado, a receber, faltas e corte mais pedido, em tempo real (uma escuta)
+- [x] Resumo por pessoa e por dia (01/nov): o barbeiro vê só os próprios agendamentos ("Seu resumo"); o dono vê a casa toda e filtra por barbeiro; filtro Calendário (um dia qualquer, mês a mês) ao lado de Hoje/Semana/Mês
 - [x] Eventos de uso (viu barbearia, agendou, cancelou, faltou, concluiu). ~~Place ID do Google~~ saiu em 22/out
 - [x] Corrigido: barbeiro não conseguia atualizar o resumo do cardápio da casa (regra de segurança)
 - [x] Testes: 26 de lógica, 22 de regras, 5 do Worker, typecheck e 2 roteiros no navegador (tests/e2e)
