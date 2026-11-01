@@ -112,8 +112,8 @@ android {
         applicationId = 'com.trevotec.navalha'
         minSdk = rootProject.ext.minSdkVersion
         targetSdk = rootProject.ext.targetSdkVersion
-        versionCode = 9
-        versionName = "0.4.5"
+        versionCode = 10
+        versionName = "0.4.6"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
