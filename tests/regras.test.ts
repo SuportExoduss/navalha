@@ -44,6 +44,8 @@ beforeEach(async () => {
     // Cardápio: a reserva precisa bater preço, duração e barbeiro com estes serviços (SEC-003).
     await setDoc(doc(db, 'barbearias/b1/servicos/s'), { id: 's', barbeiroId: 'lucas', precoCentavos: 4500, duracaoMin: 30, ativo: true });
     await setDoc(doc(db, 'barbearias/b1/servicos/s1'), { id: 's1', barbeiroId: 'lucas', precoCentavos: 4500, duracaoMin: 45, ativo: true });
+    await setDoc(doc(db, 'barbearias/b1/servicos/s2'), { id: 's2', barbeiroId: 'lucas', precoCentavos: 4500, duracaoMin: 60, ativo: true });
+    await setDoc(doc(db, 'barbearias/b1/servicos/s24'), { id: 's24', barbeiroId: 'lucas', precoCentavos: 4500, duracaoMin: 360, ativo: true });
   });
 });
 
@@ -78,7 +80,7 @@ test('cliente reserva; o segundo cliente no mesmo horário é barrado', async ()
 });
 
 // Reserva gravada à mão, como um app modificado faria: cria a ocupação de cada chave que mandar.
-function reservaForjada(uid: string, id: string, f: { inicio: number; slots: string[]; duracaoMin?: number; fim?: number; servicoId?: string }) {
+function reservaForjada(uid: string, id: string, f: { inicio: number; slots: string[]; duracaoMin?: number; fim?: number; servicoId?: string; pular?: string[] }) {
   const db = env.authenticatedContext(uid).firestore();
   const duracaoMin = f.duracaoMin ?? 30;
   return runTransaction(db, async tx => {
@@ -88,7 +90,7 @@ function reservaForjada(uid: string, id: string, f: { inicio: number; slots: str
       data: '2030-01-10', inicio: f.inicio, fim: f.fim ?? f.inicio + duracaoMin * 60_000, slots: f.slots, status: 'reservado', origem: 'app',
       lembretes: {}, fotos: [], criadoEm: Date.now(), atualizadoEm: Date.now(),
     });
-    for (const k of f.slots) tx.set(doc(db, 'ocupacao', k), { barbeariaId: 'b1', barbeiroId: 'lucas', agendamentoId: id, inicio: f.inicio });
+    for (const k of f.slots) if (!f.pular?.includes(k)) tx.set(doc(db, 'ocupacao', k), { barbeariaId: 'b1', barbeiroId: 'lucas', agendamentoId: id, inicio: f.inicio });
     tx.set(doc(db, 'users', uid), { uid, ultimaReserva: serverTimestamp(), maiorDeIdadeEm: 1 }, { merge: true });
   });
 }
@@ -116,6 +118,26 @@ test('trava: bloco do meio de outro horário não trava a agenda do barbeiro', a
   const outroDia = chavesOcupacao('lucas', paraMillis('2030-01-11', 14 * 60 + 15), 15, 15)[0];
   await assertFails(reservaForjada('beto', 'm2', { inicio: as14, duracaoMin: 45, servicoId: 's1', slots: [primeiro, outroDia, ultimo] }));
   assert.equal((await getDocs(collection(dbDe('ana'), 'ocupacao'))).size, 0);
+});
+
+test('trava: cada bloco do meio na sua hora; serviço de 24 blocos passa', async () => {
+  const as14 = paraMillis('2030-01-10', 14 * 60);
+  const [primeiro, , ultimo] = chavesOcupacao('lucas', as14, 45, 15);
+  // 14:01 no lugar de 14:15: dentro do horário, mas deixava o bloco real livre.
+  await assertFails(reservaForjada('beto', 'm3', { inicio: as14, duracaoMin: 45, servicoId: 's1', slots: [primeiro, 'lucas_2030-01-10_1401', ultimo] }));
+  const as8 = paraMillis('2030-01-10', 8 * 60);
+  await assertSucceeds(reservaForjada('beto', 'm4', { inicio: as8, duracaoMin: 360, servicoId: 's24', slots: chavesOcupacao('lucas', as8, 360, 15) }));
+});
+
+test('limite conhecido: app modificado pula os blocos do meio; a casa cancela e o cliente honesto fica', async () => {
+  await reservaDe('ana', 'a1'); // 10:00–10:30 (blocos 10:00 e 10:15)
+  const as945 = paraMillis('2030-01-10', 9 * 60 + 45);
+  const slots = chavesOcupacao('lucas', as945, 60, 15); // 9:45, 10:00, 10:15, 10:30
+  // ponytail (firestore.rules): só as pontas são exigidas, então isto passa. Se um dia fechar, troque por assertFails.
+  await assertSucceeds(reservaForjada('beto', 'f1', { inicio: as945, duracaoMin: 60, servicoId: 's2', slots, pular: [slots[1], slots[2]] }));
+  await assertSucceeds(cancelar(dbDe('dono'), { id: 'f1', slots }, { por: 'casa', motivo: 'Horário forjado' }));
+  const restantes = (await getDocs(collection(dbDe('ana'), 'ocupacao'))).docs.map(d => [d.id, d.data().agendamentoId]);
+  assert.deepEqual(restantes.sort(), [[slots[1], 'a1'], [slots[2], 'a1']]);
 });
 
 test('trava: depois de cancelar, ninguém recria os blocos e prende o horário', async () => {

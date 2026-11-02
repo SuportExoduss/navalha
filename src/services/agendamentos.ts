@@ -80,11 +80,15 @@ export async function cancelar(
   const agora = Date.now();
   const texto = motivo?.motivo.trim().slice(0, 200);
   await runTransaction(db, async tx => {
+    // Libera só os blocos desta reserva: num horário gravado por app modificado, bloco que falta ou que é de outra
+    // pessoa fazia a regra negar e a casa não conseguia cancelar.
+    const refs = ag.slots.map(k => doc(db, 'ocupacao', k));
+    const blocos = await Promise.all(refs.map(r => tx.get(r)));
     tx.update(doc(db, 'agendamentos', ag.id), {
       status: 'cancelado', atualizadoEm: agora,
       ...(motivo && texto ? { cancelamento: { por: motivo.por, motivo: texto, em: agora } } : {}),
     });
-    ag.slots.forEach(k => tx.delete(doc(db, 'ocupacao', k)));
+    blocos.forEach((b, i) => { if (b.data()?.agendamentoId === ag.id) tx.delete(refs[i]); });
   });
 }
 

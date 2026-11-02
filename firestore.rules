@@ -336,8 +336,11 @@ service cloud.firestore {
       }
       // Os blocos são os do horário reservado (SEC-017): início no passo da casa, primeiro bloco = início,
       // último = o que cobre o fim, e quantidade certa. Sem isto, slots de outro horário passavam por cima
-      // de quem já tinha marcado. ponytail: os blocos do meio não são lidos (limite de leituras das regras);
-      // quem pular um deles só abre buraco na própria reserva. Fechar de vez = reservar pelo Worker.
+      // de quem já tinha marcado. Os do meio são conferidos na própria ocupação (blocoDaReserva): conferir aqui
+      // estoura o limite de 1000 expressões num serviço longo.
+      // ponytail: só as ocupações das pontas são exigidas (limite de leituras das regras). App modificado que
+      // pule as do meio consegue marcar por cima de uma reserva honesta nesses blocos; a casa vê as duas na agenda
+      // e cancela a forjada (cancelar libera só os blocos dela). Fechar de vez = um doc de agenda por barbeiro/dia.
       function blocosDoHorario(n) {
         let passo = barbearia(n.barbeariaId).passoMin * 60000;
         let total = n.slots.size();
@@ -435,10 +438,11 @@ service cloud.firestore {
           + ((hhmm / 100) * 60 + hhmm % 100) * 60000 + 10800000;
       }
       // O bloco nasce só junto com o agendamento (cancelado não volta a prender o horário) e dentro do horário dele:
-      // bloco do meio com chave de outra hora ou de outro dia não trava a agenda do barbeiro.
+      // bloco do meio com chave de outra hora, de outro dia ou fora do passo (10:01) não trava a agenda do barbeiro.
       function blocoDaReserva(a) {
         return a.slots.hasAny([chave]) && a.barbeiroId == request.resource.data.barbeiroId
-          && inicioDaChave() >= a.inicio && inicioDaChave() < a.fim;
+          && inicioDaChave() >= a.inicio && inicioDaChave() < a.fim
+          && (inicioDaChave() - a.inicio) % (barbearia(a.barbeariaId).passoMin * 60000) == 0;
       }
       allow read: if logado();
       allow create: if logado()
