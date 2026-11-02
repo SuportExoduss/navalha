@@ -1,6 +1,6 @@
 # Navalha — Status da execução
 
-Atualizado em 02/nov/2026 (auditoria de segurança: regras, Worker e Hosting publicados em 01/nov; 0.4.8 (código 12) no teste interno e no fechado do Play desde 01/nov; 0.4.9 (código 13) pronta para gerar o AAB, com o cancelamento que libera só os blocos da própria reserva e a trava conferindo o passo de cada bloco).
+Atualizado em 02/nov/2026 (auditoria de segurança: regras, Worker e Hosting publicados em 01/nov; 0.4.9 (código 13) no teste interno e no fechado do Play desde 02/nov, com o cancelamento que libera só os blocos da própria reserva, a trava conferindo o passo de cada bloco e a atualização obrigatória por `config/app › versaoMinima`).
 
 Código no computador: `C:\Users\andre\AndroidStudioProjects\navalha` (no Android Studio: File › Open › pasta `android`).
 
@@ -9,7 +9,7 @@ Código no computador: `C:\Users\andre\AndroidStudioProjects\navalha` (no Androi
 | --- | --- | --- | --- |
 | 0 · Fundação | 19/out – 1/nov | **portão atingido** (26/out): entrevistas confirmadas pelo dono, barbearias de teste conseguidas, termos e política v3 no ar | INPI adiado até haver verba (conflito na classe 44); landing e Instagram opcionais |
 | 1 · MVP | 2/nov – 27/dez | **100%** (adiantado ~6 semanas) + extras | portão: 3 barbearias amigas por 1 semana; cronometrar um dono montando a casa |
-| 2 · Piloto | jan – fev/2027 | código pronto; 0.4.8 (código 12) no teste interno e no fechado do Play (01/nov), 0.4.9 (código 13) a subir; 14 testadores conseguidos | 14 dias seguidos no teste fechado, Segurança de Dados no Play, onboarding das barbearias, cartaz com QR; evoluir o app subindo versões |
+| 2 · Piloto | jan – fev/2027 | código pronto; 0.4.9 (código 13) no teste interno e no fechado do Play (02/nov); 14 testadores conseguidos | 14 dias seguidos no teste fechado, Segurança de Dados no Play, onboarding das barbearias, cartaz com QR; evoluir o app subindo versões |
 | 3 · Lançamento | — | **fora do plano** (decisão do dono, 20/out) | ficam, já feitos: mensalidades pelo Google Play com cupom de cortesia e avaliação da barbearia (só estrelas) + ranking, sem Google |
 | 4 · Crescimento | — | **fora do plano**, menos o clube de assinatura (feito em 26/out) | — |
 | 5 · Escala | — | **fora do plano** | — |
@@ -303,5 +303,5 @@ Para isso, nesta ordem:
 
 ## Próximo no roadmap: Fase 2 — Piloto fechado (4/jan – 7/fev 2027)
 Teste fechado: 14 testadores conseguidos em 26/out; contar 14 dias seguidos com eles no teste fechado antes de pedir a produção. Onboarding presencial das barbearias,
-correções por nova versão no Play (sem EAS Update; subir `versionCode` a cada AAB — hoje 13 (0.4.9) em `android/app/build.gradle`, no Play: 12 (0.4.8) no teste interno e no fechado desde 01/nov, com as correções de segurança da auditoria). Ela leva o clube completo, a revisão de 26/out e as correções de 27/out (cadastro da casa sem voltar ao formulário, WhatsApp novo nos horários marcados, puxar para atualizar, dados em tempo real na busca, na casa e no resumo, salvar com confirmação do servidor, convite revisado e a bateria conferida pelo app; tem código nativo novo).
+correções por nova versão no Play (sem EAS Update; subir `versionCode` a cada AAB — hoje 13 (0.4.9) em `android/app/build.gradle`, no Play: 13 (0.4.9) no teste interno e no fechado desde 02/nov, com a atualização obrigatória (a partir dela, subir `versaoMinima` em `config/app` quando a versão nova aparecer na loja)). Ela leva o clube completo, a revisão de 26/out e as correções de 27/out (cadastro da casa sem voltar ao formulário, WhatsApp novo nos horários marcados, puxar para atualizar, dados em tempo real na busca, na casa e no resumo, salvar com confirmação do servidor, convite revisado e a bateria conferida pelo app; tem código nativo novo).
 Depois do piloto: publicação aberta no Google Play. As Fases 3 a 5 estão fora do plano por enquanto (decisão do dono, 20/out/2026).
