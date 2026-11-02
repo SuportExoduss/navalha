@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { chaveFoto, janelasLembrete, mensagemFcm, mensagemLembrete, tipoDaImagem } from './util';
-import { validarClaims, decodificarParte, type Claims } from './auth';
+import { validarClaims, decodificarParte, verificarIdToken, type Claims } from './auth';
 import { Firestore, lerValor } from './firestore';
 import { camposDaCasa, conferirVencimentos, lerCompra } from './assinatura';
 
@@ -23,6 +23,12 @@ test('claims do token do Firebase', () => {
   assert.equal(validarClaims({ ...ok, iss: 'https://evil' }, 'navalha-app', agora), 'iss');
   assert.equal(validarClaims({ ...ok, exp: agora - 1 }, 'navalha-app', agora), 'exp');
   assert.equal(validarClaims({ ...ok, sub: '' }, 'navalha-app', agora), 'sub');
+});
+
+test('token malformado ou sem assinatura RS256 vira "não logado" (401), não erro 500', async () => {
+  const b64 = (o: unknown) => Buffer.from(JSON.stringify(o)).toString('base64url');
+  for (const t of ['x.y.z', '!!!.@@@.###', `${b64({ alg: 'none' })}.${b64({ sub: 'dono' })}.`, `${b64('texto')}.e30.x`, 'a.b', ''])
+    assert.equal(await verificarIdToken(t, 'navalha-app'), null, t);
 });
 
 test('decodifica base64url do JWT', () => {
@@ -576,15 +582,17 @@ test('clube/agendar: confere membro, plano, limite e horário; grava agendamento
     ['users/ana', { uid: 'ana', nome: 'Ana Souza', maiorDeIdadeEm: 1 }],
     ['users/beto', { uid: 'beto', nome: 'Beto', maiorDeIdadeEm: 1 }],
     ['clubeMembros/b1_ana', { status: 'ativo', planoId: 'p1', cortesPorMes: 2, cicloInicio: agora - 20 * DIA, venceEm: agora + 10 * DIA }],
-    ['barbearias/b1', { nome: 'Casa', emDia: true, passoMin: 30, janelaDias: 14 }],
+    ['barbearias/b1', { nome: 'Casa', emDia: true, passoMin: 30, janelaDias: 14,
+      expediente: Object.fromEntries([0, 1, 2, 3, 4, 5, 6].map(d => [d, { abre: '05:00', fecha: '12:00' }])) }],
     ['barbearias/b1/servicos/s1', { barbeiroId: 'lucas', nome: 'Corte', precoCentavos: 5000, duracaoMin: 45, ativo: true }],
     ['barbearias/b1/servicos/s2', { barbeiroId: 'lucas', nome: 'Barba', precoCentavos: 3000, duracaoMin: 30, ativo: true }],
-    ['barbearias/b1/barbeiros/lucas', { nome: 'Lucas', ativo: true }],
+    ['barbearias/b1/barbeiros/lucas', { nome: 'Lucas', ativo: true, segueCasa: true, expediente: {} }],
     ['barbearias/b1/clubePlanos/p1', { servicoIds: ['s1'] }],
   ]);
+  const folga = { barbeiroId: 'lucas', inicio: inicio + 5 * DIA, fim: inicio + 5 * DIA + 7 * 3_600_000 };
   const db = {
     varios: async (cs: string[]) => new Map(cs.filter(c => docs.has(c)).map(c => [c, docs.get(c)!])),
-    query: async () => [...docs].filter(([c, d]) => c.startsWith('agendamentos/') && d.clubeMembroId === 'b1_ana').map(([c, d]) => ({ id: c, dados: d })),
+    query: async (_q: unknown, pai = '') => pai ? [{ id: 'f1', dados: folga }] : [...docs].filter(([c, d]) => c.startsWith('agendamentos/') && d.clubeMembroId === 'b1_ana').map(([c, d]) => ({ id: c, dados: d })),
     criarTodos: async (l: { caminho: string; campos: Record<string, unknown> }[]) => {
       if (l.some(w => docs.has(w.caminho))) return false;
       for (const w of l) docs.set(w.caminho, w.campos);
@@ -595,6 +603,9 @@ test('clube/agendar: confere membro, plano, limite e horário; grava agendamento
   assert.equal((await agendarPeloClube(db, 'ana', 'b1', 's2', inicio, agora)).status, 403); // fora do plano
   assert.equal((await agendarPeloClube(db, 'ana', 'b1', 's1', inicio + 60_000, agora)).status, 400); // fora do passo
   assert.equal((await agendarPeloClube(db, 'ana', 'b1', 's1', agora - 1_800_000, agora)).status, 400); // passado
+  assert.equal((await agendarPeloClube(db, 'ana', 'b1', 's1', inicio - 3_600_000, agora)).status, 400); // 4h, antes de abrir
+  assert.equal((await agendarPeloClube(db, 'ana', 'b1', 's1', inicio + 7 * 3_600_000, agora)).status, 400); // 12h, já fechou
+  assert.equal((await agendarPeloClube(db, 'ana', 'b1', 's1', inicio + 5 * DIA + 3_600_000, agora)).status, 400); // na folga
   const r = await agendarPeloClube(db, 'ana', 'b1', 's1', inicio, agora);
   assert.equal(r.status, 200);
   const ag = docs.get(`agendamentos/${(r.corpo as { agendamentoId: string }).agendamentoId}`)!;

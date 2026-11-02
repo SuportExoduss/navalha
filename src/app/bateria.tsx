@@ -11,10 +11,12 @@ import * as Device from 'expo-device';
 import { Aviso, Botao, Cartao, Carregando, Tela, Titulo } from '../components/ui';
 import { abrirAjuste, bateriaLiberada } from '../components/abrirAjuste';
 import { passosBateria, telasBateria } from '../lib/bateria';
+import { rotaInterna } from '../lib/dispositivo';
 import { colors, space, type } from '../theme';
 
 export default function Bateria() {
-  const { depois } = useLocalSearchParams<{ depois?: string }>();
+  // Só rota do app: ?depois=https://… mandava a pessoa para fora (link de phishing com o nosso endereço).
+  const depois = rotaInterna(useLocalSearchParams<{ depois?: string }>().depois);
   const seguir = () => (depois ? router.replace(depois as never) : router.back());
   const [liberada, setLiberada] = useState<boolean | null>(null);
 

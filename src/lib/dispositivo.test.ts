@@ -1,6 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ehAndroidNoNavegador, linkAbrirNoApp, mostrarAvisoApp } from './dispositivo';
+import { ehAndroidNoNavegador, linkAbrirNoApp, mostrarAvisoApp, rotaInterna } from './dispositivo';
+
+test('rota interna: só caminho do app; link de fora não redireciona', () => {
+  assert.equal(rotaInterna('/agenda'), '/agenda');
+  assert.equal(rotaInterna('/resumo-mes?mes=2026-10'), '/resumo-mes?mes=2026-10');
+  for (const x of ['https://site.com', 'javascript:alert(1)', '//site.com', '/\\site.com', 'agenda', '', undefined, ['/agenda']])
+    assert.equal(rotaInterna(x), null, String(x));
+});
 
 const ANDROID = 'Mozilla/5.0 (Linux; Android 14; 23124RA7EO) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Mobile Safari/537.36';
 const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';

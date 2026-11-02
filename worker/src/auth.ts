@@ -44,6 +44,11 @@ export function validarClaims(c: Claims, projectId: string, agoraSeg = Math.floo
 
 /** Devolve o uid do usuário ou null se o token for inválido. */
 export async function verificarIdToken(token: string, projectId: string): Promise<string | null> {
+  // Lixo no Bearer (base64 ou JSON quebrado) é "não logado" (401), não uma exceção que vira 500.
+  try { return await conferirToken(token, projectId); } catch { return null; }
+}
+
+async function conferirToken(token: string, projectId: string): Promise<string | null> {
   const partes = token.split('.');
   if (partes.length !== 3) return null;
   const [h, p, s] = partes;

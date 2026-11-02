@@ -5,6 +5,7 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { db } from './firebase';
 import { atualizarPerfil } from './usuarios';
+import { rotaInterna } from '../lib/dispositivo';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }),
@@ -17,7 +18,8 @@ export function ouvirToquePush(abrir: (rota: string) => void): () => void {
   const rotaDe = (r: Notifications.NotificationResponse | null) => {
     const c = r?.notification.request;
     const rota = (c?.content.data?.rota ?? (c?.trigger as { remoteMessage?: { data?: Record<string, string> } } | null)?.remoteMessage?.data?.rota) as string | undefined;
-    if (rota?.startsWith('/')) abrir(rota);
+    const alvo = rotaInterna(rota);
+    if (alvo) abrir(alvo);
   };
   rotaDe(Notifications.getLastNotificationResponse());
   const sub = Notifications.addNotificationResponseReceivedListener(rotaDe);

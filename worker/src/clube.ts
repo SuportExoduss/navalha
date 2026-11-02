@@ -104,6 +104,15 @@ export async function agendarPeloClube(
   const extra = await db.varios([...(m ? [`barbearias/${barbeariaId}/clubePlanos/${m.planoId}`] : []), `barbearias/${barbeariaId}/barbeiros/${barbeiroId}`]);
   const barbeiro = extra.get(`barbearias/${barbeariaId}/barbeiros/${barbeiroId}`);
   if (!barbeiro || barbeiro.ativo === false) return erro(409, 'Este barbeiro não atende mais aqui.');
+  // Mesma conta do app (horariosLivres): sem isso, um pedido forjado marcava de madrugada ou na folga do barbeiro.
+  const folgas = await db.query({ from: [{ collectionId: 'bloqueios' }],
+    where: { fieldFilter: { field: { fieldPath: 'barbeiroId' }, op: 'EQUAL', value: { stringValue: barbeiroId } } } }, `barbearias/${barbeariaId}`);
+  const livre = gerarHorarios({
+    data: dataLocal(inicio), expediente: expedienteDoBarbeiro(casa.expediente as Expediente, barbeiro as unknown as { expediente: Expediente; segueCasa?: boolean }),
+    duracaoMin, passoMin, agora, antecedenciaMin: Number(casa.antecedenciaMin) || 0,
+    ocupados: folgas.map(f => ({ inicio: Number(f.dados.inicio), fim: Number(f.dados.fim) })),
+  }).includes(inicio);
+  if (!livre) return erro(400, 'Este horário está fora do expediente ou numa folga do barbeiro.');
   const plano = m ? extra.get(`barbearias/${barbeariaId}/clubePlanos/${m.planoId}`) as unknown as PlanoClube | undefined : undefined;
   const ags = m ? await db.query({ from: [{ collectionId: 'agendamentos' }],
     where: { fieldFilter: { field: { fieldPath: 'clubeMembroId' }, op: 'EQUAL', value: { stringValue: membroId } } } }) : [];

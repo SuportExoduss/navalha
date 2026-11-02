@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { doDetalhe, fimDoMes, intervaloDoPainel, intervaloDoPeriodo, porServico, resumir, semanasDoMes } from './painel';
+import { doDetalhe, fimDoMes, intervaloDaUrl, intervaloDoPainel, intervaloDoPeriodo, porServico, resumir, semanasDoMes } from './painel';
 import type { Agendamento } from '../types/models';
 
 const ag = (data: string, status: Agendamento['status'], preco = 4500, servicoNome = 'Degradê', origem: Agendamento['origem'] = 'app') =>
@@ -91,4 +91,12 @@ test('serviços do período: sem cancelados, do mais pedido ao menos', () => {
   const r = porServico([ag('2026-12-01', 'concluido', 3000, 'Barba'), ag('2026-12-01', 'reservado'), ag('2026-12-02', 'faltou'),
     ag('2026-12-02', 'cancelado', 3000, 'Barba'), ag('2026-12-03', 'cancelado', 3000, 'Barba')]);
   assert.deepEqual(r, [{ nome: 'Degradê', vezes: 2, centavos: 9000 }, { nome: 'Barba', vezes: 1, centavos: 3000 }]);
+});
+
+test('intervalo da URL: aceita até 6 semanas de datas reais; recusa forjado', () => {
+  assert.deepEqual(intervaloDaUrl('2026-10-01', '2026-10-31'), { de: '2026-10-01', ate: '2026-10-31' });
+  assert.deepEqual(intervaloDaUrl('2026-09-28', '2026-11-01'), { de: '2026-09-28', ate: '2026-11-01' });
+  for (const [de, ate] of [['2016-01-01', '2026-12-31'], ['2026-10-31', '2026-10-01'], ['abc', '2026-10-01'],
+    ['2026-02-30', '2026-03-01'], ['2026-10-01', undefined], [['2026-10-01'], '2026-10-02'], ['2026-10-01T00', '2026-10-02']])
+    assert.equal(intervaloDaUrl(de, ate), null, `${de} → ${ate}`);
 });

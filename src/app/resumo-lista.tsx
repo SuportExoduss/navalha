@@ -10,7 +10,7 @@ import { useVersao } from '../hooks/useAtualizar';
 import { db } from '../services/firebase';
 import { agendamentosDaCasa } from '../services/agendamentos';
 import { dataLocal, formatarPreco } from '../lib/agenda';
-import { doDetalhe, type Detalhe } from '../lib/painel';
+import { doDetalhe, intervaloDaUrl, type Detalhe } from '../lib/painel';
 import { space, type } from '../theme';
 import type { Agendamento } from '../types/models';
 
@@ -24,17 +24,19 @@ const TITULOS: Record<Detalhe, [string, string]> = {
 export default function ResumoListaTela() {
   const { barbearia, carregando, ehDono, uid } = useMinhaBarbearia();
   const p = useLocalSearchParams<{ tipo: Detalhe; de: string; ate: string; barbeiro?: string; rotulo?: string }>();
-  const tipo: Detalhe = p.tipo in TITULOS ? p.tipo : 'agendamentos';
+  // hasOwn, não `in`: ?tipo=toString passaria pelo protótipo e derrubaria a tela.
+  const tipo: Detalhe = Object.hasOwn(TITULOS, p.tipo ?? '') ? p.tipo : 'agendamentos';
+  const intervalo = intervaloDaUrl(p.de, p.ate);
   const [lista, setLista] = useState<Agendamento[] | null>(null);
   const [erro, setErro] = useState(false);
   const versao = useVersao();
   const barbeiro = ehDono ? p.barbeiro || null : uid ?? null;
 
   useEffect(() => {
-    if (!barbearia || !uid || !p.de || !p.ate) return;
+    if (!barbearia || !uid || !intervalo) return;
     setErro(false);
-    agendamentosDaCasa(db, barbearia.id, p.de, p.ate, barbeiro).then(setLista, () => setErro(true));
-  }, [barbearia?.id, uid, p.de, p.ate, barbeiro, versao]);
+    agendamentosDaCasa(db, barbearia.id, intervalo.de, intervalo.ate, barbeiro).then(setLista, () => setErro(true));
+  }, [barbearia?.id, uid, intervalo?.de, intervalo?.ate, barbeiro, versao]);
 
   if (carregando || !uid) return <Carregando />;
   const [titulo, explica] = TITULOS[tipo];
@@ -50,7 +52,8 @@ export default function ResumoListaTela() {
       <Voltar />
       <Titulo>{titulo}</Titulo>
       <Text style={type.caption}>{p.rotulo ? `${p.rotulo}. ` : ''}{explica}</Text>
-      {erro ? <Aviso texto="Não foi possível carregar. Puxe para baixo para tentar de novo." tom="erro" />
+      {!intervalo ? <Aviso texto="Período inválido. Volte ao resumo e toque no número de novo." tom="erro" />
+        : erro ? <Aviso texto="Não foi possível carregar. Puxe para baixo para tentar de novo." tom="erro" />
         : !lista ? <Text style={type.caption}>Carregando…</Text>
         : !itens.length ? <Aviso texto="Nada neste período." />
         : tipo === 'faltas' ? (

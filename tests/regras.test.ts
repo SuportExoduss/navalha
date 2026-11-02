@@ -108,6 +108,26 @@ test('trava (SEC-017): os blocos precisam ser os do horário reservado', async (
   await assertSucceeds(reservaForjada('beto', 'f5', { inicio: as11, duracaoMin: 45, servicoId: 's1', slots: chavesOcupacao('lucas', as11, 45, 15) }));
 });
 
+test('trava: bloco do meio de outro horário não trava a agenda do barbeiro', async () => {
+  const as14 = paraMillis('2030-01-10', 14 * 60);
+  const [primeiro, , ultimo] = chavesOcupacao('lucas', as14, 45, 15);
+  const as18 = chavesOcupacao('lucas', paraMillis('2030-01-10', 18 * 60), 15, 15)[0];
+  await assertFails(reservaForjada('beto', 'm1', { inicio: as14, duracaoMin: 45, servicoId: 's1', slots: [primeiro, as18, ultimo] }));
+  const outroDia = chavesOcupacao('lucas', paraMillis('2030-01-11', 14 * 60 + 15), 15, 15)[0];
+  await assertFails(reservaForjada('beto', 'm2', { inicio: as14, duracaoMin: 45, servicoId: 's1', slots: [primeiro, outroDia, ultimo] }));
+  assert.equal((await getDocs(collection(dbDe('ana'), 'ocupacao'))).size, 0);
+});
+
+test('trava: depois de cancelar, ninguém recria os blocos e prende o horário', async () => {
+  const id = await reservar(dbDe('ana'), novaReserva('ana', inicio));
+  const ag = (await getDoc(doc(dbDe('ana'), 'agendamentos', id))).data()!;
+  await assertSucceeds(cancelar(dbDe('ana'), { id, slots: ag.slots }));
+  for (const uid of ['ana', 'beto']) {
+    await assertFails(setDoc(doc(dbDe(uid), 'ocupacao', ag.slots[0]), { barbeariaId: 'b1', barbeiroId: 'lucas', agendamentoId: id, inicio }));
+  }
+  await assertSucceeds(reservar(dbDe('beto'), novaReserva('beto', inicio)));
+});
+
 test('não reserva serviço desativado nem barbeiro desligado', async () => {
   await env.withSecurityRulesDisabled(ctx => updateDoc(doc(ctx.firestore(), 'barbearias/b1/servicos/s'), { ativo: false }));
   await assertFails(reservaDe('ana', 'a1'));

@@ -167,6 +167,13 @@ const resumo = (bid, mes, barbeiroId, nome, faturadoCentavos, porBarbeiro = []) 
   // Link antigo (push de versões anteriores) também cai no relatório.
   await p.goto(`${BASE}/resumos?mes=2026-10`);
   await p.waitForURL(/\/resumo-mes\?mes=2026-10/, { timeout: 10_000 });
+  // Links forjados: tipo do protótipo, período de 10 anos ou data inexistente não derrubam a tela nem leem tudo.
+  for (const q of ['tipo=toString&de=2016-01-01&ate=2026-12-31', 'tipo=faltas&de=2026-02-30&ate=2026-03-01', 'tipo=__proto__']) {
+    await p.goto(`${BASE}/resumo-lista?${q}`);
+    await p.getByText(/Período inválido/).filter({ visible: true }).waitFor({ timeout: 10_000 });
+  }
+  await p.goto(`${BASE}/resumo-lista?tipo=constructor&de=2026-10-01&ate=2026-10-31`);
+  await p.getByText(/Todos os horários marcados/).filter({ visible: true }).waitFor({ timeout: 10_000 });
 
   // Barbeiro: só os dele, sem filtro e sem o geral, na lista, no relatório e na exportação.
   await Z.p.goto(`${BASE}/resumos`); await Z.p.getByText('outubro de 2026', { exact: true }).waitFor({ timeout: 10_000 });
@@ -183,6 +190,30 @@ const resumo = (bid, mes, barbeiroId, nome, faturadoCentavos, porBarbeiro = []) 
   assert.doesNotMatch(await Z.p.innerText('body'), /Barbearia toda/);
   csv = await baixarCsv(Z.p);
   assert.match(csv, /Bia; Jr/); assert.doesNotMatch(csv, /Ana/);
+  // Barbeiro forjando o link com o uid do dono (ou vazio, o "geral") continua vendo só os dele.
+  for (const outro of [D.uid, '']) {
+    await Z.p.goto(`${BASE}/resumo-lista?tipo=agendamentos&de=2026-10-01&ate=2026-10-31&barbeiro=${outro}`);
+    await Z.p.getByText(/Bia; Jr/).filter({ visible: true }).first().waitFor({ timeout: 10_000 });
+    assert.doesNotMatch(await Z.p.innerText('body'), /Ana/);
+  }
+
+  // Troca de papel pela URL: um cliente de fora abre as telas da casa direto pelo endereço. Nada da casa vaza e nada cai.
+  const C = await entrar(b, `curioso${Date.now()}`, 'Curioso');
+  await gravar(`users/${C.uid}`, { papeis: ['cliente'], papelAtivo: 'cliente', maiorDeIdadeEm: Date.now() }, true);
+  const quedas = []; C.p.on('pageerror', e => quedas.push(e.message));
+  for (const rota of ['/casa', '/agenda', '/resumos', '/resumo-mes?mes=2026-10', `/resumo-mes?mes=2026-10&barbeiro=${Z.uid}`,
+    '/resumo-lista?tipo=agendamentos&de=2026-10-01&ate=2026-10-31', `/equipe/${D.uid}`, `/equipe/${Z.uid}`, '/expediente?alvo=casa',
+    '/cardapio', '/configuracoes', '/clube', '/atendimento/exp1', '/atendimento/../../users', `/horario-fixo?casa=${bid}`, '/plano']) {
+    await C.p.goto(`${BASE}${rota}`); await C.p.waitForTimeout(2500);
+    assert.doesNotMatch(await C.p.innerText('body'), /Ana|Bia; Jr|Duda|R\$\s?120,00|R\$\s?50,00/, `cliente viu dados da casa em ${rota}`);
+  }
+  assert.deepEqual(quedas, [], 'tela caiu com URL forjada');
+  // Link de fora no "depois" da tela da bateria: fica no Navalha (antes ia para o site do atacante).
+  for (const fora of ['https://example.com', '//example.com', 'javascript:alert(1)']) {
+    await C.p.goto(`${BASE}/bateria?depois=${encodeURIComponent(fora)}`); await C.p.waitForTimeout(3000);
+    assert.ok(C.p.url().startsWith(BASE), `bateria redirecionou para ${C.p.url()}`);
+  }
+  await C.ctx.close();
 
   // Expediente: Zeca segue a casa; ao salvar o dele, aparece o botão para voltar ao da casa.
   await Z.p.goto(`${BASE}/expediente`); await Z.p.waitForTimeout(3000);

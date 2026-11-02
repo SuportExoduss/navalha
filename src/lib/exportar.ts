@@ -31,7 +31,11 @@ const CABECALHO = ['Data', 'Hora', 'Barbeiro', 'Cliente', 'Serviço', 'Valor (R$
 
 /** Uma linha por atendimento, separada por ";" e com BOM: o Excel brasileiro abre com colunas e acentos certos. */
 export function csvDoMes(ags: Linha[]): string {
-  const campo = (s: string) => (/[;"\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s);
+  // Nome começando com = + - @ viraria fórmula no Excel (ex.: =HYPERLINK de golpe): o apóstrofo o deixa como texto.
+  const campo = (bruto: string) => {
+    const s = /^[=+\-@\t\r]/.test(bruto) ? `'${bruto}` : bruto;
+    return /[;"\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
   const linhas = [CABECALHO, ...ordenar(ags).map(colunas)].map(l => l.map(campo).join(';'));
   return '﻿' + linhas.join('\r\n') + '\r\n';
 }

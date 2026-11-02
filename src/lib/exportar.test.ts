@@ -27,6 +27,26 @@ test('CSV: BOM, ";", ordem por horário, valor com vírgula e campo com ";" ou a
   assert.equal(linhas[3], '07/10/2026;10:00;João;Ana;Degradê;45,00;Cancelado;App;Cliente: Viagem');
 });
 
+test('CSV: nome ou motivo que começa com = + - @ não vira fórmula no Excel', () => {
+  const csv = csvDoMes([
+    ag('2026-10-02', '09:00', 'concluido', { clienteNome: '=HYPERLINK("http://x";"Clique")' }),
+    ag('2026-10-03', '09:00', 'concluido', { clienteNome: '+5511999', servicoNome: '-Corte', barbeiroNome: '@Zé' }),
+    ag('2026-10-04', '09:00', 'cancelado', { cancelamento: { por: 'cliente', motivo: 'x', em: 0 }, clienteNome: '\t=1+1' }),
+  ]);
+  const linhas = csv.slice(1).trimEnd().split('\r\n');
+  assert.equal(linhas[1].split(';')[3], `"'=HYPERLINK(""http://x""`); // o ";" do nome fica dentro das aspas
+  assert.match(linhas[1], /^02\/10\/2026;09:00;João;"'=HYPERLINK\(""http:\/\/x"";""Clique""\)";Degradê/);
+  assert.equal(linhas[2], "03/10/2026;09:00;'@Zé;'+5511999;'-Corte;45,00;Concluído;App;");
+  assert.match(linhas[3], /;'\t=1\+1;/);
+});
+
+test('HTML: script no nome do cliente vira texto', () => {
+  const html = htmlDoMes('2026-10', 'Casa', [ag('2026-10-05', '14:00', 'cancelado', {
+    clienteNome: '<img src=x onerror=alert(1)>', cancelamento: { por: 'cliente', motivo: '<script>alert(2)</script>', em: 0 } })]);
+  assert.doesNotMatch(html, /<img|<script>alert/);
+  assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/);
+});
+
 test('CSV vazio tem só o cabeçalho', () => {
   assert.equal(csvDoMes([]).slice(1).trimEnd().split('\r\n').length, 1);
 });

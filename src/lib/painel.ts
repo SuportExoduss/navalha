@@ -38,6 +38,14 @@ export function intervaloDoPainel(hoje: ISODate): { de: ISODate; ate: ISODate } 
   return { de: s.de < m.de ? s.de : m.de, ate: s.ate > m.ate ? s.ate : m.ate };
 }
 
+/** de/ate vindos da URL (lista do resumo): só datas reais, em ordem e de até 6 semanas, para um link forjado não ler anos. */
+export function intervaloDaUrl(de: unknown, ate: unknown): { de: ISODate; ate: ISODate } | null {
+  const real = (d: unknown): d is ISODate =>
+    typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && somarDias(d, 0) === d;
+  if (!real(de) || !real(ate) || de > ate || somarDias(de, 42) < ate) return null;
+  return { de, ate };
+}
+
 export function resumir(ags: Agendamento[], periodo: Periodo, hoje: ISODate, escolhido: ISODate = hoje): Resumo {
   const { de, ate } = intervaloDoPeriodo(periodo, hoje, escolhido);
   return resumirLista(ags.filter(a => a.data >= de && a.data <= ate));

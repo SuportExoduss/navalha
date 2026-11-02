@@ -13,6 +13,10 @@ export function linkAbrirNoApp(caminho: string): string {
   return `intent://navalha.web.app${c}#Intent;scheme=https;package=${PACOTE_ANDROID};end`;
 }
 
+/** Só caminho do próprio app ("/agenda"): link de fora (https:, javascript:, //site, /\site) vira null. */
+export const rotaInterna = (x: unknown): string | null =>
+  typeof x === 'string' && /^\/(?![/\\])/.test(x) ? x : null;
+
 /** Android no navegador, e não o site já aberto como app pela Tela de Início. */
 export function ehAndroidNoNavegador(userAgent: string, abertoComoApp: boolean): boolean {
   return /Android/i.test(userAgent) && !abertoComoApp;
