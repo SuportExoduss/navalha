@@ -185,6 +185,14 @@ test('barbeiro só edita o próprio cardápio', async () => {
   await assertFails(setDoc(doc(db, 'barbearias/b1/servicos/s2'), { barbeiroId: 'rafael', ativo: true }));
 });
 
+test('versão mínima: qualquer um lê, ninguém grava pelo app', async () => {
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'config/app'), { versaoMinima: '0.4.9' }));
+  await assertSucceeds(getDoc(doc(env.unauthenticatedContext().firestore(), 'config/app')));
+  await assertFails(setDoc(doc(dbDe('dono'), 'config/app'), { versaoMinima: '0.0.1' }));
+  await assertFails(updateDoc(doc(dbDe('ana'), 'config/app'), { versaoMinima: '9.9.9' }));
+  await assertFails(deleteDoc(doc(dbDe('ana'), 'config/app')));
+});
+
 test('usuário só lê o próprio perfil', async () => {
   await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'users/ana'), { uid: 'ana', maiorDeIdadeEm: 1 }));
   await assertSucceeds(getDoc(doc(env.authenticatedContext('ana').firestore(), 'users/ana')));

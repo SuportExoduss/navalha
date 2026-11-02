@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../auth/AuthProvider';
 import { TemaProvider } from '../components/TemaProvider';
 import { AvisoApp } from '../components/AvisoApp';
+import { AtualizarApp } from '../components/AtualizarApp';
 import { Abertura } from '../components/Abertura';
 import * as SplashScreen from 'expo-splash-screen';
 import { Botao, Titulo } from '../components/ui';
@@ -27,6 +28,7 @@ export default function RootLayout() {
             <PortaoIdade />
             <ToquePush />
             <Abertura />
+            <AtualizarApp />
           </View>
         </AuthProvider>
       </TemaProvider>

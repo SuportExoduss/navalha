@@ -468,6 +468,12 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Versão mínima do app (atualização obrigatória): qualquer um lê, antes até do login; só o console/Admin grava.
+    match /config/{id} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // Monitoramento de erros: o app só grava, com campos e tamanhos fixos; o dono lê no console.
     match /erros/{id} {
       allow create: if logado() && request.resource.data.uid == eu()
