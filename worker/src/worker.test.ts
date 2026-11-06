@@ -721,3 +721,30 @@ test('push com rota abre a tela certa no toque', () => {
   assert.equal(m.message.data.rota, '/resumos?mes=2026-10');
   assert.equal('rota' in mensagemFcm({ token: 't', title: 'a', body: 'b', agendamentoId: 'x' }).message.data, false);
 });
+
+test('push vai para o app e para o navegador; token morto sai do perfil', async () => {
+  const { enviarPush } = await import('./avisos');
+  const { APAGAR } = await import('./firestore');
+  const { tokensDe, tokenMorto } = await import('./util');
+  assert.deepEqual(tokensDe({ pushToken: 'a', pushTokenWeb: 'a' }).map(t => t.token), ['a']); // web antiga gravava no mesmo campo
+  assert.deepEqual(tokensDe({ pushTokenWeb: 'w' }), [{ campo: 'pushTokenWeb', token: 'w' }]);
+  assert.deepEqual(tokensDe(undefined), []);
+  assert.equal(tokenMorto(404, ''), true);
+  assert.equal(tokenMorto(400, '{"error":{"status":"INVALID_ARGUMENT","message":"Invalid JSON payload"}}'), false);
+
+  const gravado: { caminho: string; campos: Record<string, unknown> }[] = [];
+  const db = { escrever: async (l: typeof gravado) => { gravado.push(...l); } } as never;
+  const pushes: string[] = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (_u: string, init?: RequestInit) => {
+    const token = JSON.parse(String(init?.body)).message.token as string;
+    pushes.push(token);
+    return token === 'web-velho' ? new Response('{"error":{"status":"NOT_FOUND","details":[{"errorCode":"UNREGISTERED"}]}}', { status: 404 }) : new Response('{}');
+  }) as typeof fetch;
+  const erro = console.error; console.error = () => {};
+  try {
+    await enviarPush(db, 'p', 't', 'ana', { pushToken: 'android', pushTokenWeb: 'web-velho' }, { title: 'a', body: 'b', agendamentoId: 'x', link: 'l' });
+    assert.deepEqual(pushes, ['android', 'web-velho']);
+    assert.deepEqual(gravado, [{ caminho: 'users/ana', campos: { pushTokenWeb: APAGAR } }]); // o do Android fica
+  } finally { globalThis.fetch = original; console.error = erro; }
+});

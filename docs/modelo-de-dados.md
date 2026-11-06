@@ -5,7 +5,7 @@ Tipos completos em `src/types/models.ts`; permissões em `firestore.rules`.
 
 | Coleção | Quem grava | Fase | Para quê |
 | --- | --- | --- | --- |
-| `users/{uid}` | o próprio usuário | 1 | Nome, apelido, foto, papéis (cliente/barbeiro/dono), modo ativo, favoritos, token de push, `maiorDeIdadeEm` (quando se declarou maior de 18 na tela `/idade`; a data de nascimento não é guardada; sem ele as regras barram a reserva) |
+| `users/{uid}` | o próprio usuário | 1 | Nome, apelido, foto, papéis (cliente/barbeiro/dono), modo ativo, favoritos, tokens de push (`pushToken` do app Android, `pushTokenWeb` do navegador; o Worker manda para os dois e apaga o que o FCM recusa), `maiorDeIdadeEm` (quando se declarou maior de 18 na tela `/idade`; a data de nascimento não é guardada; sem ele as regras barram a reserva) |
 | `barbearias/{id}` | dono | 1 | Perfil, endereço + geohash, expediente, política, **resumo** (nota do app, preço, próximo horário), assinatura |
 | `barbearias/{id}/barbeiros/{uid}` | dono ou o barbeiro (via convite) | 1 | Barbeiros da casa, expediente próprio, nota |
 | `convites/{código}` | dono | 1 | Código de 6 letras (sem 0/O/1/I), válido 7 dias, uso único; aponta para a barbearia. Apagado pelo cron ao vencer e na exclusão da casa |

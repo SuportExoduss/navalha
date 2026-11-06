@@ -6,6 +6,7 @@ import * as Notifications from 'expo-notifications';
 import { db } from './firebase';
 import { atualizarPerfil } from './usuarios';
 import { rotaInterna } from '../lib/dispositivo';
+import type { UserProfile } from '../types/models';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }),
@@ -26,7 +27,7 @@ export function ouvirToquePush(abrir: (rota: string) => void): () => void {
   return () => sub.remove();
 }
 
-export async function registrarPush(uid: string, tokenAtual?: string): Promise<ResultadoPush> {
+export async function registrarPush(uid: string, perfil?: Pick<UserProfile, 'pushToken' | 'pushTokenWeb'>): Promise<ResultadoPush> {
   if (!Device.isDevice) return 'indisponivel'; // emulador não recebe push
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('lembretes', {
@@ -39,7 +40,7 @@ export async function registrarPush(uid: string, tokenAtual?: string): Promise<R
   // iOS fica para a Fase 3 (APNs); aqui só Android, cujo token é do FCM.
   if (Platform.OS !== 'android') return 'indisponivel';
   const { data } = await Notifications.getDevicePushTokenAsync();
-  if (data !== tokenAtual) await atualizarPerfil(db, uid, { pushToken: data });
+  if (data !== perfil?.pushToken) await atualizarPerfil(db, uid, { pushToken: data });
   return 'ativo';
 }
 

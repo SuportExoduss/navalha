@@ -46,7 +46,7 @@ export async function escolherPapel(db: Firestore, perfil: UserProfile, papel: R
 }
 
 export async function atualizarPerfil(
-  db: Firestore, uid: string, dados: Partial<Pick<UserProfile, 'nome' | 'apelido' | 'fotoUrl' | 'bannerUrl' | 'telefone' | 'pushToken' | 'maiorDeIdadeEm'>>,
+  db: Firestore, uid: string, dados: Partial<Pick<UserProfile, 'nome' | 'apelido' | 'fotoUrl' | 'bannerUrl' | 'telefone' | 'pushToken' | 'pushTokenWeb' | 'maiorDeIdadeEm'>>,
 ) {
   await updateDoc(doc(db, 'users', uid), dados);
 }

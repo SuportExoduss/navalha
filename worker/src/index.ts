@@ -22,13 +22,13 @@
 // (3 crons no wrangler.toml: a conta grátis tem 5 no total, somando os outros Workers dela).
 import { verificarIdToken } from './auth';
 import { conferirVencimentos, migrarAssinaturas, resgatarCupom, verificarCompra } from './assinatura';
-import { avisarAgendamento, resumoDoMes } from './avisos';
+import { avisarAgendamento, enviarPush, resumoDoMes } from './avisos';
 import { avaliar } from './avaliacoes';
 import { excluirConta, excluirDadosBarbearia, exportarDados, limparAntigos, limparLegado, tirarTelefonesVencidos } from './conta';
 import { Firestore, tokenGoogle } from './firestore';
 import { atualizarMetricas, lerMetricas, PAGINA } from './metricas';
 import { agendarPeloClube, horarioFixoAgora, preencherHorariosFixos, rotinaClube } from './clube';
-import { chaveFoto, janelasLembrete, mensagemFcm, mensagemLembrete, tipoDaImagem, TIPOS } from './util';
+import { chaveFoto, janelasLembrete, mensagemLembrete, tipoDaImagem, tokensDe, TIPOS } from './util';
 
 export interface Env {
   FOTOS: R2Bucket;
@@ -325,30 +325,22 @@ export async function enviarLembretes(env: Env, agora = Date.now()) {
       ] } },
       limit: 200,
     });
-    const mensagens: { token: string; title: string; body: string; agendamentoId: string }[] = [];
     const marcar: string[] = [];
     // Plano grátis: até 50 chamadas por execução. Perfis numa leitura só e marcações numa gravação só;
-    // sobram as chamadas do FCM (uma por mensagem). ponytail: ~45 lembretes/hora; acima disso, Workers pago ou fila.
+    // sobram as chamadas do FCM (uma por aparelho). ponytail: ~40 avisos/hora; acima disso, Workers pago ou fila.
     const pendentes = ags.filter(({ dados }) => !((dados.lembretes ?? {}) as Record<string, number>)[j.chave] && dados.clienteUid);
     const perfis = await db.varios([...new Set(pendentes.map(({ dados }) => `users/${dados.clienteUid as string}`))]);
     for (const { id, dados } of pendentes) {
-      const push = perfis.get(`users/${dados.clienteUid as string}`)?.pushToken as string | undefined;
-      if (push && enviados++ < MAX_PUSH_LEMBRETES) {
+      const uid = dados.clienteUid as string;
+      const aparelhos = tokensDe(perfis.get(`users/${uid}`)).length;
+      if (aparelhos && enviados + aparelhos <= MAX_PUSH_LEMBRETES) {
+        enviados += aparelhos;
         const m = mensagemLembrete(dados as { servicoNome: string; inicio: number; barbeariaNome?: string }, j.quando);
-        mensagens.push({ token: push, ...m, agendamentoId: id });
+        // O bloco `notification` faz o Android mostrar o aviso sozinho com o app fechado, no canal "lembretes".
+        await enviarPush(db, env.FIREBASE_PROJECT_ID, tokenSA, uid, perfis.get(`users/${uid}`),
+          { ...m, agendamentoId: id, link: 'https://navalha.web.app/agendamentos' });
       }
       marcar.push(id);
-    }
-    // FCM v1 manda uma mensagem por chamada; o bloco `notification` faz o Android mostrar
-    // o aviso sozinho com o app fechado, no canal "lembretes" criado pelo app.
-    // ponytail: token inválido (app desinstalado) só falha calado; limpar o pushToken se o volume crescer.
-    for (const m of mensagens) {
-      const r = await fetch(`https://fcm.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/messages:send`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenSA}` },
-        body: JSON.stringify(mensagemFcm(m)),
-      });
-      // Sem isto a falha some: o lembrete fica marcado como enviado e ninguém sabe por quê.
-      if (!r.ok) console.error('FCM falhou', m.agendamentoId, r.status, await r.text());
     }
     await db.marcarVarios(marcar.map(id => `agendamentos/${id}`), `lembretes.${j.chave}`, agora);
   }

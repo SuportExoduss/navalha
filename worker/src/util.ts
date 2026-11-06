@@ -25,6 +25,24 @@ export function mensagemLembrete(a: { servicoNome: string; inicio: number; barbe
   return { title: 'Lembrete de horário', body: `Seu ${a.servicoNome} é ${quando}, às ${hora}${a.barbeariaNome ? ` na ${a.barbeariaNome}` : ''}.` };
 }
 
+/**
+ * Aparelhos da pessoa: `pushToken` é o do app Android (o APK antigo também grava aqui) e `pushTokenWeb` o do navegador.
+ * Antes eram um campo só e o último aparelho apagava o outro. Token igual nos dois (web antiga) vai uma vez só.
+ */
+export function tokensDe(perfil: Record<string, unknown> | undefined): { campo: 'pushToken' | 'pushTokenWeb'; token: string }[] {
+  const lista: { campo: 'pushToken' | 'pushTokenWeb'; token: string }[] = [];
+  for (const campo of ['pushToken', 'pushTokenWeb'] as const) {
+    const token = perfil?.[campo];
+    if (typeof token === 'string' && token && !lista.some(t => t.token === token)) lista.push({ campo, token });
+  }
+  return lista;
+}
+
+/** O FCM diz que o token não existe mais (404/UNREGISTERED) ou que nunca foi válido: tirar do perfil. */
+export function tokenMorto(status: number, erro: string): boolean {
+  return status === 404 || /UNREGISTERED|registration-token-not-registered|not a valid FCM registration token/i.test(erro);
+}
+
 /** Corpo do FCM HTTP v1: `notification` aparece sozinho com o app fechado; o canal é o que o app cria. */
 export function mensagemFcm(m: { token: string; title: string; body: string; agendamentoId: string; link?: string; rota?: string }) {
   return {

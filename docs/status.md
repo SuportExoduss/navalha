@@ -298,6 +298,7 @@ Para isso, nesta ordem:
    - [x] Rodada completa do roteiro docs/teste-manual.md pelo adb (19/out): 9 bugs achados e corrigidos; falta só o que exige 2ª conta, câmera, iPhone ou ficar sem internet
    - Bugs achados e corrigidos no teste: Firestore travava no Android (long polling), capa recusada pelo Worker (tipo pelos bytes), permissão de push engolida no 1º login, falha do FCM silenciosa no Worker (agora vai para o log).
 4. [x] Versão web publicada em **https://navalha.web.app** (Firebase Hosting, plano gratuito; `npm run export:web && npx firebase deploy --only hosting --project prod`; o `export:web` move as fontes para fora de `assets/node_modules`, que o Hosting não publica — corrigido em 25/out); domínio autorizado no login do Firebase. A versão antiga na Cloudflare (navalha-web) foi desativada em 19/out; o Worker de fotos e lembretes segue lá. Falta o dono entrar com Google uma vez para conferir.
+   - [x] Push no navegador e no app ao mesmo tempo (06/nov): a web grava `pushTokenWeb`, o Android segue em `pushToken` (APK antigo inclusive) e o Worker manda para os dois, apagando o token que o FCM recusa. Worker e site publicados. Falta conferir num navegador real com conta (Perfil › Ativar lembretes).
    - Corrigido: `src/services/firebase.ts` lia `env.EXPO_PUBLIC_*` por um apelido de `process.env`, que o Expo não embute no build; o app real cairia no emulador.
 5. Colocar 3 barbearias amigas para usar por 1 semana (as barbearias de teste já foram conseguidas em 26/out; falta a semana de uso sem erro grave nem horário duplo).
 

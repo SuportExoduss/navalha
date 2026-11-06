@@ -5,6 +5,9 @@
 import { getMessaging, getToken, isSupported } from 'firebase/messaging';
 import { app, db } from './firebase';
 import { atualizarPerfil } from './usuarios';
+import type { UserProfile } from '../types/models';
+
+type Tokens = Pick<UserProfile, 'pushToken' | 'pushTokenWeb'>;
 
 export type ResultadoPush = 'ativo' | 'negado' | 'indisponivel';
 /** Na web o toque é tratado pelo service worker (abre o link da mensagem). */
@@ -25,15 +28,16 @@ async function salvarToken(uid: string, tokenAtual?: string): Promise<ResultadoP
   // Sem vapidKey: o SDK usa a chave padrão do FCM do projeto.
   const token = await getToken(getMessaging(app), { serviceWorkerRegistration: registro });
   if (!token) return 'indisponivel';
-  if (token !== tokenAtual) await atualizarPerfil(db, uid, { pushToken: token });
+  // Campo próprio da web: o `pushToken` é do app Android e um não apaga o outro.
+  if (token !== tokenAtual) await atualizarPerfil(db, uid, { pushTokenWeb: token });
   return 'ativo';
 }
 
-export async function registrarPush(uid: string, tokenAtual?: string): Promise<ResultadoPush> {
+export async function registrarPush(uid: string, perfil?: Tokens): Promise<ResultadoPush> {
   if (!(await suporte())) return 'indisponivel';
   if (Notification.permission === 'denied') return 'negado';
   if (Notification.permission !== 'granted') return 'indisponivel'; // espera o toque no botão do Perfil
-  return salvarToken(uid, tokenAtual);
+  return salvarToken(uid, perfil?.pushTokenWeb);
 }
 
 /** Chamado no toque do botão: pede a permissão (exigência do iPhone) e guarda o token. */

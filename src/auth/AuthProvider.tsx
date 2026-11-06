@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!pushFeito) {
           pushFeito = true;
           // Lembretes: registra (ou atualiza) o token de push a cada login; nunca bloqueia a entrada.
-          registrarPush(user.uid, perfil.pushToken).catch(e => console.warn('Push indisponível', e));
+          registrarPush(user.uid, perfil).catch(e => console.warn('Push indisponível', e));
         }
         setState({ carregando: false, user, perfil });
       }, e => {

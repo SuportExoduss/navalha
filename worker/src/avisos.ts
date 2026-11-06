@@ -4,17 +4,28 @@
 import {
   ehDiaDoResumo, idAviso, mesAnterior, resumosDoMes, textoAviso, textoPedidoAvaliacao, textoResumoMes,
 } from '../../src/lib/notificacoes';
-import type { Firestore } from './firestore';
-import { mensagemFcm } from './util';
+import { APAGAR, type Firestore } from './firestore';
+import { mensagemFcm, tokenMorto, tokensDe } from './util';
 
 const RECENTE_MS = 15 * 60_000;
 
-export async function enviarPush(projectId: string, tokenSA: string, m: { token: string; title: string; body: string; agendamentoId: string; link: string; rota?: string }) {
-  const r = await fetch(`https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenSA}` },
-    body: JSON.stringify(mensagemFcm(m)),
-  });
-  if (!r.ok) console.error('FCM falhou', m.agendamentoId, r.status, await r.text());
+type Mensagem = { title: string; body: string; agendamentoId: string; link: string; rota?: string };
+
+/**
+ * Manda para cada aparelho da pessoa (app Android e navegador, ver `tokensDe`). Token que o FCM diz não existir mais
+ * (app desinstalado, permissão tirada no navegador) sai do perfil, para não gastar chamada nas próximas vezes.
+ */
+export async function enviarPush(db: Firestore, projectId: string, tokenSA: string, uid: string, perfil: Record<string, unknown> | undefined, m: Mensagem) {
+  for (const { campo, token } of tokensDe(perfil)) {
+    const r = await fetch(`https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenSA}` },
+      body: JSON.stringify(mensagemFcm({ token, ...m })),
+    });
+    if (r.ok) continue;
+    const erro = await r.text();
+    console.error('FCM falhou', m.agendamentoId, r.status, erro);
+    if (tokenMorto(r.status, erro)) await db.escrever([{ caminho: `users/${uid}`, campos: { [campo]: APAGAR } }]).catch(() => undefined);
+  }
 }
 
 /** POST /avisos/agendamento — alguém acabou de marcar ou cancelar: avisa os outros lados (cliente, barbeiro, dono). */
@@ -58,9 +69,8 @@ export async function avisarAgendamento(db: Firestore, tokenSA: string, projectI
   ]);
   const perfis = await db.varios(novos.map(p => `users/${p}`));
   for (const n of notifs) {
-    const token = perfis.get(`users/${n.paraUid}`)?.pushToken as string | undefined;
     const link = `https://navalha.web.app/${papel(n.paraUid) === 'cliente' ? 'agendamentos' : 'agenda'}`;
-    if (token) await enviarPush(projectId, tokenSA, { token, title: n.titulo, body: n.corpo, agendamentoId, link });
+    await enviarPush(db, projectId, tokenSA, n.paraUid, perfis.get(`users/${n.paraUid}`), { title: n.titulo, body: n.corpo, agendamentoId, link });
   }
   return { status: 200, corpo: { enviados: notifs.length } };
 }
@@ -106,8 +116,7 @@ export async function resumoDoMes(db: Firestore, tokenSA: string, projectId: str
         campos: { ...n, barbeariaId: c.id, tipo: 'resumo_mes', em: agora, lida: false } })),
     ]);
     for (const n of novos) {
-      const token = lidos.get(`users/${n.paraUid}`)?.pushToken as string | undefined;
-      if (token) await enviarPush(projectId, tokenSA, { token, title: n.titulo, body: n.corpo.split('\n')[0], agendamentoId: n.id, link: `https://navalha.web.app${rota}`, rota });
+      await enviarPush(db, projectId, tokenSA, n.paraUid, lidos.get(`users/${n.paraUid}`), { title: n.titulo, body: n.corpo.split('\n')[0], agendamentoId: n.id, link: `https://navalha.web.app${rota}`, rota });
     }
   }
 }

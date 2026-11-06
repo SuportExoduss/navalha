@@ -28,8 +28,10 @@ export interface UserProfile {
   /** Barbearias onde a pessoa é dono ou barbeiro. */
   barbearias: string[];
   favoritos: { barbearias: string[]; barbeiros: string[] };
-  /** Token do FCM (Firebase Cloud Messaging) para lembretes. */
+  /** Token do FCM (Firebase Cloud Messaging) do app Android. */
   pushToken?: string;
+  /** Token do FCM do navegador (site ou Tela de Início): separado para um aparelho não apagar o do outro. */
+  pushTokenWeb?: string;
   /** A avaliação que o cliente deu a cada barbearia (só o Worker grava): o app mostra "Editar" e não pede de novo. */
   avaliouBarbearias?: Record<string, { estrelas: number; em: Millis }>;
   provedores: ('google' | 'apple')[];

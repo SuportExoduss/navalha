@@ -71,8 +71,7 @@ export async function rotinaClube(db: Firestore, tokenSA: string, projectId: str
   ]);
   const perfis = await db.varios([...new Set(notifs.map(n => `users/${n.paraUid}`))]);
   for (const n of notifs.slice(0, MAX_PUSH)) {
-    const token = perfis.get(`users/${n.paraUid}`)?.pushToken as string | undefined;
-    if (token) await enviarPush(projectId, tokenSA, { token, title: n.titulo, body: n.corpo, agendamentoId: n.id, link: n.link });
+    await enviarPush(db, projectId, tokenSA, n.paraUid, perfis.get(`users/${n.paraUid}`), { title: n.titulo, body: n.corpo, agendamentoId: n.id, link: n.link });
   }
   return { avisos: notifs.length };
 }
@@ -228,8 +227,8 @@ export async function preencherHorariosFixos(db: Firestore, tokenSA: string, pro
     const n = { id: `clube_${id}_fixo_${r.naoCouberam[0]}`, paraUid: m.clienteUid, barbeariaId: m.barbeariaId, titulo: 'Horário fixo',
       corpo: `Seu horário fixo na ${m.barbeariaNome} não coube em ${r.naoCouberam.map(d => formatarData(d, hoje)).join(', ')}. Marque outro dia pelo app.` };
     await db.escrever([{ caminho: `notificacoes/${n.id}`, criar: true, campos: { ...n, tipo: 'clube', em: agora, lida: false } }]);
-    const token = (await db.varios([`users/${m.clienteUid}`])).get(`users/${m.clienteUid}`)?.pushToken as string | undefined;
-    if (token) await enviarPush(projectId, tokenSA, { token, title: n.titulo, body: n.corpo, agendamentoId: n.id, link: 'https://navalha.web.app/meu-clube' });
+    const perfil = (await db.varios([`users/${m.clienteUid}`])).get(`users/${m.clienteUid}`);
+    await enviarPush(db, projectId, tokenSA, m.clienteUid, perfil, { title: n.titulo, body: n.corpo, agendamentoId: n.id, link: 'https://navalha.web.app/meu-clube' });
   }
   return { membros: fila.length };
 }
